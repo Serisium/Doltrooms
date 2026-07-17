@@ -1,6 +1,6 @@
 ---
 name: architecture-docs
-description: Conventions for writing and maintaining ARCHITECTURE.md, based on matklad's ARCHITECTURE.md essay (the rust-analyzer convention). Use before editing ARCHITECTURE.md, when recording or renumbering a decision (D1–D6), when the README and ARCHITECTURE.md disagree, or when auditing docs for consistency. Triggers: ARCHITECTURE.md, architecture document, codemap, architectural invariant, settled decision, decision record, doc consistency, matklad.
+description: Conventions for writing and maintaining ARCHITECTURE.md, based on matklad's ARCHITECTURE.md essay (the rust-analyzer convention). Use before editing ARCHITECTURE.md, when recording or renumbering a decision (D1–D7), when the README and ARCHITECTURE.md disagree, or when auditing docs for consistency. Triggers: ARCHITECTURE.md, architecture document, codemap, architectural invariant, settled decision, decision record, doc consistency, matklad.
 ---
 
 # Maintaining ARCHITECTURE.md
@@ -17,7 +17,7 @@ convention rust-analyzer's architecture.md exemplifies.
 - **Keep it short; every recurring contributor reads it.** "The
   shorter it is, the less likely it will be invalidated by some future
   change… only specify things that are unlikely to frequently change."
-  Decisions (D1–D6) qualify; implementation detail does not — that
+  Decisions (D1–D7) qualify; implementation detail does not — that
   belongs in code comments or `.agents/skills/`.
 - **Bird's-eye problem statement first, then a codemap.** §1 answers
   "what is this"; §3's layout table answers "where's the thing that
