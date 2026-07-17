@@ -13,7 +13,7 @@ in the research phase — no driver code exists yet.
   becomes out of date, suggest edits or additions to the human instead
   of making them yourself.
 - **`ARCHITECTURE.md` holds this project's architectural decisions**
-  (D1–D6). It may be agent-written and may contain historical detail.
+  (D1–D7). It may be agent-written and may contain historical detail.
   Read it before any non-trivial change. You are not permitted to make
   changes elsewhere in the project that violate a decision in
   `ARCHITECTURE.md` unless explicitly told to. When such a decision is
@@ -47,7 +47,7 @@ in the research phase — no driver code exists yet.
   platform artifacts, and claims in skills should record the version
   they were verified against.
 - **After editing any `.md` file, re-check cross-references.** Update
-  decision ids (D1–D6), section numbers (§1–§4), file names, and
+  decision ids (D1–D7), section numbers (§1–§4), file names, and
   links in the other docs (`AGENTS.md`, `ARCHITECTURE.md`,
   `.agents/skills/`) that point at what you changed. A dangling `§`
   or renamed file reference is a bug.
@@ -98,6 +98,12 @@ Active for this iteration:
 - [`architecture-docs`](.agents/skills/architecture-docs/SKILL.md) —
   conventions for maintaining `ARCHITECTURE.md`; load before editing
   it.
+- [`red-green-testing`](.agents/skills/red-green-testing/SKILL.md) —
+  the red/green/refactor (test-first TDD) discipline mandated by
+  `ARCHITECTURE.md` D7 for new-from-scratch classes/features: the cycle,
+  the three laws, the test list, and how red/green maps to `commonTest`
+  and differential validation against `BundledSQLiteDriver`. Load before
+  writing any net-new production class.
 - [`skill-maintenance`](.agents/skills/skill-maintenance/SKILL.md) —
   **load before creating, editing, moving, or deleting any skill**,
   and before any WebFetch/WebSearch on a project library; the Agent

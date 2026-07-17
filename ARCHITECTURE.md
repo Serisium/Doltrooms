@@ -89,6 +89,23 @@ progressive-disclosure reference skills for the libraries this project
 touches, maintained under the `skill-maintenance` workflow. `AGENTS.md`
 binds these together and is the entry point for any agent.
 
+### D7 — New classes and features are built test-first (red/green/refactor)
+
+Any class or feature written from scratch is developed test-first on the
+red/green/refactor cycle: write a failing test for the next increment,
+watch it fail, write the minimum code to pass, then refactor while the
+tests stay green
+(https://martinfowler.com/bliki/TestDrivenDevelopment.html). This binds
+the first implementation iteration onward — there is no code to test in
+the research iteration (§4). It governs the code this project authors
+(driver-interface implementations, per-platform bindings, helpers); D4's
+reused Room suites remain a separate acceptance/differential gate on top,
+not red-first tests. New tests go in `commonTest` so one red test drives
+every target (§3.3). The D5 template placeholder code is exempt — it is
+slated for deletion, not retrofitted with tests. The mechanics — the
+cycle, the three laws, the test list, differential green against
+`BundledSQLiteDriver` — live in the `red-green-testing` skill.
+
 ## 3. Codemap
 
 ### 3.1 Repository layout
@@ -96,7 +113,7 @@ binds these together and is the entry point for any agent.
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D6. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D7. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
