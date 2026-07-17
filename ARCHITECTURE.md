@@ -1,0 +1,199 @@
+# doltlite-room-bridge — Architecture
+
+**Status:** Target architecture as of 2026-07-17. Research phase; no
+driver code exists yet.
+
+This document specifies the project's intended end state — the
+architecture every iteration builds toward, not a snapshot of what is
+built today. Every entry is a settled decision; if something isn't
+here, it isn't decided. Do not add speculative options, maybes, or
+deferred "might later" material — only decisions.
+
+`README.md` is the human-curated statement of the project and takes
+precedence: when this document and the README disagree, the README is
+the newer decision and this document must be updated to match it.
+
+---
+
+## 1. What this is
+
+A bridge between Room 3 — the Kotlin Multiplatform release of
+androidx.room — and DoltLite, DoltHub's SQLite fork with Git-style
+version control. The bridge is a custom driver for Room's
+`androidx.sqlite` driver API that links `libdoltlite` instead of
+sqlite3, giving KMP apps a local, version-controlled database where
+branch/merge/diff/commit are ordinary SQL calls.
+
+The founding feasibility research lives in `docs/FEASIBILITY.md`. Its
+verdicts are the basis of the decisions below.
+
+## 2. Decisions
+
+### D1 — The integration point is `androidx.sqlite`'s `SQLiteDriver`, nothing else
+
+The bridge is an implementation of the three `androidx.sqlite` driver
+interfaces — `SQLiteDriver`, `SQLiteConnection`, `SQLiteStatement` —
+functionally a re-skin of `BundledSQLiteDriver` over `libdoltlite`.
+Room, its annotation processor, and its generated code are consumed
+unmodified; we never fork or patch Room. DoltLite's version-control
+surface (`dolt_commit`, branches, diffs, merges) is reached as
+ordinary SQL through DAOs or Room's raw-connection APIs, not through
+new bridge-level APIs.
+
+### D2 — The engine is DoltLite's sqlite3-compatible C API; the Dolt server is out of scope
+
+The native engine under the driver is `libdoltlite`, consumed through
+the `sqlite3_*` C API surface it preserves. There is no Go embedding,
+no MySQL wire-protocol client, and no attempt to make Room talk to a
+Dolt SQL server — `docs/FEASIBILITY.md` settled that as infeasible
+(dialect, protocol, and driver-model mismatches). Any future
+Dolt-server bridge would be an application-level ETL problem outside
+this project.
+
+### D3 — Sync targets `doltlite-remotesrv`, on DoltLite ≥ 0.11.28
+
+The versioned-sync story is DoltLite's own remote protocol
+(`dolt_clone/push/pull/fetch`) against a `doltlite-remotesrv` — not
+Dolt remotes, not DoltHub. No interop between DoltLite and Dolt-proper
+remotes is assumed anywhere in the design; if upstream ships it, that
+is a new decision. Network sync requires DoltLite ≥ 0.11.28, the
+release that added TLS 1.3 and bearer-token auth to the remote
+protocol (see the `doltlite` skill); older versions have neither and
+may only sync behind a trusted proxy.
+
+### D4 — Platform ladder: JVM first, then Android, then iOS; web is speculative
+
+Driver work lands in this order: JVM desktop (JNI shim — the
+proof-of-concept and test vehicle), Android (DoltLite's Android
+artifact), iOS (Kotlin/Native cinterop against the DoltLite
+XCFramework). A JS/WASM driver is acknowledged as the hardest target
+and is not scheduled; nothing may be scaffolded for it. Validation at
+every rung is running existing Room test suites against the new
+driver.
+
+### D5 — The repo stays a single-module KMP library
+
+The project keeps the Kotlin `multiplatform-library-template` shape:
+one `:library` module holding the driver, Gradle version catalogs, no
+sample apps or extra modules until an iteration explicitly needs them.
+The template's `CustomFibi` placeholder code survives only until the
+first driver iteration replaces it.
+
+### D6 — Documentation structure: sacred README, this file, research skills
+
+Repository knowledge is layered the same way as its sibling project
+trinisphere: `README.md` is human-curated fact (agents never edit it);
+`ARCHITECTURE.md` holds settled decisions; `docs/FEASIBILITY.md` is
+founding research — context, not decisions; `.agents/skills/` holds
+progressive-disclosure reference skills for the libraries this project
+touches, maintained under the `skill-maintenance` workflow. `AGENTS.md`
+binds these together and is the entry point for any agent.
+
+## 3. Codemap
+
+### 3.1 Repository layout
+
+| Path | What lives there |
+|---|---|
+| `README.md` | Human-curated statement of the project. Never agent-edited. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D6. |
+| `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
+| `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
+| `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
+| `library/` | The one KMP library module (D5) — template placeholder code until the first driver iteration. |
+| `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
+
+### 3.2 Gradle wiring
+
+The repo keeps the `multiplatform-library-template` build shape:
+
+- `settings.gradle.kts` — repositories (`google()`, `mavenCentral()`,
+  `gradlePluginPortal()`) for both plugin and dependency resolution;
+  `rootProject.name = "multiplatform-library-template"` (template
+  name, unrenamed); `include(":library")` — the single module of D5.
+- `gradle/libs.versions.toml` — the version catalog, the only place
+  versions live: Kotlin `2.3.10`, AGP `9.0.1`, Android minSdk `24` /
+  compileSdk `36`, vanniktech maven-publish `0.36.0`, and the sole
+  library dependency `kotlin-test`. New dependencies (Room 3,
+  androidx.sqlite, DoltLite artifacts) enter through this catalog
+  when an implementation iteration opens them (§4).
+- Root `build.gradle.kts` — declares the three plugins `apply false`
+  (Kotlin Multiplatform, `com.android.kotlin.multiplatform.library`,
+  vanniktech maven-publish); `library/build.gradle.kts` applies them.
+- `gradle.properties` — configuration cache and build cache on;
+  `kotlin.mpp.enableCInteropCommonization=true` is already set, which
+  matters once the iOS driver rung adds cinterop (D4).
+- Publishing: the vanniktech plugin targets Maven Central with
+  signing; the POM in `library/build.gradle.kts` still carries
+  template placeholders (`XXX`/`YYY`/`ZZZ`) — real coordinates are a
+  pre-publish decision that does not exist yet.
+
+### 3.3 The `:library` module — targets and source sets
+
+Terms per the official project-structure docs
+(<https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html>):
+a target "describes a compilation target … the format of the produced
+binaries, available language constructions, and allowed
+dependencies"; a source set is "a set of source files with its own
+targets, dependencies, and compiler options … the main way to share
+code in multiplatform projects".
+
+Targets declared in `library/build.gradle.kts`: `jvm()`,
+`androidLibrary {}` (the AGP KMP library plugin — configured inside
+`kotlin {}`, single-variant, host/device tests opted in via
+`withHostTestBuilder {}` / `withDeviceTestBuilder {}`, plus
+`withJava()`; see
+<https://developer.android.com/kotlin/multiplatform/plugin>),
+`iosArm64()`, `iosSimulatorArm64()`, and `linuxX64()`. This matrix
+already covers the first three rungs of the D4 ladder; it grows (e.g.
+macOS) only when an iteration needs it.
+
+Source-set tree as laid out on disk under `library/src/`:
+
+```
+commonMain        CustomFibi.kt — generateFibi() + `expect val` pair
+├── jvmMain       fibiprops.jvm.kt      — `actual val` pair
+├── androidMain   fibiprops.android.kt  — `actual val` pair
+├── iosMain       fibiprops.ios.kt      — one `actual` for BOTH iOS targets
+└── linuxX64Main  fibiprops.linuxX64.kt — `actual val` pair
+
+commonTest        FibiTest.kt   — runs on every target
+├── jvmTest / iosTest / linuxX64Test — per-platform assertions
+└── androidHostTest AndroidFibiTest.kt — AGP-plugin host (JVM) tests
+```
+
+The structure demonstrates the three mechanics the driver will rely
+on:
+
+- **Common-to-platform visibility is one-way**: "the code in
+  `jvmMain` can use code from `commonMain`. However, the opposite
+  isn't true" (same page). The common API surface of the driver lives
+  in `commonMain`; platform bindings live below it.
+- **expect/actual**: `commonMain` declares
+  `expect val firstElement: Int`, each platform source set provides
+  the `actual` — the same seam the driver uses for per-platform
+  `libdoltlite` bindings.
+- **Intermediate source sets**: `iosMain` is not a platform source
+  set — "there is no single `ios` target"; it is the
+  default-hierarchy intermediate set compiling to both `iosArm64` and
+  `iosSimulatorArm64`, whose platform sets "are usually empty, as
+  Kotlin code for iOS devices and simulators is normally the same"
+  (same page). The template ships exactly this shape: one
+  `fibiprops.ios.kt` serving both targets.
+- **Test naming**: `Main` vs `Test` suffixes are the predefined
+  convention; `androidHostTest` (not `androidTest`) is the AGP KMP
+  plugin's naming — the legacy `src/main`/`src/test` layout is
+  unsupported under that plugin (see the `kmp-native-interop` skill).
+
+All `.kt` files in the module are template placeholder code
+(`io.github.kotlin.fibonacci`) and survive only until the first
+driver iteration replaces them (D5).
+
+## 4. Current iteration
+
+**Research.** This iteration produces the governing documents and the
+library research skills — nothing else. No driver code, no new Gradle
+modules, no added dependencies, no changes under `library/src`. The
+"Candidate first milestones" list in `README.md` is candidate work,
+not scheduled work; promoting a milestone into an iteration is a human
+decision, recorded by updating this section.
