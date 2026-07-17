@@ -6,13 +6,13 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "io.github.kotlin"
-version = "1.0.0"
+group = "dev.seri.doltrooms"
+version = "0.1.0-SNAPSHOT"
 
 kotlin {
     jvm()
     androidLibrary {
-        namespace = "org.jetbrains.kotlinx.multiplatform.library.template"
+        namespace = "dev.seri.doltrooms"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -46,13 +46,13 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates(group.toString(), "library", version.toString())
+    coordinates(group.toString(), "doltrooms", version.toString())
 
     pom {
-        name = "My library"
-        description = "A library."
-        inceptionYear = "2024"
-        url = "https://github.com/kotlin/multiplatform-library-template/"
+        name = "doltrooms"
+        description = "A Room 3 (androidx.room3) SQLiteDriver backed by DoltLite, giving KMP apps a local, version-controlled database."
+        inceptionYear = "2026"
+        url = "https://github.com/Serisium/Doltrooms/"
         licenses {
             license {
                 name = "XXX"
