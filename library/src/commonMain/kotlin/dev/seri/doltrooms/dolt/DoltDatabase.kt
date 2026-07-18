@@ -134,6 +134,79 @@ public class DoltDatabase(private val db: RoomDatabase) {
             }
         }
 
+    /** The branch checked out on the writer connection (`active_branch()`). */
+    public suspend fun currentBranch(): String =
+        writer { conn ->
+            conn.usePrepared("SELECT active_branch()") { stmt ->
+                stmt.step()
+                stmt.getText(0)
+            }
+        }
+
+    /** Creates a branch at the current head without switching to it. */
+    public suspend fun branch(name: String): Unit =
+        writer { conn ->
+            conn.usePrepared("SELECT dolt_branch(?)") { stmt ->
+                stmt.bindText(1, name)
+                stmt.step()
+            }
+        }
+
+    /**
+     * Deletes a fully merged branch (`dolt_branch('-d', …)`); throws for
+     * an unmerged or checked-out branch.
+     */
+    public suspend fun deleteBranch(name: String): Unit =
+        writer { conn ->
+            conn.usePrepared("SELECT dolt_branch('-d', ?)") { stmt ->
+                stmt.bindText(1, name)
+                stmt.step()
+            }
+        }
+
+    /**
+     * Switches the writer connection to [branch], creating it at the
+     * current head first when [create] is set (`dolt_checkout('-b', …)`).
+     * Reader connections do NOT follow — see the class KDoc.
+     */
+    public suspend fun checkout(branch: String, create: Boolean = false): Unit =
+        writer { conn ->
+            val sql =
+                if (create) "SELECT dolt_checkout('-b', ?)" else "SELECT dolt_checkout(?)"
+            conn.usePrepared(sql) { stmt ->
+                stmt.bindText(1, branch)
+                stmt.step()
+            }
+        }
+
+    /** All local branches (`dolt_branches`). */
+    public suspend fun branches(): List<DoltBranch> =
+        writer { conn ->
+            conn.usePrepared(
+                "SELECT name, hash, latest_committer, latest_committer_email, " +
+                    "latest_commit_date, latest_commit_message, remote, branch, dirty " +
+                    "FROM dolt_branches"
+            ) { stmt ->
+                buildList {
+                    while (stmt.step()) {
+                        add(
+                            DoltBranch(
+                                name = stmt.getText(0),
+                                hash = stmt.getText(1),
+                                latestCommitter = stmt.getText(2),
+                                latestCommitterEmail = stmt.getText(3),
+                                latestCommitDate = stmt.getText(4),
+                                latestCommitMessage = stmt.getText(5),
+                                remote = stmt.getText(6),
+                                remoteBranch = stmt.getText(7),
+                                dirty = stmt.getLong(8) != 0L,
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
     private suspend fun <R> writer(block: suspend (Transactor) -> R): R =
         db.useWriterConnection(block)
 }
@@ -158,4 +231,21 @@ public data class DoltStatusEntry(
     val tableName: String,
     val staged: Boolean,
     val status: String,
+)
+
+/**
+ * One `dolt_branches` row. [remote]/[remoteBranch] map the `remote` and
+ * `branch` columns (the upstream, empty until remotes are configured);
+ * [dirty] reports uncommitted changes on that branch's working set.
+ */
+public data class DoltBranch(
+    val name: String,
+    val hash: String,
+    val latestCommitter: String,
+    val latestCommitterEmail: String,
+    val latestCommitDate: String,
+    val latestCommitMessage: String,
+    val remote: String,
+    val remoteBranch: String,
+    val dirty: Boolean,
 )
