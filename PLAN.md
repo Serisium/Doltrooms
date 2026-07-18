@@ -30,10 +30,13 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 7 (typed dolt_* helpers —
-  `DoltDatabase` — green on jvm + linuxX64 + androidHost).
-- **Branch:** `claude/plan-step-7-14b1ed` (carries the Step 0–6
-  commits).
+- **Last completed step:** Step 8 (remote sync — `DoltDatabase`
+  addRemote/remotes/removeRemote/push/pull/fetch + `clone` bootstrap;
+  file:// round-trips on jvm + linuxX64 + androidHost, real
+  `doltlite-remotesrv` http round-trip on jvm; https is structurally
+  unavailable in amalgamation builds — D3 amended).
+- **Branch:** `claude/step-8-continuation-4210d5` (carries the
+  Step 0–7 commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
@@ -61,7 +64,7 @@ Each step below is executed in one fresh agent session:
   commonized cinterop bindings from
   `src/nativeInterop/cinterop/doltlite.def` (headers-only bindings —
   see the class map; engine archives per D9).
-- **Test map (102 jvm + 45 androidHost + 78 linuxX64 tests, all
+- **Test map (118 jvm + 52 androidHost + 85 linuxX64 tests, all
   green):** `commonTest
   …/driver/AbstractDriverConformanceTest.kt` — the differential
   conformance suite (27 cases; its header carries the coverage
@@ -86,8 +89,8 @@ Each step below is executed in one fresh agent session:
   `@SkipQueryVerification @Query("SELECT dolt_version()")
   doltVersion()` — the living validation that dolt_* SQL compiles in
   DAOs when verification is skipped). `commonTest
-  …/dolt/AbstractDoltDatabaseTest.kt` — the Step 7 dolt-helper suite
-  (12 cases; NOT differential — no dolt oracle exists; its
+  …/dolt/AbstractDoltDatabaseTest.kt` — the Step 7+8 dolt-helper suite
+  (19 cases; NOT differential — no dolt oracle exists; its
   `engineSupportsDolt` capability flag keeps the versioning tests
   DoltLite-only, and the one flag=false concrete runs only the guard
   test that a dolt-less engine throws clean SQLiteExceptions; header
@@ -97,7 +100,18 @@ Each step below is executed in one fresh agent session:
   readers-don't-follow-checkout contract, ff merge returns merged
   head, clean 3-way merge creates merge commit, conflicted merge
   throws + rolls back, typed diff rows incl. WORKING pseudo-ref,
-  @SkipQueryVerification dolt_version through the DAO). jvmTest concretes:
+  @SkipQueryVerification dolt_version through the DAO; Step 8:
+  remote add/list/remove + duplicate/unknown-remote errors, push+clone
+  file:// replication, pull round-trip, fetch-materializes-origin/main
+  contract, non-ff push reject + --force, conflicted pull rollback,
+  clone-requires-fresh-db + missing-remote error). jvmTest also
+  carries `…/dolt/RemoteServerSyncTest.kt` (Step 8, jvm-only fixture,
+  2 cases): spawns the real `doltlite-remotesrv` from the pinned
+  release's tools zip for an http push/clone/pull round-trip through
+  the driver, and pins that amalgamation-built engines reject
+  `https://` ("URL must start with file:// or http://"); skips with a
+  printed reason on non-linux-x64 hosts, FAILS if the Gradle fixture
+  wiring goes missing on linux-x64. jvmTest concretes:
   `DoltLiteDriverConformanceTest`/`BundledSQLiteDriverConformanceTest`
   and `DoltLiteRoomConformanceTest`/`BundledRoomConformanceTest`
   (Bundled legs are the oracle — a test failing there is a bad test,
@@ -178,6 +192,28 @@ Each step below is executed in one fresh agent session:
   pseudo-ref). dolt works fully on `:memory:`. AUTOINCREMENT's
   `sqlite_sequence` shows up in dolt_status/diffs alongside user
   tables.
+- **Step 8 sync findings (all probed at 0.11.33, 2026-07-18; full
+  fact sheet in the doltlite skill's remotes-and-sync "Probed facts"
+  section):** the DoltLite amalgamation EXCLUDES the TLS/credential
+  stack (doltlite.c: "excluded only from the single-file
+  amalgamation") — so every engine this repo builds (D9) supports
+  `file://` and plain `http://` remotes only; `https://` fails at
+  first use ("URL must start with file:// or http://") and
+  bearer-JWT auth is unavailable. The release's PREBUILT tools
+  binaries DO speak TLS 1.3 (shell-verified against a --cert/--key
+  remotesrv with `DOLTLITE_CA_FILE` trusting a self-signed cert), so
+  the gap is packaging, not protocol; D3 amended accordingly —
+  network sync is trusted-networks-only. `dolt_clone` requires a
+  FRESH database (Room dirties one at open), hence
+  `DoltDatabase.clone` is a companion bootstrap on a raw driver
+  connection (D10 amended). `<remote>/<branch>` refs resolve only
+  after the first `dolt_fetch` — not even right after clone. Pull =
+  fetch+merge with merge's exact conflict semantics. AUTOINCREMENT
+  is merge-hostile across replicas: concurrent inserts mint the same
+  rowid → PK collision → pull conflict (distinct explicit ids merge
+  clean; `sqlite_sequence` itself never conflicts) — syncing apps
+  need collision-free keys. First push creates a `file://` remote;
+  non-ff push rejects, `'--force'` overwrites.
 - **Driver class map (Steps 2–3):**
   - `commonMain …/driver/DoltLiteDriver.kt` — public expect API; the
     connection now also declares `inTransaction`.
@@ -320,7 +356,15 @@ Each step below is executed in one fresh agent session:
   symbols); one shared `doltlite` cinterop on all three native
   targets' main compilations (commonized into nativeMain), with
   explicit task deps — cinterop does NOT track the embedded archive
-  as an input, so it's declared via `inputs.files`. **Settled compile
+  as an input, so it's declared via `inputs.files`. Step 8 fixture
+  plumbing: `downloadDoltliteTools`/`unpackDoltliteTools` (release
+  zip `doltlite-tools-linux-x64-0.11.33.zip`, SHA-256
+  `6d9b2353f051ce79d3637d57facae293cacb320cfb5b3eebe896c18af1338932`,
+  linux-x64 hosts only via `onlyIf` — the flag is copied to a local
+  inside each task block because an `onlyIf` capturing a script-level
+  val breaks the configuration cache) → jvmTest gets system property
+  `dev.seri.doltrooms.remotesrv` pointing at the unpacked
+  `doltlite-remotesrv`. **Settled compile
   flags:** androidx
   sqlite-bundled's set MINUS `SQLITE_OMIT_SHARED_CACHE` and
   `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` (both break DoltLite's fork — see
@@ -342,9 +386,9 @@ Each step below is executed in one fresh agent session:
   `"doltlite-amalgamation"`).
 - **Build/test commands that pass:** `./gradlew build` (all targets;
   the two iOS targets are SKIPPED on a Linux host now that they carry
-  a cinterop — exit stays 0), `./gradlew :library:jvmTest` (102),
-  `./gradlew :library:testAndroidHostTest` (45), `./gradlew
-  :library:linuxX64Test` (78),
+  a cinterop — exit stays 0), `./gradlew :library:jvmTest` (118),
+  `./gradlew :library:testAndroidHostTest` (52), `./gradlew
+  :library:linuxX64Test` (85),
   `./gradlew :library:bundleAndroidMainAar
   :library:assembleAndroidDeviceTest` (AAR + device-test APK both
   carry `lib/<abi>/libdoltroomsjni.so`). CI:
@@ -529,7 +573,7 @@ Done — see Step Log.
 - **Risks:** dolt_* names/result columns are version-sensitive — verify
   against the doltlite skill (pinned 0.11.33), never memory.
 
-### [ ] Step 8 — Sync via doltlite-remotesrv
+### [x] Step 8 — Sync via doltlite-remotesrv
 - **Goal:** `push/pull/clone/fetch` helpers; `file://` remote
   round-trip proven by test; https path best-effort.
 - **Skills:** `red-green-testing`,
@@ -571,7 +615,7 @@ Done — see Step Log.
   jvmTest, linuxX64Test, testAndroidHostTest, wasm compile — NOT iOS:
   since Step 6's cinterop, Apple targets cannot compile on a Linux
   host (their tasks SKIP; see the Step 6 log); caching for the
-  amalgamation download + Konan; EXTEND `docs/deferred-verification.md`
+  amalgamation + tools downloads + Konan; EXTEND `docs/deferred-verification.md`
   (created in Step 6 with the iOS compile/link/test and Android
   device-test entries) with XCFramework packaging and whatever else
   accumulates.
@@ -1051,5 +1095,73 @@ Done — see Step Log.
   living compile test).
 - **Environment delta:** recreated `local.properties` (fresh
   worktree). No new packages.
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  unchanged.
+
+### Step 8 — Sync via doltlite-remotesrv (2026-07-18, branch `claude/step-8-continuation-4210d5`)
+
+- **Probe first (Step 7 precedent):** a throwaway
+  `ScratchRemoteProbeTest` (two rounds, deleted) plus shell probes
+  with the release CLI established every remote fact at 0.11.33
+  before any real test: return values (all remote functions → 0),
+  `dolt_remotes` schema, arities (`dolt_push(remote, branch
+  [,'--force'])`, `dolt_pull(remote, branch)` fixed; `dolt_fetch`
+  1-or-2-arg), error strings, clone's fresh-database requirement,
+  fetch materializing `origin/<branch>`, diverged-pull auto-merge,
+  conflicted-pull rollback, force push. All folded into the doltlite
+  skill's remotes-and-sync "Probed facts" section per
+  skill-maintenance.
+- **Red-green, five increments, one commit each:** (1)
+  addRemote/remotes/removeRemote + `DoltRemote` (red: unresolved
+  refs; detour: a KDoc example containing a literal refspec glob
+  commented out half the file — Kotlin block comments NEST, so a
+  slash-star inside KDoc opens a nested comment; reworded); (2) push
+  (incl. `force`) + the `clone` companion, replication test; (3)
+  pull, completing the card's push-from-A/pull-into-B round-trip
+  (rows + dolt_log equality); (4) fetch + the
+  not-mergeable-before-first-fetch contract; (5) probe-backed
+  contract pins (non-ff reject/--force, conflicted-pull rollback,
+  clone-needs-fresh-db + missing-remote). Then the jvm
+  `RemoteServerSyncTest` fixture (red: test fails hard on linux-x64
+  when the Gradle wiring is absent; green: tools download/unpack
+  tasks + system property). Final matrix: 118 jvm + 52 androidHost +
+  85 linuxX64, `./gradlew build` green.
+- **Card divergences:** (a) "https path best-effort" resolved as
+  IMPOSSIBLE for this library, not just unproven: the amalgamation
+  deliberately excludes the TLS/credential stack (doltlite.c quote in
+  the skill), so amalgamation-built engines (D9 = all of ours) reject
+  `https://` at first use and have no bearer-JWT auth.
+  `httpsRejectedByAmalgamationBuiltEngine` pins the contract; D3
+  amended (trusted-networks-only). The prebuilt remotesrv + CLI DO
+  speak TLS 1.3 — shell-verified with a self-signed `--cert/--key`
+  server and `DOLTLITE_CA_FILE` (fact recorded in the skill for a
+  future prebuilt-artifacts revisit). (b) The card's "extend
+  DoltDatabase with remote helpers — same shape" held EXCEPT clone:
+  the engine only clones into a fresh database and Room dirties one
+  at open, so `DoltDatabase.clone` is a companion bootstrap on a raw
+  driver connection (D10 amended). (c) The remotesrv binary IS
+  obtainable in-env (`doltlite-tools-linux-x64-0.11.33.zip`,
+  checksum recorded) — the http fixture leg is real, spawning
+  `-p 0` and parsing the printed URL; no `@Ignore` needed. Non-linux-
+  x64 hosts skip it (docs/deferred-verification.md entry).
+- **Engine finding with API consequences — replica id collision:**
+  concurrent inserts on two replicas mint the same AUTOINCREMENT
+  rowid, and a shared PK with different values is a row conflict on
+  pull/merge (first seen as an unexpected red in the force-push
+  test). Distinct explicit ids merge cleanly; `sqlite_sequence`
+  itself never conflicts (resolves toward the incoming/larger seq).
+  Documented in DoltDatabase's KDoc ("Remotes and sync"): syncing
+  apps need collision-free keys.
+- **Gradle gotcha:** an `onlyIf { scriptLevelVal }` cannot be
+  configuration-cached ("cannot serialize Gradle script object
+  references") — copy the value to a local inside the task
+  registration block first.
+- **Decisions recorded:** D3 amendment (amalgamation has no TLS/auth
+  → file:// + plain http only, trusted networks, revisit if upstream
+  ships TLS in the amalgamation); D10 amendment (remote surface +
+  the one clone-bootstrap exception to ride-Room).
+- **Environment delta:** recreated `local.properties` (fresh
+  worktree). No new packages (openssl/curl already present; used
+  only for probing).
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue
   unchanged.

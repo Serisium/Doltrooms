@@ -43,6 +43,19 @@ On a Mac, in order:
    verify the archive links clean against the device and simulator
    sysroots.
 
+## remotesrv fixture on non-linux-x64 hosts — deferred by Step 8
+
+The jvm `RemoteServerSyncTest` drives real http sync against a spawned
+`doltlite-remotesrv`. The binary comes from the release's
+`doltlite-tools-linux-x64-<version>.zip`, downloaded and
+checksum-verified by Gradle **on linux-x64 hosts only** — on any other
+host the tests print a SKIP and pass vacuously. When the suite first
+runs on a Mac (e.g. during the iOS verification above), extend
+`downloadDoltliteTools` in `library/build.gradle.kts` with the
+`osx-arm64` asset + its recorded SHA-256 to unskip them. The sync
+logic itself is platform-independent and fully covered by the
+commonTest `file://` remote tests on every target.
+
 ## Android on-device (needs a device/emulator) — deferred by Step 5
 
 `connectedAndroidDeviceTest` exists (`withDeviceTestBuilder` is
