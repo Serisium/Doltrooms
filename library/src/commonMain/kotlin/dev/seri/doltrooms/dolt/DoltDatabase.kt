@@ -288,6 +288,49 @@ public class DoltDatabase(private val db: RoomDatabase) {
             }
         }
 
+    /**
+     * Registers [url] as remote [name] (`dolt_remote('add', …)`). Only
+     * `file://` and `http(s)://` URLs are supported (probed at 0.11.33:
+     * "URL must start with file:// or http://"); a duplicate name throws
+     * "remote already exists".
+     */
+    public suspend fun addRemote(name: String, url: String): Unit =
+        writer { conn ->
+            conn.usePrepared("SELECT dolt_remote('add', ?, ?)") { stmt ->
+                stmt.bindText(1, name)
+                stmt.bindText(2, url)
+                stmt.step()
+            }
+        }
+
+    /** Removes remote [name] (`dolt_remote('remove', …)`). */
+    public suspend fun removeRemote(name: String): Unit =
+        writer { conn ->
+            conn.usePrepared("SELECT dolt_remote('remove', ?)") { stmt ->
+                stmt.bindText(1, name)
+                stmt.step()
+            }
+        }
+
+    /** All configured remotes (`dolt_remotes`). */
+    public suspend fun remotes(): List<DoltRemote> =
+        writer { conn ->
+            conn.usePrepared("SELECT name, url, fetch_specs, params FROM dolt_remotes") { stmt ->
+                buildList {
+                    while (stmt.step()) {
+                        add(
+                            DoltRemote(
+                                name = stmt.getText(0),
+                                url = stmt.getText(1),
+                                fetchSpecs = stmt.getText(2),
+                                params = stmt.getText(3),
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
     private fun SQLiteStatement.typedValue(index: Int): Any? =
         when (getColumnType(index)) {
             SQLITE_DATA_INTEGER -> getLong(index)
@@ -338,6 +381,20 @@ public data class DoltBranch(
     val remote: String,
     val remoteBranch: String,
     val dirty: Boolean,
+)
+
+/**
+ * One `dolt_remotes` row. [fetchSpecs] and [params] pass DoltLite's JSON
+ * text through verbatim — a git-style refspec array mapping `refs/heads`
+ * to `refs/remotes/<name>`, and `{}`. (The literal refspec glob can't
+ * appear here: Kotlin block comments nest, so a slash-star inside KDoc
+ * comments out the rest of the file.)
+ */
+public data class DoltRemote(
+    val name: String,
+    val url: String,
+    val fetchSpecs: String,
+    val params: String,
 )
 
 /**
