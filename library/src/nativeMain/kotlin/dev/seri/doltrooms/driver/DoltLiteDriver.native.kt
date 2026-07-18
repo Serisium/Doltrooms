@@ -15,6 +15,10 @@ public actual class DoltLiteDriver actual constructor() : SQLiteDriver {
 }
 
 public actual class DoltLiteConnection private constructor() : SQLiteConnection {
+    actual override fun inTransaction(): Boolean {
+        TODO("DoltLite native (cinterop) driver arrives with PLAN.md Step 6")
+    }
+
     actual override fun prepare(sql: String): SQLiteStatement {
         TODO("DoltLite native (cinterop) driver arrives with PLAN.md Step 6")
     }

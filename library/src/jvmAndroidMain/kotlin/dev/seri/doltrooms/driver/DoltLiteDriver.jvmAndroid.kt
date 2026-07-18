@@ -47,6 +47,13 @@ public actual class DoltLiteConnection internal constructor(
     @Volatile
     private var isClosed = false
 
+    actual override fun inTransaction(): Boolean {
+        throwIfClosed()
+        // "Autocommit mode is disabled by a BEGIN statement"
+        // (https://www.sqlite.org/c3ref/get_autocommit.html).
+        return DoltLiteNative.nativeGetAutocommit(dbPointer) == 0
+    }
+
     actual override fun prepare(sql: String): SQLiteStatement {
         throwIfClosed()
         val stmtOut = LongArray(1)

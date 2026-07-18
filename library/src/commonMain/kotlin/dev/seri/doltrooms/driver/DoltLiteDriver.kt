@@ -23,6 +23,8 @@ public expect class DoltLiteDriver() : SQLiteDriver {
  * (`sqlite3*`). Created by [DoltLiteDriver]; not thread-safe.
  */
 public expect class DoltLiteConnection : SQLiteConnection {
+    override fun inTransaction(): Boolean
+
     override fun prepare(sql: String): SQLiteStatement
 
     override fun close()
