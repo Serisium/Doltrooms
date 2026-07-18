@@ -113,6 +113,27 @@ public class DoltDatabase(private val db: RoomDatabase) {
             }
         }
 
+    /**
+     * The uncommitted working-set state, one entry per changed table
+     * (`dolt_status`); empty when the working tree is clean.
+     */
+    public suspend fun status(): List<DoltStatusEntry> =
+        writer { conn ->
+            conn.usePrepared("SELECT table_name, staged, status FROM dolt_status") { stmt ->
+                buildList {
+                    while (stmt.step()) {
+                        add(
+                            DoltStatusEntry(
+                                tableName = stmt.getText(0),
+                                staged = stmt.getLong(1) != 0L,
+                                status = stmt.getText(2),
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
     private suspend fun <R> writer(block: suspend (Transactor) -> R): R =
         db.useWriterConnection(block)
 }
@@ -127,4 +148,14 @@ public data class DoltCommit(
     val email: String,
     val date: String,
     val message: String,
+)
+
+/**
+ * One `dolt_status` entry: a table with uncommitted changes. [status] is
+ * DoltLite's text ("new table", "modified", …).
+ */
+public data class DoltStatusEntry(
+    val tableName: String,
+    val staged: Boolean,
+    val status: String,
 )
