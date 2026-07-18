@@ -65,7 +65,8 @@ statement that Android needs `jniLibs` packaging instead. Details in
 https://github.com/androidx/androidx/tree/androidx-main/sqlite/sqlite-web
 — `WebWorkerSQLiteDriver` over SQLite-WASM + OPFS via a Web Worker
 messaging protocol; suspend-first, single connection. The template if
-the web rung (ARCHITECTURE.md D4 — unscheduled) ever activates;
+the web rung (dropped — ARCHITECTURE.md D4 amendment, PLAN.md Step 9)
+is ever revisited as a dedicated iteration;
 `@dolthub/doltlite-wasm` would sit where sqlite-wasm sits.
 
 ## Driver-shaped precedents (implementing androidx SQLiteDriver)

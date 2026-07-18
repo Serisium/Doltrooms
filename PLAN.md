@@ -30,13 +30,21 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 8 (remote sync — `DoltDatabase`
-  addRemote/remotes/removeRemote/push/pull/fetch + `clone` bootstrap;
-  file:// round-trips on jvm + linuxX64 + androidHost, real
-  `doltlite-remotesrv` http round-trip on jvm; https is structurally
-  unavailable in amalgamation builds — D3 amended).
-- **Branch:** `claude/step-8-continuation-4210d5` (carries the
-  Step 0–7 commits).
+- **Last completed step:** Step 9 — resolved as DROPPED (the card's
+  pre-authorized droppable clause; D4 amended). No code, build, or
+  target changes: `wasmJs` was never added, so the repo is exactly its
+  Step 8 shape. Why (probed 2026-07-18, full detail in the Step Log):
+  a web target flips `commonMain`'s androidx.sqlite resolution from
+  the nonWeb actuals to the suspend web variants, breaking the entire
+  shared driver surface + `DoltDatabase` + all three commonTest
+  suites (would force a whole-tree nonWeb intermediate source-set
+  migration); the only web engine is the prebuilt
+  `@dolthub/doltlite-wasm` npm artifact (D9-rejected category); and
+  its OPFS storage is browser-only — untestable on this browserless
+  host. Upstream availability was NOT the blocker (androidx.sqlite
+  2.7.0 + room3-runtime 3.0.0 both publish wasmJs; npm was at
+  0.11.33 lockstep).
+- **Branch:** `claude/step-9-b192ee` (carries the Step 0–8 commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
@@ -590,31 +598,19 @@ Done — see Step Log.
 - **Verify:** `./gradlew :library:jvmTest :library:linuxX64Test`.
 - **Risks:** remotesrv binary distribution unclear; auth setup unknown.
 
-### [ ] Step 9 — Web target (wasmJs, best-effort, droppable)
-- **Goal:** `wasmJs` target compiles; async driver over
-  `@dolthub/doltlite-wasm` implementing androidx.sqlite's suspend web
-  interface variants; single connection; smoke tests where runnable.
-- **Skills:** `red-green-testing`,
-  `androidx-sqlite/references/driver-interfaces.md` (webMain variants),
-  `doltlite/references/artifacts-and-build.md` (wasm artifact),
-  `kmp-native-interop/references/targets-and-publishing.md` (web notes).
-- **Key tasks:** add `wasmJs` target + npm dep; `wasmJsMain` async
-  driver; verify Room3-on-wasm status in-session before promising Room
-  support there; record npm version skew vs the 0.11.33 pin.
-- **Red-green:** red = wasm smoke test (open, exec, query one row) on
-  stub; green implement.
-- **Verify:** minimum `./gradlew :library:compileKotlinWasmJs`; tests
-  where the toolchain allows. This step is explicitly droppable without
-  blocking Steps 10–11 — if dropped, record why and remove the target.
-- **Risks:** highest-risk step: androidx web driver surface vs Room3
-  expectations; doltlite-wasm version skew. (D4 amended to schedule web
-  last — see ARCHITECTURE.md.)
+### [x] Step 9 — Web target (wasmJs, best-effort, droppable)
+DROPPED (2026-07-18), exercising the card's droppable clause — no
+`wasmJs` target was ever added, so there was nothing to remove. The
+in-session evidence (probed compile failure, artifact facts, no
+browser in-env) is in the Step Log; the decision is the D4 amendment
+in ARCHITECTURE.md. Revisit only as a dedicated iteration.
 
 ### [ ] Step 10 — CI hardening + verification matrix
 - **Goal:** One workflow covering everything Linux-verifiable: build,
-  jvmTest, linuxX64Test, testAndroidHostTest, wasm compile — NOT iOS:
+  jvmTest, linuxX64Test, testAndroidHostTest — NOT iOS:
   since Step 6's cinterop, Apple targets cannot compile on a Linux
-  host (their tasks SKIP; see the Step 6 log); caching for the
+  host (their tasks SKIP; see the Step 6 log); and NOT wasm (the web
+  rung was dropped in Step 9 — D4 amendment); caching for the
   amalgamation + tools downloads + Konan; EXTEND `docs/deferred-verification.md`
   (created in Step 6 with the iOS compile/link/test and Android
   device-test entries) with XCFramework packaging and whatever else
@@ -1163,5 +1159,75 @@ Done — see Step Log.
 - **Environment delta:** recreated `local.properties` (fresh
   worktree). No new packages (openssl/curl already present; used
   only for probing).
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  unchanged.
+
+### Step 9 — Web target (wasmJs) — DROPPED (2026-07-18, branch `claude/step-9-b192ee`)
+
+- **Outcome: the droppable clause was exercised.** No production or
+  build code changed; `wasmJs` was never added (D4 forbade
+  scaffolding ahead), so "remove the target" was a no-op. D7/red-green
+  did not bind — no net-new production code was written.
+- **Evidence gathered before deciding (not from memory):**
+  1. *Upstream artifacts all exist* — availability is NOT the
+     blocker. Gradle module metadata (dl.google.com, fetched
+     2026-07-18): `androidx.sqlite:sqlite:2.7.0` publishes
+     `sqlite-wasm-js` + `sqlite-js` variants;
+     `androidx.room3:room3-runtime:3.0.0` publishes
+     `room3-runtime-wasm-js`. npm registry: `@dolthub/doltlite-wasm`
+     0.11.33 exists and was still `latest` (published 2026-07-17) —
+     lockstep with our pin today, though it versions independently.
+  2. *The structural blocker, probed by compile experiment:*
+     temporarily added `wasmJs { browser() }` and ran
+     `:library:compileKotlinWasmJs`. Result (errors captured, edit
+     reverted): commonMain resolved androidx.sqlite's WEB actuals —
+     `DoltLiteDriver.kt` failed with "Non-suspend function 'open'
+     cannot override suspend function 'suspend fun open(fileName:
+     String)'" (same for `prepare`, `step`), and `DoltDatabase.kt`'s
+     `open`/`prepare`/`step` calls became suspend-only. Since 2.7.0
+     the interfaces are expect-split commonMain/nonWebMain/webMain;
+     a source set sees the fragments shared by ALL its targets, so
+     one web target evicts the nonWeb members from `commonMain`.
+     Supporting web therefore means migrating every commonMain/
+     commonTest file (public expect classes, `DoltDatabase`, all
+     three abstract suites, the Room fixture) onto a new nonWeb
+     intermediate rail — and the web driver itself would share zero
+     code with the other five targets (different, suspend interface
+     variants; a from-scratch driver).
+  3. *The engine would violate D9:* Kotlin/Wasm cannot link an
+     Emscripten-built C library (kmp-native-interop skill), so the
+     engine must be the prebuilt `@dolthub/doltlite-wasm` npm package
+     — the upstream-prebuilt category D9 explicitly rejects (JNA AAR,
+     XCFramework, lib zips). Its 0.11.33 layout (registry `exports`
+     map) is the standard sqlite-wasm `ext/wasm` build:
+     `sqlite3.mjs`/`sqlite3.wasm`, OPFS async proxy,
+     worker1 + promiser, no TypeScript types — a binding would be
+     hand-written `external` declarations over an unpinnable-by-us
+     artifact.
+  4. *Untestable in-env:* OPFS is browser-only (the Node story is a
+     separate NATIVE package, `@dolthub/doltlite`); no browser exists
+     on this host (checked chromium/chrome/firefox — absent), so the
+     card's "smoke tests where runnable" resolves to "none runnable"
+     — a from-scratch driver would land with zero executed tests,
+     against the project's differential discipline.
+- **Decision recorded:** ARCHITECTURE.md D4 amended in place (drop +
+  the three probed facts + revisit-as-dedicated-iteration); §4's
+  ladder reference updated. Step 10's card updated in place (no wasm
+  compile in CI).
+- **Skill maintenance (per the five-step workflow):**
+  `androidx-sqlite` SKILL.md now records the target-set⇒resolution
+  mechanic and the published `sqlite-wasm-js`/`sqlite-js` variants;
+  `doltlite` artifacts-and-build gained the doltlite-wasm 0.11.33
+  package layout + lockstep note; `kmp-native-interop`
+  targets-and-publishing's web section rewritten from "out of scope —
+  know why" to "dropped — know why" with the probe facts and module
+  metadata citations. skills-ref still not in-env; frontmatter
+  untouched, hand-checked.
+- **Environment delta:** recreated `local.properties` (fresh
+  worktree). No new packages.
+- **Verification:** full matrix re-run at closeout on the unchanged
+  tree — `./gradlew build :library:jvmTest :library:testAndroidHostTest
+  :library:linuxX64Test` all green (118 jvm + 52 androidHost +
+  85 linuxX64), iOS tasks skipped as expected on a Linux host.
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue
   unchanged.

@@ -24,7 +24,7 @@ of the platform ladder (D4):
 | JVM desktop | JNI glue; libs in JAR resources, extracted at runtime | JAR |
 | Android | Same JNI glue; `.so` per ABI in `jniLibs/` (or DoltLite's existing JNA AAR) | AAR |
 | iOS/macOS | cinterop `.def` → klib; static lib per slice | klib (+ XCFramework for Xcode consumers) |
-| JS/Wasm | No C interop exists — `external` bindings to an Emscripten build; **out of scope** (D4) | — |
+| JS/Wasm | No C interop exists — `external` bindings to an Emscripten build; **dropped** (D4 amendment, PLAN.md Step 9) | — |
 
 The canonical precedent is `androidx.sqlite:sqlite-bundled`, which
 does exactly this for stock SQLite — one `commonMain` API,
@@ -89,8 +89,11 @@ See the `androidx-sqlite` skill for its internals.
 - **Web forces async**: Kotlin/Wasm interop is "JavaScript-only" — no
   linking against Emscripten C libraries
   (https://kotlinlang.org/docs/wasm-js-interop.html). OPFS drivers are
-  suspend-first and single-connection (Room 3's `sqlite-web`). Keep
-  the common API suspend-friendly, but scaffold nothing for web (D4).
+  suspend-first and single-connection (Room 3's `sqlite-web`). This
+  repo's web rung was dropped (D4 amendment, PLAN.md Step 9): the
+  common surface deliberately declares the nonWeb (synchronous)
+  androidx.sqlite members, which cannot coexist with a web target —
+  see `references/targets-and-publishing.md`.
 
 ## Authoritative URLs
 

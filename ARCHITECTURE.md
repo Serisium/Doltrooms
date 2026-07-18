@@ -75,7 +75,22 @@ target; by human decision of 2026-07-17 it is scheduled last
 (`PLAN.md` Step 9) as a best-effort, explicitly droppable rung —
 nothing may be scaffolded for it before that step opens. Validation at
 every rung is running existing Room test suites against the new
-driver.
+driver. Amendment (Step 9): the web rung was DROPPED, exercising the
+droppable clause — no `wasmJs` target exists and none is scaffolded.
+Three facts probed on 2026-07-18 settled it: (1) androidx.sqlite
+2.7.0 splits its interfaces into nonWeb (synchronous
+`open`/`prepare`/`step`) and web (`suspend`) variants, and once a web
+target joins the target set, `commonMain` resolves the suspend
+variants — the driver's shared expect surface stops compiling
+("Non-suspend function 'open' cannot override suspend function"), so
+a web driver shares no code with the other rungs and would force the
+entire `commonMain`/`commonTest` tree onto a nonWeb intermediate
+source-set rail; (2) the only workable web engine is the prebuilt
+`@dolthub/doltlite-wasm` npm artifact (Kotlin/Wasm cannot link an
+Emscripten-built C library) — exactly the upstream-prebuilt category
+D9 rejects; (3) its OPFS storage is browser-only, so the driver is
+untestable on a browserless Linux host. Revisit only as a dedicated
+iteration if a web rung becomes a real requirement.
 
 ### D5 — The repo stays a single-module KMP library
 
@@ -276,7 +291,8 @@ packages `dev.seri.doltrooms.*`).
 
 **Implementation.** Promoted from research by human decision on
 2026-07-17: build the full library — the DoltLite-backed
-`SQLiteDriver` across the platform ladder (D4, web last), the typed
+`SQLiteDriver` across the platform ladder (D4; the web rung was
+dropped at `PLAN.md` Step 9), the typed
 `dolt_*` versioning helpers, `doltlite-remotesrv` sync, CI, and
 publishing preparation. The work is sequenced by `PLAN.md`: one step
 per agent session, test-first per D7, each session ending with a

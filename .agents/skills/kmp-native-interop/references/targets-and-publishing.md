@@ -82,15 +82,35 @@ https://kotlinlang.org/docs/multiplatform/multiplatform-publish-lib-setup.html:
   (the old `publishLibraryVariants` dance belongs to
   `com.android.library`).
 
-## JS/Wasm (out of scope, ARCHITECTURE.md D4 — know why)
+## JS/Wasm (dropped, ARCHITECTURE.md D4 amendment — know why)
 
 Kotlin/Wasm and Kotlin/JS interop is "JavaScript-only" via `external`
 declarations / `JsAny` (https://kotlinlang.org/docs/wasm-js-interop.html)
 — there is no supported linking of a Kotlin/Wasm module against an
-Emscripten-compiled C library. The workable path is binding to a
+Emscripten-compiled C library. The workable path would be binding to a
 sqlite-wasm-style JS package (`@dolthub/doltlite-wasm`) from
 `wasmJsMain`, and OPFS storage forces an async, single-connection
 driver — Room 3's `androidx.sqlite:sqlite-web` `WebWorkerSQLiteDriver`
-is the template (`room3` skill). Consequence for API design now: keep
-the common surface suspend-friendly so a web target remains possible
-without redesign.
+is the template (`room3` skill).
+
+This repo's web rung was DROPPED at PLAN.md Step 9 (ARCHITECTURE.md
+D4 amendment). The decisive mechanic, probed in-repo 2026-07-18 by
+adding `wasmJs { browser() }` to the target set: androidx.sqlite
+2.7.0's interfaces are expect-split into nonWeb (synchronous
+`open`/`prepare`/`step`) and web (`suspend`) actuals, and a source
+set's dependency view is the intersection of fragments shared by all
+its targets — so the moment a web target joins, `commonMain` sees the
+suspend variants and any shared non-suspend driver surface fails to
+compile ("Non-suspend function 'open' cannot override suspend
+function 'suspend fun open(fileName: String)'"). A KMP library whose
+common surface declares the nonWeb members must move that entire tree
+(main and test) onto a nonWeb intermediate source set before a web
+target can even be declared. Note the upstream artifacts themselves
+are not the blocker: `androidx.sqlite:sqlite` 2.7.0 and
+`androidx.room3:room3-runtime` 3.0.0 both publish `js` and `wasmJs`
+variants (`sqlite-wasm-js`, `room3-runtime-wasm-js` — Gradle module
+metadata at
+https://dl.google.com/android/maven2/androidx/sqlite/sqlite/2.7.0/sqlite-2.7.0.module
+and
+…/androidx/room3/room3-runtime/3.0.0/room3-runtime-3.0.0.module,
+verified 2026-07-18).
