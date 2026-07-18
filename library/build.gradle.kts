@@ -156,6 +156,17 @@ val compileDoltliteJni by tasks.registering(CompileDoltliteJniTask::class) {
 }
 
 kotlin {
+    // The custom jvmAndroidMain dependsOn edges below disable Kotlin's
+    // default source-set hierarchy, so re-apply it explicitly: it provides
+    // nativeMain/iosMain, which hold the Step 6 cinterop driver (stubs today).
+    applyDefaultHierarchyTemplate()
+
+    // The driver classes are expect/actual (the bundled-driver template);
+    // acknowledge the Beta status like androidx does.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     jvm()
     androidLibrary {
         namespace = "dev.seri.doltrooms"
