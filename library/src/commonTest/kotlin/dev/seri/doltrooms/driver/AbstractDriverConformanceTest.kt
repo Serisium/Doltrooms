@@ -46,9 +46,10 @@ import kotlinx.coroutines.withContext
 // - [ ] inTransaction false/true across BEGIN/COMMIT/ROLLBACK
 // - [ ] ROLLBACK discards writes; COMMIT persists them
 // - [ ] inTransaction on a closed connection throws
-// - [ ] multi-connection file db: 4 readers + 1 writer (WAL shape) see
+// - [x] multi-connection file db: 4 readers + 1 writer (WAL shape) see
 //       committed writes; uncommitted writes stay invisible
-// - [ ] connection is not thread-affine (sequential use across threads)
+// - [x] connection is not thread-affine (sequential use across threads)
+// - [ ] PRAGMA user_version round-trips, incl. across close/reopen
 abstract class AbstractDriverConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
@@ -477,6 +478,23 @@ abstract class AbstractDriverConformanceTest {
                     assertTrue(query.step())
                     assertEquals(7L, query.getLong(0))
                 }
+            }
+        }
+    }
+
+    @Test
+    fun userVersionRoundTripsAcrossReopen() {
+        // Room's schema-version store; defined in terms of the on-disk header
+        // (https://www.sqlite.org/pragma.html#pragma_user_version), so the
+        // reopen leg is the part a storage-engine fork must emulate.
+        val path = tempDbPath()
+        driver().open(path).use { connection ->
+            connection.execSQL("PRAGMA user_version = 42")
+        }
+        driver().open(path).use { connection ->
+            connection.prepare("PRAGMA user_version").use { query ->
+                assertTrue(query.step())
+                assertEquals(42L, query.getLong(0))
             }
         }
     }
