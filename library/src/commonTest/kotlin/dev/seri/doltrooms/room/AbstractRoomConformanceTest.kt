@@ -13,7 +13,8 @@ import kotlinx.coroutines.test.runTest
 // AbstractDriverConformanceTest.
 //
 // Test list (red-green; add cases as they occur):
-// - [ ] suspend @Insert + @Query roundtrip through a generated DAO
+// - [x] suspend @Insert + @Query roundtrip through a generated DAO
+// - [ ] parameterized list @Query; @Update and @Delete return change counts
 abstract class AbstractRoomConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
@@ -26,6 +27,28 @@ abstract class AbstractRoomConformanceTest {
         Room.inMemoryDatabaseBuilder<RoomConformanceDb>()
             .setDriver(driver())
             .build()
+
+    @Test
+    fun listQueryUpdateAndDeleteCountChanges() = runTest {
+        val db = inMemoryDb()
+        try {
+            val dao = db.personDao()
+            val ada = Person(id = dao.insert(Person(name = "Ada", age = 36)), name = "Ada", age = 36)
+            val bob = Person(id = dao.insert(Person(name = "Bob", age = 17)), name = "Bob", age = 17)
+            val eve = Person(id = dao.insert(Person(name = "Eve", age = 63)), name = "Eve", age = 63)
+
+            assertEquals(listOf(ada, eve), dao.olderThan(18))
+            // @Update/@Delete return the number of affected rows — Room reads
+            // this from the driver's changes count.
+            assertEquals(1, dao.update(ada.copy(age = 37)))
+            assertEquals(0, dao.update(Person(id = 999, name = "Nobody", age = 1)))
+            assertEquals(37, dao.byId(ada.id)?.age)
+            assertEquals(1, dao.delete(bob))
+            assertEquals(listOf(ada.copy(age = 37), eve), dao.olderThan(0))
+        } finally {
+            db.close()
+        }
+    }
 
     @Test
     fun insertAndQueryRoundTripsThroughGeneratedDao() = runTest {

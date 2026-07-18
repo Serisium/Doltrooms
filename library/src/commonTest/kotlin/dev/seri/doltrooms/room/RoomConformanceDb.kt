@@ -3,12 +3,14 @@ package dev.seri.doltrooms.room
 import androidx.room3.ConstructedBy
 import androidx.room3.Dao
 import androidx.room3.Database
+import androidx.room3.Delete
 import androidx.room3.Entity
 import androidx.room3.Insert
 import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.Update
 
 // The Step 4 fixture database: a real Room 3 schema exercised identically
 // against DoltLiteDriver and BundledSQLiteDriver (room3 skill, testing
@@ -30,6 +32,15 @@ interface PersonDao {
 
     @Query("SELECT * FROM Person WHERE id = :id")
     suspend fun byId(id: Long): Person?
+
+    @Query("SELECT * FROM Person WHERE age > :age ORDER BY id")
+    suspend fun olderThan(age: Int): List<Person>
+
+    @Update
+    suspend fun update(person: Person): Int
+
+    @Delete
+    suspend fun delete(person: Person): Int
 }
 
 @Database(entities = [Person::class], version = 1, exportSchema = true)
