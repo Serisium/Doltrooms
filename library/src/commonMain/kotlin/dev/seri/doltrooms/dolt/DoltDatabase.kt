@@ -351,6 +351,25 @@ public class DoltDatabase(private val db: RoomDatabase) {
             }
         }
 
+    /**
+     * Fetches [branch] from [remote] and merges it into the current
+     * branch (`dolt_pull`). Fast-forwards when possible; diverged
+     * histories produce an automatic merge commit
+     * ("Merge branch 'origin/…' …"). A **conflicted** pull behaves
+     * exactly like a conflicted [merge]: under autocommit it throws and
+     * rolls back, leaving the local branch untouched (see the class KDoc
+     * for the explicit-transaction resolution recipe). Pulling with
+     * nothing new is a no-op.
+     */
+    public suspend fun pull(remote: String, branch: String): Unit =
+        writer { conn ->
+            conn.usePrepared("SELECT dolt_pull(?, ?)") { stmt ->
+                stmt.bindText(1, remote)
+                stmt.bindText(2, branch)
+                stmt.step()
+            }
+        }
+
     public companion object {
         /**
          * Clones the DoltLite remote at [url] into a new database file at

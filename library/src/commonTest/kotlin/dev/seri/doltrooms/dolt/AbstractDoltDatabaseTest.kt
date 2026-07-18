@@ -47,7 +47,7 @@ import kotlinx.coroutines.test.runTest
 // - [x] remote add/list/remove round-trip; duplicate add and push to an
 //       unknown remote fail cleanly
 // - [x] push to a file:// remote + clone from it replicates rows and log
-// - [ ] pull brings new commits pushed after the clone (completes the
+// - [x] pull brings new commits pushed after the clone (completes the
 //       card's push-from-A/pull-into-B round-trip)
 // - [ ] fetch makes origin/<branch> mergeable (and it is NOT mergeable
 //       before the first fetch — fetch's observable effect)
@@ -368,6 +368,39 @@ abstract class AbstractDoltDatabaseTest {
             assertEquals(listOf("Ada"), cloned.personDao().olderThan(-1).map { it.name })
             assertEquals(dolt.log(), clonedDolt.log())
             assertEquals(remoteUrl, clonedDolt.remotes().single().url)
+        } finally {
+            cloned.close()
+        }
+    }
+
+    @Test
+    fun pullBringsNewCommitsFromRemote() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("c1")
+        val remoteUrl = "file://" + tempDbPath()
+        dolt.addRemote("origin", remoteUrl)
+        dolt.push("origin", "main")
+        val clonePath = tempDbPath()
+        DoltDatabase.clone(driver(), remoteUrl, clonePath)
+        val cloned = fileDb(clonePath)
+        try {
+            val clonedDolt = DoltDatabase(cloned)
+            // A advances and pushes; B pulls and converges — the card's
+            // push-from-A / pull-into-B round-trip.
+            db.personDao().insert(Person(name = "Bob", age = 17))
+            dolt.commit("c2")
+            dolt.push("origin", "main")
+
+            assertEquals(1, cloned.personDao().olderThan(-1).size)
+            clonedDolt.pull("origin", "main")
+            assertEquals(
+                listOf("Ada", "Bob"),
+                cloned.personDao().olderThan(-1).map { it.name }.sorted(),
+            )
+            assertEquals(dolt.log(), clonedDolt.log())
+            // Pulling again with nothing new is a no-op, not an error.
+            clonedDolt.pull("origin", "main")
         } finally {
             cloned.close()
         }
