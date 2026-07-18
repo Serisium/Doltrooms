@@ -7,8 +7,10 @@ import androidx.sqlite.SQLITE_DATA_NULL
 import androidx.sqlite.SQLITE_DATA_TEXT
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.execSQL
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,13 +30,15 @@ import kotlin.test.assertTrue
 // - [x] getColumnType for all five data types
 // - [x] getColumnCount/getColumnName/getColumnNames; 0 columns for non-query
 // - [x] column metadata is readable before the first step
-// - [ ] step over multiple rows
-// - [ ] reset retains bindings; re-execution after reset
-// - [ ] rebind after reset replaces the old value
-// - [ ] clearBindings makes parameters NULL
-// - [ ] get* out of column range throws (SQLITE_RANGE)
+// - [x] step over multiple rows
+// - [x] reset retains bindings; re-execution after reset
+// - [x] rebind after reset replaces the old value
+// - [x] clearBindings makes parameters NULL
+// - [ ] get* out of column range throws (SQLITE_RANGE), incl. negative index
 // - [ ] get* with no row available throws (SQLITE_MISUSE "no row")
+// - [ ] get* after DONE throws ("no row")
 // - [ ] bind out of parameter range throws (SQLITE_RANGE)
+// - [ ] preparing invalid SQL throws with the offending token in the message
 // - [ ] statement close is idempotent; use after close throws
 // - [ ] inTransaction false/true across BEGIN/COMMIT/ROLLBACK
 // - [ ] ROLLBACK discards writes; COMMIT persists them
@@ -262,6 +266,101 @@ abstract class AbstractDriverConformanceTest {
                 assertEquals(5L, query.getLong(0))
                 assertTrue(query.step())
                 assertTrue(query.isNull(0))
+            }
+        }
+    }
+
+    @Test
+    fun getOutOfColumnRangeThrows() {
+        withConnection { connection ->
+            connection.prepare("SELECT 1").use { query ->
+                assertTrue(query.step())
+                val e = assertFailsWith<SQLiteException> { query.getLong(1) }
+                assertTrue(
+                    "column index out of range" in (e.message ?: ""),
+                    "unexpected message: ${e.message}",
+                )
+                assertFailsWith<SQLiteException> { query.getLong(-1) }
+            }
+        }
+    }
+
+    @Test
+    fun getWithoutRowThrows() {
+        withConnection { connection ->
+            connection.prepare("SELECT 1").use { query ->
+                // No step yet: not positioned on a row.
+                val e = assertFailsWith<SQLiteException> { query.getLong(0) }
+                assertTrue("no row" in (e.message ?: ""), "unexpected message: ${e.message}")
+            }
+        }
+    }
+
+    @Test
+    fun getAfterDoneThrows() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.execSQL("INSERT INTO t (v) VALUES (1)")
+            connection.prepare("SELECT v FROM t").use { query ->
+                assertTrue(query.step())
+                assertFalse(query.step())
+                val e = assertFailsWith<SQLiteException> { query.getLong(0) }
+                assertTrue("no row" in (e.message ?: ""), "unexpected message: ${e.message}")
+            }
+        }
+    }
+
+    @Test
+    fun bindOutOfParameterRangeThrows() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.prepare("INSERT INTO t (v) VALUES (?)").use { insert ->
+                // "SQLITE_RANGE is returned if the parameter index is out of
+                // range" (https://www.sqlite.org/c3ref/bind_blob.html).
+                assertFailsWith<SQLiteException> { insert.bindLong(2, 1L) }
+                assertFailsWith<SQLiteException> { insert.bindLong(0, 1L) }
+            }
+        }
+    }
+
+    @Test
+    fun preparingInvalidSqlThrows() {
+        withConnection { connection ->
+            val e = assertFailsWith<SQLiteException> { connection.prepare("NOT VALID SQL") }
+            assertTrue("NOT" in (e.message ?: ""), "unexpected message: ${e.message}")
+        }
+    }
+
+    @Test
+    fun statementCloseIsIdempotent() {
+        withConnection { connection ->
+            val statement = connection.prepare("SELECT 1")
+            statement.close()
+            // Contract: "Calling this function on an already closed statement
+            // is a no-op."
+            statement.close()
+        }
+    }
+
+    @Test
+    fun statementUseAfterCloseThrows() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            val statement = connection.prepare("SELECT v FROM t")
+            statement.close()
+            for (call in listOf<Pair<String, () -> Unit>>(
+                "step" to { statement.step() },
+                "bindLong" to { statement.bindLong(1, 1L) },
+                "getLong" to { statement.getLong(0) },
+                "getColumnCount" to { statement.getColumnCount() },
+                "reset" to { statement.reset() },
+                "clearBindings" to { statement.clearBindings() },
+            )) {
+                val e = assertFailsWith<SQLiteException>(call.first) { call.second() }
+                assertTrue(
+                    "statement is closed" in (e.message ?: ""),
+                    "unexpected message from ${call.first}: ${e.message}",
+                )
             }
         }
     }

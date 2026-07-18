@@ -47,6 +47,10 @@ void NativeFinalize(JNIEnv*, jobject, jlong stmt_pointer) {
     sqlite3_finalize(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
 }
 
+jint NativeStmtBusy(JNIEnv*, jobject, jlong stmt_pointer) {
+    return sqlite3_stmt_busy(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
+}
+
 jint NativeReset(JNIEnv*, jobject, jlong stmt_pointer) {
     return sqlite3_reset(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
 }
@@ -172,6 +176,8 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeStep)},
     {const_cast<char*>("nativeFinalize"), const_cast<char*>("(J)V"),
      reinterpret_cast<void*>(NativeFinalize)},
+    {const_cast<char*>("nativeStmtBusy"), const_cast<char*>("(J)I"),
+     reinterpret_cast<void*>(NativeStmtBusy)},
     {const_cast<char*>("nativeReset"), const_cast<char*>("(J)I"),
      reinterpret_cast<void*>(NativeReset)},
     {const_cast<char*>("nativeClearBindings"), const_cast<char*>("(J)I"),

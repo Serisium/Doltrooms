@@ -40,6 +40,9 @@ internal object DoltLiteNative {
     /** `sqlite3_finalize`. Result code deliberately ignored — close is a no-op contract. */
     external fun nativeFinalize(stmtPointer: Long)
 
+    /** `sqlite3_stmt_busy` — nonzero while the statement is positioned on a row. */
+    external fun nativeStmtBusy(stmtPointer: Long): Int
+
     /** `sqlite3_reset`. Returns the result code (echoes the last evaluation's error). */
     external fun nativeReset(stmtPointer: Long): Int
 
