@@ -103,7 +103,12 @@ public actual class DoltLiteStatement internal constructor(
 
     override fun getLong(index: Int): Long = TODO("PLAN.md Step 3")
 
-    override fun getText(index: Int): String = TODO("PLAN.md Step 3")
+    override fun getText(index: Int): String {
+        // Minimal read path; the no-row/column-range/NOMEM pre-check trio
+        // lands with the full surface in PLAN.md Step 3.
+        return DoltLiteNative.nativeColumnText(stmtPointer, index)
+            ?: throwSQLiteException(SQLITE_MISUSE, "no text value at column $index")
+    }
 
     override fun isNull(index: Int): Boolean = TODO("PLAN.md Step 3")
 

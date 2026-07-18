@@ -3,6 +3,7 @@ package dev.seri.doltrooms.driver
 import androidx.sqlite.SQLiteException
 import androidx.sqlite.execSQL
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -10,9 +11,9 @@ import kotlin.test.assertTrue
 // - [x] open(":memory:") returns a connection; close() releases it
 // - [x] execSQL runs DDL (CREATE TABLE)
 // - [x] open failure: DoltLite defers CANTOPEN to the first step (fork divergence)
-// - [ ] prepare on a closed connection throws ("connection is closed")
-// - [ ] connection close is idempotent
-// - [ ] SELECT dolt_version() returns the pinned DoltLite version (queued from Step 1)
+// - [x] prepare on a closed connection throws ("connection is closed")
+// - [x] connection close is idempotent
+// - [x] SELECT dolt_version() returns the pinned DoltLite version (queued from Step 1)
 class DoltLiteDriverTest {
 
     @Test
@@ -63,6 +64,21 @@ class DoltLiteDriverTest {
         val connection = DoltLiteDriver().open(":memory:")
         try {
             connection.execSQL("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
+        } finally {
+            connection.close()
+        }
+    }
+
+    @Test
+    fun doltVersionReportsPinnedRelease() {
+        // Queued from Step 1: SQL dolt_version() reads the DOLTLITE_VERSION
+        // compile-time define our build passes (-DDOLTLITE_VERSION="0.11.33").
+        val connection = DoltLiteDriver().open(":memory:")
+        try {
+            connection.prepare("SELECT dolt_version()").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("0.11.33", statement.getText(0))
+            }
         } finally {
             connection.close()
         }
