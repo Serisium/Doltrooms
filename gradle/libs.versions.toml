@@ -7,6 +7,8 @@ android-compileSdk = "36"
 # ABIs (PLAN.md Step 5); r28+ defaults to 16 KB page alignment.
 android-ndk = "28.2.13676358"
 vanniktechMavenPublish = "0.36.0"
+# Generates the -javadoc jar Maven Central requires (PLAN.md Step 11).
+dokka = "2.2.0"
 # One DoltLite version pinned across ALL platform artifacts (AGENTS.md; >=0.11.28 required for network sync)
 doltlite = "0.11.33"
 room3 = "3.0.0"
@@ -27,5 +29,6 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktechMavenPublish" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room3 = { id = "androidx.room3", version.ref = "room3" }
