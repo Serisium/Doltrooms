@@ -383,6 +383,13 @@ kotlin {
             // The driver contract we implement (ARCHITECTURE.md D1); api because
             // DoltLiteDriver's public surface exposes the androidx.sqlite types.
             api(libs.androidx.sqlite)
+            // Step 7's typed dolt_* helpers (DoltDatabase) take a RoomDatabase
+            // and run over useWriterConnection — Room types are in the public
+            // surface, so the runtime is an api dependency (the revisit the
+            // Step 4 test-only decision anticipated; ARCHITECTURE.md D10).
+            // The Room compiler still serves tests only: no annotations, no
+            // generated Room code in the shipped artifact.
+            api(libs.room3.runtime)
         }
 
         commonTest.dependencies {
@@ -390,10 +397,6 @@ kotlin {
             // runTest + Dispatchers.Default for the not-thread-affine
             // conformance case (room3 skill, testing reference).
             implementation(libs.kotlinx.coroutines.test)
-            // Room 3 stays OUT of commonMain: this library is a driver Room
-            // consumes (D1), not a Room extension — the runtime is only a
-            // dependency of the Step 4 differential Room suite.
-            implementation(libs.room3.runtime)
         }
 
         jvmTest.dependencies {
