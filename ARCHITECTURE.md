@@ -189,7 +189,7 @@ checkout.
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
-| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test (needs a Mac), Android on-device tests. |
+| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test and XCFramework packaging (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
