@@ -3,6 +3,9 @@ agp = "9.0.1"
 kotlin = "2.3.10"
 android-minSdk = "24"
 android-compileSdk = "36"
+# NDK used to cross-compile the DoltLite amalgamation + JNI glue for device
+# ABIs (PLAN.md Step 5); r28+ defaults to 16 KB page alignment.
+android-ndk = "28.2.13676358"
 vanniktechMavenPublish = "0.36.0"
 # One DoltLite version pinned across ALL platform artifacts (AGENTS.md; >=0.11.28 required for network sync)
 doltlite = "0.11.33"

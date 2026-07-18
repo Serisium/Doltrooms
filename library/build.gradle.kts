@@ -1,5 +1,6 @@
 import java.net.URI
 import java.security.MessageDigest
+import java.util.Properties
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -159,6 +160,103 @@ val compileDoltliteJni by tasks.registering(CompileDoltliteJniTask::class) {
     outputDir = layout.buildDirectory.dir("nativeLibs/jvm")
 }
 
+// --- Android device ABIs: NDK cross-compile into AAR jniLibs --------------
+// The Android artifact ships our OWN NDK build of the amalgamation + glue
+// (same pinned version and compile flags as every other platform) instead of
+// reusing the JNA-based com.dolthub:doltlite-android AAR — decision recorded
+// in ARCHITECTURE.md. NDK r28+ aligns to 16 KB pages by default; the glue
+// uses no STL, so libc++ is linked statically and bionic provides pthread.
+
+abstract class CompileDoltliteAndroidJniTask @Inject constructor(
+    private val execOps: ExecOperations,
+) : DefaultTask() {
+    @get:InputDirectory
+    abstract val amalgamationDir: DirectoryProperty
+
+    @get:InputFile
+    abstract val jniSource: RegularFileProperty
+
+    @get:Input
+    abstract val compileFlags: ListProperty<String>
+
+    @get:Input
+    abstract val ndkDir: Property<String>
+
+    @get:Input
+    abstract val minSdk: Property<Int>
+
+    /** ABI name (jniLibs dir) -> NDK clang target triple prefix. */
+    @get:Input
+    abstract val abiTriples: MapProperty<String, String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun compile() {
+        val src = amalgamationDir.get().asFile
+        val toolchain = "${ndkDir.get()}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        val api = minSdk.get()
+        val flags = compileFlags.get()
+        abiTriples.get().forEach { (abi, triple) ->
+            val out = outputDir.get().asFile.resolve(abi)
+            out.mkdirs()
+            val obj = temporaryDir.resolve("doltlite-$abi.o")
+            execOps.exec {
+                commandLine(
+                    listOf("$toolchain/$triple$api-clang", "-c", "-fPIC", "-O3") + flags +
+                        listOf("-I$src", "-o", obj.absolutePath, "$src/doltlite.c")
+                )
+            }
+            val jniObj = temporaryDir.resolve("doltrooms_jni-$abi.o")
+            execOps.exec {
+                commandLine(
+                    listOf("$toolchain/$triple$api-clang++", "-c", "-fPIC", "-O3", "-fvisibility=hidden") + flags +
+                        listOf("-I$src", "-o", jniObj.absolutePath, jniSource.get().asFile.absolutePath)
+                )
+            }
+            execOps.exec {
+                commandLine(
+                    "$toolchain/$triple$api-clang++", "-shared", "-static-libstdc++",
+                    "-o", out.resolve("libdoltroomsjni.so").absolutePath,
+                    obj.absolutePath, jniObj.absolutePath,
+                    "-lm", "-ldl",
+                )
+            }
+        }
+    }
+}
+
+// Resolved the same way AGP finds the SDK: local.properties sdk.dir, then
+// the ANDROID_HOME environment (CI).
+val localPropertiesFile = rootProject.file("local.properties")
+val androidNdkDir: Provider<String> = providers.provider {
+    val sdkDir = localPropertiesFile
+        .takeIf { it.exists() }
+        ?.let { file ->
+            Properties()
+                .apply { file.inputStream().use { load(it) } }
+                .getProperty("sdk.dir")
+        }
+        ?: System.getenv("ANDROID_HOME")
+        ?: error("Android SDK not found: set sdk.dir in local.properties or ANDROID_HOME")
+    "$sdkDir/ndk/${libs.versions.android.ndk.get()}"
+}
+
+val compileDoltliteAndroidJni by tasks.registering(CompileDoltliteAndroidJniTask::class) {
+    dependsOn(unpackDoltliteAmalgamation)
+    amalgamationDir = layout.buildDirectory.dir("doltlite/src")
+    jniSource = layout.projectDirectory.file("src/jvmAndroidMain/jni/doltrooms_jni.cpp")
+    compileFlags = doltliteCompileFlags
+    ndkDir = androidNdkDir
+    minSdk = libs.versions.android.minSdk.get().toInt()
+    abiTriples = mapOf(
+        "arm64-v8a" to "aarch64-linux-android",
+        "x86_64" to "x86_64-linux-android",
+    )
+    outputDir = layout.buildDirectory.dir("nativeLibs/android")
+}
+
 kotlin {
     // The custom jvmAndroidMain dependsOn edges below disable Kotlin's
     // default source-set hierarchy, so re-apply it explicitly: it provides
@@ -243,6 +341,18 @@ dependencies {
     add("kspLinuxX64Test", libs.room3.compiler)
     add("kspIosArm64Test", libs.room3.compiler)
     add("kspIosSimulatorArm64Test", libs.room3.compiler)
+}
+
+// Package the NDK-built per-ABI libs into the AAR's jniLibs via the variant
+// API — the generated-directory equivalent of androidx sqlite-bundled's
+// addNativeLibrariesToJniLibs (kmp-native-interop skill).
+androidComponents {
+    onVariants { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(
+            compileDoltliteAndroidJni,
+            CompileDoltliteAndroidJniTask::outputDir,
+        )
+    }
 }
 
 room3 {
