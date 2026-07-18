@@ -52,6 +52,23 @@ import androidx.sqlite.SQLiteStatement
  * `SELECT dolt_conflicts_resolve('--ours', '<table>')`), `COMMIT`, then
  * [commit].
  *
+ * ### Remotes and sync
+ *
+ * [addRemote]/[push]/[pull]/[fetch] (plus the [clone] bootstrap) sync
+ * whole histories against `file://` remotes or a `doltlite-remotesrv`
+ * over **plain `http://` only**: the DoltLite amalgamation that all of
+ * this library's engine builds compile from (ARCHITECTURE.md D9)
+ * excludes the TLS/credential stack, so `https://` URLs are rejected at
+ * first use and bearer-token auth is unavailable. Keep network sync on
+ * localhost or trusted networks (VPN), per ARCHITECTURE.md D3.
+ *
+ * Two more engine facts to design around (probed at 0.11.33): a
+ * conflicted [pull] behaves exactly like a conflicted [merge] (throws
+ * and rolls back under autocommit), and rows minted concurrently on
+ * different replicas with auto-generated INTEGER keys collide on merge
+ * — syncing apps need collision-free keys (explicit ids, UUIDs, or
+ * per-replica ranges).
+ *
  * ### dolt_* in DAO queries
  *
  * Room verifies `@Query` SQL against *stock* SQLite at compile time, so
@@ -290,10 +307,16 @@ public class DoltDatabase(private val db: RoomDatabase) {
         }
 
     /**
-     * Registers [url] as remote [name] (`dolt_remote('add', …)`). Only
-     * `file://` and `http(s)://` URLs are supported (probed at 0.11.33:
-     * "URL must start with file:// or http://"); a duplicate name throws
-     * "remote already exists".
+     * Registers [url] as remote [name] (`dolt_remote('add', …)`). A
+     * duplicate name throws "remote already exists". The URL scheme is
+     * checked on first use, not here: engines built from the DoltLite
+     * amalgamation — all of this library's builds (ARCHITECTURE.md D9) —
+     * support **`file://` and plain `http://` only** ("URL must start
+     * with file:// or http://", probed at 0.11.33). The amalgamation
+     * excludes DoltLite's TLS/credential stack, so `https://` remotes
+     * and bearer-token auth are unavailable here even though the
+     * release's prebuilt binaries support them — treat network sync as
+     * trusted-network-only (see the class KDoc).
      */
     public suspend fun addRemote(name: String, url: String): Unit =
         writer { conn ->
