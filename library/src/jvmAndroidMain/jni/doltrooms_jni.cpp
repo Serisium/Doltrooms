@@ -124,6 +124,17 @@ jint NativeColumnType(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
     return sqlite3_column_type(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
 }
 
+jint NativeColumnCount(JNIEnv*, jobject, jlong stmt_pointer) {
+    return sqlite3_column_count(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
+}
+
+jstring NativeColumnName(JNIEnv* env, jobject, jlong stmt_pointer, jint index) {
+    // NewStringUTF copies immediately — the sqlite3 pointer is invalidated
+    // by the next column_name call (https://www.sqlite.org/c3ref/column_name.html).
+    const char* name = sqlite3_column_name(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
+    return name == nullptr ? nullptr : env->NewStringUTF(name);
+}
+
 jlong NativeColumnLong(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
     return sqlite3_column_int64(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
 }
@@ -171,6 +182,10 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeColumnBlob)},
     {const_cast<char*>("nativeColumnType"), const_cast<char*>("(JI)I"),
      reinterpret_cast<void*>(NativeColumnType)},
+    {const_cast<char*>("nativeColumnCount"), const_cast<char*>("(J)I"),
+     reinterpret_cast<void*>(NativeColumnCount)},
+    {const_cast<char*>("nativeColumnName"), const_cast<char*>("(JI)Ljava/lang/String;"),
+     reinterpret_cast<void*>(NativeColumnName)},
     {const_cast<char*>("nativeColumnLong"), const_cast<char*>("(JI)J"),
      reinterpret_cast<void*>(NativeColumnLong)},
     {const_cast<char*>("nativeColumnText"), const_cast<char*>("(JI)Ljava/lang/String;"),

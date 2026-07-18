@@ -77,6 +77,12 @@ internal object DoltLiteNative {
     /** `sqlite3_column_type` — one of the five SQLITE_DATA_* fundamental types. */
     external fun nativeColumnType(stmtPointer: Long, index: Int): Int
 
+    /** `sqlite3_column_count` — static metadata, usable before stepping. */
+    external fun nativeColumnCount(stmtPointer: Long): Int
+
+    /** `sqlite3_column_name` (copied immediately). Null only on out-of-memory. */
+    external fun nativeColumnName(stmtPointer: Long, index: Int): String?
+
     /**
      * `sqlite3_column_text16` + `sqlite3_column_bytes16` (text first, then
      * bytes, per https://www.sqlite.org/c3ref/column_blob.html). Returns

@@ -21,12 +21,13 @@ import kotlin.test.assertTrue
 //
 // Test list (red-green; add cases as they occur):
 // - [x] bindLong/getLong roundtrip through INSERT + SELECT
-// - [ ] bindText/getText roundtrip (incl. non-ASCII / surrogate pairs)
-// - [ ] bindDouble/getDouble roundtrip
-// - [ ] bindBlob/getBlob roundtrip (incl. empty blob)
-// - [ ] bindNull + isNull; unbound parameter reads as NULL
-// - [ ] getColumnType for all five data types
+// - [x] bindText/getText roundtrip (incl. non-ASCII / surrogate pairs)
+// - [x] bindDouble/getDouble roundtrip
+// - [x] bindBlob/getBlob roundtrip (incl. empty blob)
+// - [x] bindNull + isNull; unbound parameter reads as NULL
+// - [x] getColumnType for all five data types
 // - [ ] getColumnCount/getColumnName/getColumnNames; 0 columns for non-query
+// - [ ] column metadata is readable before the first step
 // - [ ] step over multiple rows
 // - [ ] reset retains bindings; re-execution after reset
 // - [ ] rebind after reset replaces the old value
@@ -162,6 +163,31 @@ abstract class AbstractDriverConformanceTest {
                 assertEquals(SQLITE_DATA_TEXT, query.getColumnType(2))
                 assertEquals(SQLITE_DATA_BLOB, query.getColumnType(3))
                 assertEquals(SQLITE_DATA_NULL, query.getColumnType(4))
+            }
+        }
+    }
+
+    @Test
+    fun columnMetadataIsReadableBeforeStepping() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (a INTEGER, b TEXT)")
+            connection.prepare("SELECT a, b AS renamed FROM t").use { query ->
+                // "Static metadata, usable before stepping"
+                // (https://www.sqlite.org/c3ref/column_count.html).
+                assertEquals(2, query.getColumnCount())
+                assertEquals("a", query.getColumnName(0))
+                assertEquals("renamed", query.getColumnName(1))
+                assertEquals(listOf("a", "renamed"), query.getColumnNames())
+            }
+        }
+    }
+
+    @Test
+    fun nonQueryStatementHasZeroColumns() {
+        withConnection { connection ->
+            connection.prepare("CREATE TABLE t (v INTEGER)").use { create ->
+                assertEquals(0, create.getColumnCount())
+                assertEquals(emptyList(), create.getColumnNames())
             }
         }
     }

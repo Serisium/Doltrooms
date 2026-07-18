@@ -130,9 +130,14 @@ public actual class DoltLiteStatement internal constructor(
         return getColumnType(index) == SQLITE_DATA_NULL
     }
 
-    actual override fun getColumnCount(): Int = TODO("PLAN.md Step 3")
+    actual override fun getColumnCount(): Int {
+        return DoltLiteNative.nativeColumnCount(stmtPointer)
+    }
 
-    actual override fun getColumnName(index: Int): String = TODO("PLAN.md Step 3")
+    actual override fun getColumnName(index: Int): String {
+        // Null column name means allocation failure (bundled-driver template).
+        return DoltLiteNative.nativeColumnName(stmtPointer, index) ?: throw OutOfMemoryError()
+    }
 
     actual override fun getColumnType(index: Int): Int {
         return DoltLiteNative.nativeColumnType(stmtPointer, index)
