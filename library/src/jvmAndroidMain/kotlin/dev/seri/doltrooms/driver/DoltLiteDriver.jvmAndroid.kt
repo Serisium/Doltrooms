@@ -91,7 +91,9 @@ public actual class DoltLiteStatement internal constructor(
 
     actual override fun bindDouble(index: Int, value: Double): Unit = TODO("PLAN.md Step 3")
 
-    actual override fun bindLong(index: Int, value: Long): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindLong(index: Int, value: Long) {
+        checkBindResult(DoltLiteNative.nativeBindLong(stmtPointer, index, value))
+    }
 
     actual override fun bindText(index: Int, value: String): Unit = TODO("PLAN.md Step 3")
 
@@ -101,7 +103,9 @@ public actual class DoltLiteStatement internal constructor(
 
     actual override fun getDouble(index: Int): Double = TODO("PLAN.md Step 3")
 
-    actual override fun getLong(index: Int): Long = TODO("PLAN.md Step 3")
+    actual override fun getLong(index: Int): Long {
+        return DoltLiteNative.nativeColumnLong(stmtPointer, index)
+    }
 
     actual override fun getText(index: Int): String {
         // Minimal read path; the no-row/column-range/NOMEM pre-check trio
@@ -121,4 +125,12 @@ public actual class DoltLiteStatement internal constructor(
     actual override fun reset(): Unit = TODO("PLAN.md Step 3")
 
     actual override fun clearBindings(): Unit = TODO("PLAN.md Step 3")
+
+    // Bind failures carry a real result code (e.g. SQLITE_RANGE) and the
+    // connection has the detail message (bundled-driver template).
+    private fun checkBindResult(rc: Int) {
+        if (rc != SQLITE_OK) {
+            throwSQLiteException(rc, DoltLiteNative.nativeErrmsg(dbPointer))
+        }
+    }
 }

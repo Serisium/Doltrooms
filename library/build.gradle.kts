@@ -198,6 +198,13 @@ kotlin {
             implementation(libs.kotlin.test)
         }
 
+        jvmTest.dependencies {
+            // The differential-conformance oracle: the same commonTest suite
+            // runs against BundledSQLiteDriver and DoltLiteDriver (PLAN.md
+            // Step 3; room3 skill, testing reference).
+            implementation(libs.androidx.sqlite.bundled)
+        }
+
         // Shared JNI declarations for desktop JVM + Android, exactly like
         // androidx sqlite-bundled's jvmAndroidMain (kmp-native-interop skill).
         val jvmAndroidMain by creating {

@@ -43,6 +43,12 @@ internal object DoltLiteNative {
     /** `sqlite3_errmsg16` for the connection's most recent failure, or null. */
     external fun nativeErrmsg(dbPointer: Long): String?
 
+    /** `sqlite3_bind_int64`. Returns the result code. */
+    external fun nativeBindLong(stmtPointer: Long, index: Int, value: Long): Int
+
+    /** `sqlite3_column_int64` (applies SQLite's coercion rules). */
+    external fun nativeColumnLong(stmtPointer: Long, index: Int): Long
+
     /**
      * `sqlite3_column_text16` + `sqlite3_column_bytes16` (text first, then
      * bytes, per https://www.sqlite.org/c3ref/column_blob.html). Returns
