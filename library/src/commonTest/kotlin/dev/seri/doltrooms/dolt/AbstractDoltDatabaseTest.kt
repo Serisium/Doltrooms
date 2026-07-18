@@ -49,7 +49,7 @@ import kotlinx.coroutines.test.runTest
 // - [x] push to a file:// remote + clone from it replicates rows and log
 // - [x] pull brings new commits pushed after the clone (completes the
 //       card's push-from-A/pull-into-B round-trip)
-// - [ ] fetch makes origin/<branch> mergeable (and it is NOT mergeable
+// - [x] fetch makes origin/<branch> mergeable (and it is NOT mergeable
 //       before the first fetch — fetch's observable effect)
 // - [ ] non-fast-forward push is rejected; --force push succeeds
 // - [ ] conflicted pull throws and rolls back (autocommit, like merge)
@@ -401,6 +401,45 @@ abstract class AbstractDoltDatabaseTest {
             assertEquals(dolt.log(), clonedDolt.log())
             // Pulling again with nothing new is a no-op, not an error.
             clonedDolt.pull("origin", "main")
+        } finally {
+            cloned.close()
+        }
+    }
+
+    @Test
+    fun fetchMakesRemoteTrackingRefMergeable() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("c1")
+        val remoteUrl = "file://" + tempDbPath()
+        dolt.addRemote("origin", remoteUrl)
+        dolt.push("origin", "main")
+        val clonePath = tempDbPath()
+        DoltDatabase.clone(driver(), remoteUrl, clonePath)
+        val cloned = fileDb(clonePath)
+        try {
+            val clonedDolt = DoltDatabase(cloned)
+            db.personDao().insert(Person(name = "Bob", age = 17))
+            val newHead = dolt.commit("c2")
+            dolt.push("origin", "main")
+
+            // Before the first fetch the clone cannot resolve origin/main —
+            // creating/advancing the remote-tracking ref is fetch's
+            // observable effect (probed at 0.11.33).
+            val before = assertFailsWith<SQLiteException> { clonedDolt.merge("origin/main") }
+            if (exceptionMessagesObservable) {
+                assertContains(before.message ?: "", "merge source not found")
+            }
+
+            clonedDolt.fetch("origin")
+            // main has not advanced locally, so this fast-forwards to A's head.
+            assertEquals(newHead, clonedDolt.merge("origin/main"))
+            assertEquals(2, cloned.personDao().olderThan(-1).size)
+
+            val unknown = assertFailsWith<SQLiteException> { clonedDolt.fetch("nope") }
+            if (exceptionMessagesObservable) {
+                assertContains(unknown.message ?: "", "remote not found")
+            }
         } finally {
             cloned.close()
         }

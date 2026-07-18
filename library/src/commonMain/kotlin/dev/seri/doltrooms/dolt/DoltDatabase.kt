@@ -352,6 +352,24 @@ public class DoltDatabase(private val db: RoomDatabase) {
         }
 
     /**
+     * Fetches from [remote] — all branches, or just [branch] when given —
+     * updating the remote-tracking refs (`refs/remotes/<remote>/…`)
+     * without touching any local branch (`dolt_fetch`). Afterwards
+     * `"<remote>/<branch>"` resolves as a [merge]/[diff] ref; before the
+     * first fetch it does not, even directly after [clone] (probed at
+     * 0.11.33: "merge source not found").
+     */
+    public suspend fun fetch(remote: String, branch: String? = null): Unit =
+        writer { conn ->
+            val sql = if (branch == null) "SELECT dolt_fetch(?)" else "SELECT dolt_fetch(?, ?)"
+            conn.usePrepared(sql) { stmt ->
+                stmt.bindText(1, remote)
+                if (branch != null) stmt.bindText(2, branch)
+                stmt.step()
+            }
+        }
+
+    /**
      * Fetches [branch] from [remote] and merges it into the current
      * branch (`dolt_pull`). Fast-forwards when possible; diverged
      * histories produce an automatic merge commit
