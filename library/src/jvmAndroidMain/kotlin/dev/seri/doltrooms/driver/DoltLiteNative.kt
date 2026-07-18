@@ -40,6 +40,12 @@ internal object DoltLiteNative {
     /** `sqlite3_finalize`. Result code deliberately ignored — close is a no-op contract. */
     external fun nativeFinalize(stmtPointer: Long)
 
+    /** `sqlite3_reset`. Returns the result code (echoes the last evaluation's error). */
+    external fun nativeReset(stmtPointer: Long): Int
+
+    /** `sqlite3_clear_bindings`. Returns the result code. */
+    external fun nativeClearBindings(stmtPointer: Long): Int
+
     /** `sqlite3_errmsg16` for the connection's most recent failure, or null. */
     external fun nativeErrmsg(dbPointer: Long): String?
 
