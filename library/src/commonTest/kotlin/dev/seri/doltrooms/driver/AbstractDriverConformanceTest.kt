@@ -26,8 +26,8 @@ import kotlin.test.assertTrue
 // - [x] bindBlob/getBlob roundtrip (incl. empty blob)
 // - [x] bindNull + isNull; unbound parameter reads as NULL
 // - [x] getColumnType for all five data types
-// - [ ] getColumnCount/getColumnName/getColumnNames; 0 columns for non-query
-// - [ ] column metadata is readable before the first step
+// - [x] getColumnCount/getColumnName/getColumnNames; 0 columns for non-query
+// - [x] column metadata is readable before the first step
 // - [ ] step over multiple rows
 // - [ ] reset retains bindings; re-execution after reset
 // - [ ] rebind after reset replaces the old value
@@ -188,6 +188,80 @@ abstract class AbstractDriverConformanceTest {
             connection.prepare("CREATE TABLE t (v INTEGER)").use { create ->
                 assertEquals(0, create.getColumnCount())
                 assertEquals(emptyList(), create.getColumnNames())
+            }
+        }
+    }
+
+    @Test
+    fun stepIteratesOverMultipleRows() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.execSQL("INSERT INTO t (v) VALUES (1), (2), (3)")
+            connection.prepare("SELECT v FROM t ORDER BY v").use { query ->
+                val seen = mutableListOf<Long>()
+                while (query.step()) {
+                    seen.add(query.getLong(0))
+                }
+                assertEquals(listOf(1L, 2L, 3L), seen)
+            }
+        }
+    }
+
+    @Test
+    fun resetRetainsBindingsAndAllowsReExecution() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.prepare("INSERT INTO t (v) VALUES (?)").use { insert ->
+                // "sqlite3_reset(S) … does not change the values of any
+                // bindings" (https://www.sqlite.org/c3ref/reset.html).
+                insert.bindLong(1, 9L)
+                assertFalse(insert.step())
+                insert.reset()
+                assertFalse(insert.step())
+            }
+            connection.prepare("SELECT COUNT(*), SUM(v) FROM t").use { query ->
+                assertTrue(query.step())
+                assertEquals(2L, query.getLong(0))
+                assertEquals(18L, query.getLong(1))
+            }
+        }
+    }
+
+    @Test
+    fun rebindAfterResetReplacesValue() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.execSQL("INSERT INTO t (v) VALUES (1), (2)")
+            connection.prepare("SELECT v FROM t WHERE v = ?").use { query ->
+                query.bindLong(1, 1L)
+                assertTrue(query.step())
+                assertEquals(1L, query.getLong(0))
+                query.reset()
+                query.bindLong(1, 2L)
+                assertTrue(query.step())
+                assertEquals(2L, query.getLong(0))
+            }
+        }
+    }
+
+    @Test
+    fun clearBindingsMakesParametersNull() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.prepare("INSERT INTO t (v) VALUES (?)").use { insert ->
+                insert.bindLong(1, 5L)
+                assertFalse(insert.step())
+                insert.reset()
+                // "Use this routine to reset all host parameters to NULL."
+                // (https://www.sqlite.org/c3ref/clear_bindings.html)
+                insert.clearBindings()
+                assertFalse(insert.step())
+            }
+            connection.prepare("SELECT v FROM t ORDER BY v IS NULL").use { query ->
+                assertTrue(query.step())
+                assertEquals(5L, query.getLong(0))
+                assertTrue(query.step())
+                assertTrue(query.isNull(0))
             }
         }
     }

@@ -47,6 +47,14 @@ void NativeFinalize(JNIEnv*, jobject, jlong stmt_pointer) {
     sqlite3_finalize(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
 }
 
+jint NativeReset(JNIEnv*, jobject, jlong stmt_pointer) {
+    return sqlite3_reset(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
+}
+
+jint NativeClearBindings(JNIEnv*, jobject, jlong stmt_pointer) {
+    return sqlite3_clear_bindings(reinterpret_cast<sqlite3_stmt*>(stmt_pointer));
+}
+
 jstring NativeErrmsg(JNIEnv* env, jobject, jlong db_pointer) {
     // errmsg16: UTF-16 in native byte order, NUL-terminated.
     const jchar* msg =
@@ -164,6 +172,10 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeStep)},
     {const_cast<char*>("nativeFinalize"), const_cast<char*>("(J)V"),
      reinterpret_cast<void*>(NativeFinalize)},
+    {const_cast<char*>("nativeReset"), const_cast<char*>("(J)I"),
+     reinterpret_cast<void*>(NativeReset)},
+    {const_cast<char*>("nativeClearBindings"), const_cast<char*>("(J)I"),
+     reinterpret_cast<void*>(NativeClearBindings)},
     {const_cast<char*>("nativeErrmsg"), const_cast<char*>("(J)Ljava/lang/String;"),
      reinterpret_cast<void*>(NativeErrmsg)},
     {const_cast<char*>("nativeBindLong"), const_cast<char*>("(JIJ)I"),

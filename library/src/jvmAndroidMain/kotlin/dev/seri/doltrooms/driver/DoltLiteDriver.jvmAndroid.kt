@@ -143,9 +143,19 @@ public actual class DoltLiteStatement internal constructor(
         return DoltLiteNative.nativeColumnType(stmtPointer, index)
     }
 
-    actual override fun reset(): Unit = TODO("PLAN.md Step 3")
+    actual override fun reset() {
+        val rc = DoltLiteNative.nativeReset(stmtPointer)
+        if (rc != SQLITE_OK) {
+            throwSQLiteException(rc, DoltLiteNative.nativeErrmsg(dbPointer))
+        }
+    }
 
-    actual override fun clearBindings(): Unit = TODO("PLAN.md Step 3")
+    actual override fun clearBindings() {
+        val rc = DoltLiteNative.nativeClearBindings(stmtPointer)
+        if (rc != SQLITE_OK) {
+            throwSQLiteException(rc, DoltLiteNative.nativeErrmsg(dbPointer))
+        }
+    }
 
     // Bind failures carry a real result code (e.g. SQLITE_RANGE) and the
     // connection has the detail message (bundled-driver template).
