@@ -300,6 +300,16 @@ abstract class AbstractDoltDatabaseTest {
         assertEquals("WORKING", added.toCommit)
     }
 
+    @Test
+    fun skipQueryVerificationLetsDaoCallDoltFunctions() = doltTest { db ->
+        // Room verifies @Query SQL against STOCK SQLite at compile time, so
+        // dolt_* in a DAO needs @SkipQueryVerification (query-verification
+        // reference). The method compiling at all validates that Room's
+        // embedded SQL grammar tolerates the unknown function name; this
+        // call validates it at runtime on DoltLite.
+        assertEquals("0.11.33", db.personDao().doltVersion())
+    }
+
     private suspend fun writerPersonCount(db: RoomConformanceDb): Long =
         db.useWriterConnection { t ->
             t.usePrepared("SELECT COUNT(*) FROM Person") {
