@@ -24,6 +24,15 @@ public actual class DoltLiteDriver actual constructor() : SQLiteDriver {
             SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE,
             rcOut,
         )
+        if (rcOut[0] != SQLITE_OK) {
+            // A handle usually comes back even on error and must still be
+            // released (https://www.sqlite.org/c3ref/open.html). Like
+            // BundledSQLiteDriver, throw without errmsg — db may be null.
+            if (dbPointer != 0L) {
+                DoltLiteNative.nativeClose(dbPointer)
+            }
+            throwSQLiteException(rcOut[0], null)
+        }
         return DoltLiteConnection(dbPointer)
     }
 }
