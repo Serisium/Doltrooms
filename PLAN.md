@@ -30,23 +30,74 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 1 (amalgamation + JVM native plumbing
-  + minimal CI).
-- **Branch:** `claude/doltrooms-kmp-plan-932ed0` (forked from
-  `origin/main` `1f09e16`).
+- **Last completed step:** Step 2 (driver skeleton: commonMain API +
+  JVM open/exec/close).
+- **Branch:** `claude/plan-step-2-2f8885` (carries the Step 0–1
+  commits from `claude/doltrooms-kmp-plan-932ed0`).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
   `dev.seri.doltrooms:doltrooms`. Targets: `jvm()`, `androidLibrary{}`,
   `iosArm64`, `iosSimulatorArm64`, `linuxX64`.
-- **Source-set map:** `commonMain` (empty) → `jvmAndroidMain`
-  (`DoltLiteNative` JNI object + `expect fun loadNativeLibrary()`;
-  C++ glue at `src/jvmAndroidMain/jni/doltrooms_jni.cpp` using
-  `JNI_OnLoad`+`RegisterNatives`) → `jvmMain` (`NativeLibraryLoader`:
-  JAR-resource extraction from `natives/<os>-<arch>/`, override
-  `-Ddev.seri.doltrooms.lib.path`) and `androidMain`
-  (`System.loadLibrary`, no packaged `.so` until Step 5).
-  `jvmTest/dev/seri/doltrooms/driver/NativeLoadTest.kt` is green.
+- **Source-set map:** `commonMain` (androidx.sqlite as `api` dep;
+  public expect classes `DoltLiteDriver`/`DoltLiteConnection`/
+  `DoltLiteStatement` in `dev.seri.doltrooms.driver`, declaring the
+  full nonWeb member surface — every target is nonWeb, so commonMain
+  resolves androidx.sqlite's nonWeb interfaces and commonTest can call
+  `open`/`prepare`/`step` directly, which Step 3's conformance suite
+  relies on) → `jvmAndroidMain` (actuals + `DoltLiteNative` JNI object
+  + C++ glue `jni/doltrooms_jni.cpp`, `JNI_OnLoad`+`RegisterNatives`)
+  → `jvmMain` (`NativeLibraryLoader`: JAR-resource extraction from
+  `natives/<os>-<arch>/`, override `-Ddev.seri.doltrooms.lib.path`)
+  and `androidMain` (`System.loadLibrary`, no packaged `.so` until
+  Step 5). `nativeMain` holds TODO-stub actuals until Step 6. jvmTest:
+  `NativeLoadTest` (1) + `DoltLiteDriverTest` (6) — all green.
+- **Driver class map (Step 2):**
+  - `commonMain …/driver/DoltLiteDriver.kt` — public expect API.
+  - `jvmAndroidMain …/driver/DoltLiteDriver.jvmAndroid.kt` — actuals:
+    `open` (`sqlite3_open_v2` READWRITE|CREATE + extended result
+    codes, rc-checked, handle closed on eager failure), `prepare`
+    (`sqlite3_prepare16_v2`), `step` (ROW→true/DONE→false/else throw),
+    idempotent connection `close` via `@Volatile isClosed` (prepare
+    after close throws MISUSE "connection is closed"), statement
+    `close` (finalize), minimal `getText`; every other statement
+    member is `TODO("PLAN.md Step 3")`.
+  - `jvmAndroidMain …/driver/DoltLiteNative.kt` + `jni/doltrooms_jni.cpp`
+    — registered natives: `nativeLibVersion`, `nativeOpen`,
+    `nativeClose`, `nativePrepare`, `nativeStep`, `nativeFinalize`,
+    `nativeErrmsg` (errmsg16), `nativeColumnText` (text16+bytes16).
+    JNI returns raw rc values; **Kotlin** throws via
+    `androidx.sqlite.throwSQLiteException` (deliberate divergence from
+    bundled's C++-side throwing — keeps the Android
+    `SQLiteException = android.database.SQLException` typealias
+    working for free).
+  - `nativeMain …/driver/DoltLiteDriver.native.kt` — TODO stubs
+    (replaced by cinterop actuals in Step 6).
+- **Copied from bundled vs diverged:** copied — open flags, extended
+  result codes at open, UTF-16 prepare/column-text, error-message
+  format, idempotent closes. Diverged — error throwing lives in
+  Kotlin (above); `sqlite3_db_config(ENABLE_LOAD_EXTENSION)` dropped
+  per the adaptation checklist; statement-side `isClosed` guard +
+  no-row/column-range/NOMEM pre-check trio deferred to Step 3.
+- **Known divergences vs stock/Bundled (running table, promote+extend
+  at Step 3):**
+  1. Compile flags: `SQLITE_OMIT_SHARED_CACHE` and
+     `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` dropped (Step 1); WAL default
+     synchronous is FULL, not androidx's NORMAL — probe at Step 3.
+  2. **Deferred open (probed 2026-07-17, C probes vs system sqlite
+     3.50.2):** DoltLite 0.11.33 `sqlite3_open_v2(READWRITE|CREATE)`
+     returns OK for an unopenable path (missing parent directory);
+     `SQLITE_CANTOPEN` (14) surfaces at the first `sqlite3_step`
+     (prepare still returns OK). Stock fails eagerly at open. Eager
+     open failures do still exist (READONLY on missing file → 14 at
+     open; invalid flags → 21), so `open()` keeps its rc check.
+     Documented as contract by
+     `DoltLiteDriverTest.openFailureIsDeferredToFirstStatement`.
+- **Build facts:** `applyDefaultHierarchyTemplate()` in
+  `library/build.gradle.kts` must stay — the custom `jvmAndroidMain`
+  dependsOn edges disable Kotlin's default hierarchy and orphan
+  `nativeMain` without it. `-Xexpect-actual-classes` acknowledges
+  expect/actual-class Beta (androidx does the same).
 - **Native build plumbing** (`library/build.gradle.kts`): tasks
   `downloadDoltliteAmalgamation` (release zip
   `doltlite-amalgamation-0.11.33.zip`, SHA-256
@@ -69,14 +120,13 @@ Each step below is executed in one fresh agent session:
   `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
   `"doltlite-amalgamation"`).
 - **Build/test commands that pass:** `./gradlew build`,
-  `./gradlew :library:jvmTest` (1 test). CI:
+  `./gradlew :library:jvmTest` (7 tests). CI:
   `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android) — not yet
   observed running on GitHub.
 - **Environment (re-check before building):** JDK 21 (dnf), gcc/g++ 15
   (dnf), Android SDK platform 36 + build-tools 36 at `/opt/android-sdk`
-  (`local.properties`, gitignored).
-- **Known divergences vs BundledSQLiteDriver:** compile-flag set (2
-  flags dropped, above). Behavior table starts at Step 3.
+  (`local.properties`, gitignored — recreate it in fresh worktrees),
+  sqlite-devel 3.50.2 (dnf; for differential C probes against stock).
 - **Open problems handed to next session:** none.
 
 ## Step Backlog
@@ -107,7 +157,7 @@ Done — see Step Log.
 - **Risks:** release asset naming may differ from skill notes — verify
   against the live release page, then fold back into the doltlite skill.
 
-### [ ] Step 2 — Driver skeleton: commonMain API + JVM open/exec/close
+### [x] Step 2 — Driver skeleton: commonMain API + JVM open/exec/close
 - **Goal:** `DoltLiteDriver : SQLiteDriver` in `commonMain`
   (expect/actual per the bundled template); JVM actual can
   `open(":memory:")`, `execSQL` DDL, `close`.
@@ -380,3 +430,57 @@ Done — see Step Log.
 - **Follow-ups:** fold the release-asset naming facts into the
   doltlite skill (artifacts reference) per skill-maintenance — queued
   with the existing KSP-note follow-up from Step 0.
+
+### Step 2 — Driver skeleton: commonMain API + JVM open/exec/close (2026-07-17, branch `claude/plan-step-2-2f8885`)
+
+- **Red-green, five increments, one commit each:** (1) open/close
+  `:memory:` — red was `Unresolved reference 'DoltLiteDriver'`;
+  (2) `execSQL` DDL — red on prepare's `TODO`; (3) open-failure error
+  mapping (see divergence below); (4) closed-connection guard — red on
+  wrong error shape from a freed handle; (5) `SELECT dolt_version()`
+  = `0.11.33` via minimal `getText` — closes the loop Step 1 queued.
+  Final suite: 7 jvm tests, 0 failures; `./gradlew build` green on all
+  five targets.
+- **Fork-divergence discovery (now documented contract, in Current
+  State's table):** increment 3's red predicted eager
+  `SQLITE_CANTOPEN` from `open()`; the test instead PASSED open and
+  failed differently. C-level differential probes (amalgamation vs
+  system sqlite 3.50.2, scratch programs) settled it: DoltLite opens
+  lazily — OK at `open_v2`, CANTOPEN(14) at first `step` (prepare
+  OK). The test was rewritten to assert the real deferred behavior;
+  `open()` keeps its bundled-style rc check because eager failures
+  still exist (READONLY+missing → 14, invalid flags → 21).
+- **A test that could not fail:** `connectionCloseIsIdempotent`
+  passed before any guard existed by riding on double-`close_v2`
+  UB. The deterministic red came from
+  `prepareOnClosedConnectionThrows` (asserting the contract message);
+  its `isClosed` guard is what makes the idempotency test meaningful.
+  Lesson recorded per the red-green skill's "too easy to write a test
+  that cannot fail".
+- **Card divergences:** (a) errors are thrown from **Kotlin** via
+  `androidx.sqlite.throwSQLiteException` over raw rc returns from
+  JNI, not from C++ like bundled — simpler glue and the Android
+  `SQLiteException` typealias works with no `FindClass` gymnastics;
+  (b) `hasConnectionPool = false` comes from the interface default
+  rather than an explicit override; (c) the card didn't mention the
+  nativeMain TODO stubs or that the expect classes must re-declare
+  the whole nonWeb member surface (commonMain resolves the nonWeb
+  actual interfaces since all targets are nonWeb) — both were
+  required to keep every target compiling; (d) a minimal `getText`
+  landed ahead of Step 3's full surface to run the queued
+  dolt_version assertion.
+- **Build-script discoveries:** Step 1's custom `jvmAndroidMain`
+  dependsOn edges had silently disabled Kotlin's default source-set
+  hierarchy — `applyDefaultHierarchyTemplate()` restores
+  `nativeMain`/`iosMain`; added `-Xexpect-actual-classes`.
+  androidx.sqlite 2.7.0 resolves fine for every declared target from
+  commonMain as an `api` dependency.
+- **Environment delta:** installed `sqlite-devel` (stock 3.50.2) via
+  dnf for the differential probes; recreated gitignored
+  `local.properties` in the worktree.
+- **Follow-ups:** fold the deferred-open probe results into the
+  `sqlite-c-api` skill's fork-divergence watchlist (confirmed
+  instance) and/or the `doltlite` skill's gotchas per
+  skill-maintenance — queued with the Step 0 (KSP note) and Step 1
+  (release-asset naming) items. Statement-side `isClosed` guard and
+  pre-check trio are Step 3 work, already on its card.
