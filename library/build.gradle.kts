@@ -223,6 +223,14 @@ kotlin {
     }
 }
 
+// commonTest's conformance suite compiles into every target's test task, but
+// its concrete per-driver classes only exist for jvmTest until PLAN.md Step 5
+// (androidHostTest) and Step 6 (linuxX64Test) add theirs — without this,
+// Gradle 9 fails those tasks for discovering zero tests.
+tasks.withType<AbstractTestTask>()
+    .matching { it.name == "testAndroidHostTest" || it.name == "linuxX64Test" }
+    .configureEach { failOnNoDiscoveredTests = false }
+
 mavenPublishing {
     publishToMavenCentral()
 
