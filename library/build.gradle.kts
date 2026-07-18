@@ -227,6 +227,75 @@ abstract class CompileDoltliteAndroidJniTask @Inject constructor(
     }
 }
 
+// --- Native targets: static libdoltlite.a for cinterop (PLAN.md Step 6) ---
+// Kotlin/Native consumes the amalgamation as headers + a static archive:
+// cinterop embeds libdoltlite.a into the klib (-staticLibrary), so linking a
+// linuxX64 test binary — or a consumer's binary — needs no external library.
+// The archive is built with host gcc, whose output Konan's linker consumes,
+// BUT Konan links against its own bundled glibc-2.19 sysroot, so the object
+// must not reference newer glibc symbols than that:
+//   -DSQLITE_DISABLE_LFS avoids _FILE_OFFSET_BITS=64 (self-defined by the
+//     amalgamation), whose glibc-2.28+ headers redirect fcntl->fcntl64 —
+//     semantically a no-op on x86_64, where off_t is 64-bit regardless;
+//   objcopy --redefine-sym maps the glibc-2.38+ C23 strto* redirects (the
+//     amalgamation defines _GNU_SOURCE, which forces them regardless of
+//     -std) back to the classic symbols — the __isoc23_* variants differ
+//     only in accepting C23 0b binary literals, which no DoltLite input
+//     relies on.
+// iOS archives cannot be built on a Linux host (no Apple sysroot) — the iOS
+// cinterop is headers-only and linking is deferred to a Mac (Step 6 log).
+
+abstract class CompileDoltliteStaticTask @Inject constructor(
+    private val execOps: ExecOperations,
+) : DefaultTask() {
+    @get:InputDirectory
+    abstract val amalgamationDir: DirectoryProperty
+
+    @get:Input
+    abstract val compileFlags: ListProperty<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun compile() {
+        val src = amalgamationDir.get().asFile
+        val out = outputDir.get().asFile
+        out.mkdirs()
+        val obj = temporaryDir.resolve("doltlite.o")
+        execOps.exec {
+            commandLine(
+                // -fPIC: Konan produces position-independent test executables.
+                listOf("gcc", "-c", "-fPIC", "-O3", "-DSQLITE_DISABLE_LFS") +
+                    compileFlags.get() +
+                    listOf("-I$src", "-o", obj.absolutePath, "$src/doltlite.c")
+            )
+        }
+        execOps.exec {
+            commandLine(
+                "objcopy",
+                "--redefine-sym", "__isoc23_strtol=strtol",
+                "--redefine-sym", "__isoc23_strtoul=strtoul",
+                "--redefine-sym", "__isoc23_strtoll=strtoll",
+                "--redefine-sym", "__isoc23_strtoull=strtoull",
+                obj.absolutePath,
+            )
+        }
+        val archive = out.resolve("libdoltlite.a")
+        archive.delete()
+        execOps.exec {
+            commandLine("ar", "rcs", archive.absolutePath, obj.absolutePath)
+        }
+    }
+}
+
+val compileDoltliteStaticLinuxX64 by tasks.registering(CompileDoltliteStaticTask::class) {
+    dependsOn(unpackDoltliteAmalgamation)
+    amalgamationDir = layout.buildDirectory.dir("doltlite/src")
+    compileFlags = doltliteCompileFlags
+    outputDir = layout.buildDirectory.dir("nativeLibs/linuxX64")
+}
+
 // Resolved the same way AGP finds the SDK: local.properties sdk.dir, then
 // the ANDROID_HOME environment (CI).
 val localPropertiesFile = rootProject.file("local.properties")
@@ -285,9 +354,29 @@ kotlin {
             jvmTarget = JvmTarget.JVM_11
         }
     }
-    iosArm64()
-    iosSimulatorArm64()
-    linuxX64()
+    // All native targets share one cinterop over doltlite.h; with
+    // kotlin.mpp.enableCInteropCommonization=true (gradle.properties) the
+    // bindings commonize into nativeMain, where the actuals live. linuxX64
+    // additionally embeds the static archive so binaries link
+    // self-contained; iOS is headers-only on a Linux host (see the static
+    // task's comment).
+    val doltliteCinterop: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCompilation.(embedStaticLib: Boolean) -> Unit =
+        { embedStaticLib ->
+            cinterops.create("doltlite") {
+                definitionFile.set(project.file("src/nativeInterop/cinterop/doltlite.def"))
+                includeDirs(layout.buildDirectory.dir("doltlite/src"))
+                if (embedStaticLib) {
+                    extraOpts(
+                        "-staticLibrary", "libdoltlite.a",
+                        "-libraryPath",
+                        layout.buildDirectory.dir("nativeLibs/linuxX64").get().asFile.absolutePath,
+                    )
+                }
+            }
+        }
+    iosArm64 { compilations.getByName("main") { doltliteCinterop(false) } }
+    iosSimulatorArm64 { compilations.getByName("main") { doltliteCinterop(false) } }
+    linuxX64 { compilations.getByName("main") { doltliteCinterop(true) } }
 
     sourceSets {
         commonMain.dependencies {
@@ -311,6 +400,13 @@ kotlin {
             // The differential-conformance oracle: the same commonTest suite
             // runs against BundledSQLiteDriver and DoltLiteDriver (PLAN.md
             // Step 3; room3 skill, testing reference).
+            implementation(libs.androidx.sqlite.bundled)
+        }
+
+        linuxX64Test.dependencies {
+            // The oracle also runs on linuxX64 — sqlite-bundled is KMP, so
+            // the differential pattern carries to the native rung (PLAN.md
+            // Step 6).
             implementation(libs.androidx.sqlite.bundled)
         }
 
@@ -362,13 +458,18 @@ room3 {
     schemaDirectory("$projectDir/schemas")
 }
 
-// commonTest's conformance suite compiles into every target's test task, but
-// its concrete per-driver classes only exist for jvmTest and androidHostTest
-// until PLAN.md Step 6 (linuxX64Test) adds theirs — without this, Gradle 9
-// fails that task for discovering zero tests.
-tasks.withType<AbstractTestTask>()
-    .matching { it.name == "linuxX64Test" }
-    .configureEach { failOnNoDiscoveredTests = false }
+// The cinterop tasks consume build/-generated inputs (headers for every
+// target, plus the linuxX64 static archive), so the producing tasks must be
+// explicit dependencies — includeDirs/extraOpts carry plain paths only.
+tasks.matching { it.name.startsWith("cinteropDoltlite") }.configureEach {
+    dependsOn(unpackDoltliteAmalgamation)
+}
+tasks.matching { it.name == "cinteropDoltliteLinuxX64" }.configureEach {
+    dependsOn(compileDoltliteStaticLinuxX64)
+    // -staticLibrary embeds the archive into the klib, but cinterop does not
+    // track it as an input — declare it so archive rebuilds re-run cinterop.
+    inputs.files(compileDoltliteStaticLinuxX64.map { it.outputs.files })
+}
 
 // Android host tests run on the host JVM, where androidMain's
 // System.loadLibrary("doltroomsjni") searches java.library.path — reuse the
