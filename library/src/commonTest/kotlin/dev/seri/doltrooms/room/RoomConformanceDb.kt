@@ -10,6 +10,7 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.Transaction
 import androidx.room3.Update
 
 // The Step 4 fixture database: a real Room 3 schema exercised identically
@@ -41,6 +42,15 @@ interface PersonDao {
 
     @Delete
     suspend fun delete(person: Person): Int
+
+    // Room wraps default-body @Transaction functions in a database
+    // transaction; a thrown exception must roll back the earlier insert.
+    @Transaction
+    suspend fun insertPair(first: Person, second: Person) {
+        insert(first)
+        check(second.age >= 0) { "invalid second person" }
+        insert(second)
+    }
 }
 
 @Database(entities = [Person::class], version = 1, exportSchema = true)

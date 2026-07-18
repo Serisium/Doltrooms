@@ -4,6 +4,7 @@ import androidx.room3.Room
 import androidx.sqlite.SQLiteDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlinx.coroutines.test.runTest
 
 // Step 4 differential Room suite: a real Room 3 database built with
@@ -14,7 +15,8 @@ import kotlinx.coroutines.test.runTest
 //
 // Test list (red-green; add cases as they occur):
 // - [x] suspend @Insert + @Query roundtrip through a generated DAO
-// - [ ] parameterized list @Query; @Update and @Delete return change counts
+// - [x] parameterized list @Query; @Update and @Delete return change counts
+// - [ ] @Transaction DAO method commits on success, rolls back on exception
 abstract class AbstractRoomConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
@@ -45,6 +47,24 @@ abstract class AbstractRoomConformanceTest {
             assertEquals(37, dao.byId(ada.id)?.age)
             assertEquals(1, dao.delete(bob))
             assertEquals(listOf(ada.copy(age = 37), eve), dao.olderThan(0))
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun transactionDaoMethodCommitsOnSuccessRollsBackOnException() = runTest {
+        val db = inMemoryDb()
+        try {
+            val dao = db.personDao()
+            dao.insertPair(Person(name = "Ada", age = 36), Person(name = "Bob", age = 17))
+            assertEquals(2, dao.olderThan(0).size)
+
+            assertFailsWith<IllegalStateException> {
+                dao.insertPair(Person(name = "Eve", age = 63), Person(name = "Mal", age = -1))
+            }
+            // The first insert of the failed pair must have rolled back.
+            assertEquals(2, dao.olderThan(0).size)
         } finally {
             db.close()
         }
