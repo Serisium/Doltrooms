@@ -58,6 +58,21 @@ abstract class AbstractDriverConformanceTest {
     /** A fresh, non-existing file path for a temporary on-disk database. */
     abstract fun tempDbPath(): String
 
+    /**
+     * Whether a thrown SQLiteException carries its message on this platform.
+     * Android HOST tests run against AGP's mockable android.jar, whose
+     * stubbed `android.database.SQLException` constructor drops the message
+     * (androidx.sqlite's android `SQLiteException` is a typealias to it), so
+     * they assert exception types and behavior only; message content is
+     * verified on JVM/native and on-device.
+     */
+    protected open val exceptionMessagesObservable: Boolean = true
+
+    private fun assertMessageContains(e: SQLiteException, fragment: String, context: String = "") {
+        if (!exceptionMessagesObservable) return
+        assertTrue(fragment in (e.message ?: ""), "unexpected message$context: ${e.message}")
+    }
+
     private inline fun withConnection(block: (SQLiteConnection) -> Unit) {
         driver().open(":memory:").use(block)
     }
@@ -285,10 +300,7 @@ abstract class AbstractDriverConformanceTest {
             connection.prepare("SELECT 1").use { query ->
                 assertTrue(query.step())
                 val e = assertFailsWith<SQLiteException> { query.getLong(1) }
-                assertTrue(
-                    "column index out of range" in (e.message ?: ""),
-                    "unexpected message: ${e.message}",
-                )
+                assertMessageContains(e, "column index out of range")
                 assertFailsWith<SQLiteException> { query.getLong(-1) }
             }
         }
@@ -300,7 +312,7 @@ abstract class AbstractDriverConformanceTest {
             connection.prepare("SELECT 1").use { query ->
                 // No step yet: not positioned on a row.
                 val e = assertFailsWith<SQLiteException> { query.getLong(0) }
-                assertTrue("no row" in (e.message ?: ""), "unexpected message: ${e.message}")
+                assertMessageContains(e, "no row")
             }
         }
     }
@@ -314,7 +326,7 @@ abstract class AbstractDriverConformanceTest {
                 assertTrue(query.step())
                 assertFalse(query.step())
                 val e = assertFailsWith<SQLiteException> { query.getLong(0) }
-                assertTrue("no row" in (e.message ?: ""), "unexpected message: ${e.message}")
+                assertMessageContains(e, "no row")
             }
         }
     }
@@ -336,7 +348,7 @@ abstract class AbstractDriverConformanceTest {
     fun preparingInvalidSqlThrows() {
         withConnection { connection ->
             val e = assertFailsWith<SQLiteException> { connection.prepare("NOT VALID SQL") }
-            assertTrue("NOT" in (e.message ?: ""), "unexpected message: ${e.message}")
+            assertMessageContains(e, "NOT")
         }
     }
 
@@ -366,10 +378,7 @@ abstract class AbstractDriverConformanceTest {
                 "clearBindings" to { statement.clearBindings() },
             )) {
                 val e = assertFailsWith<SQLiteException>(call.first) { call.second() }
-                assertTrue(
-                    "statement is closed" in (e.message ?: ""),
-                    "unexpected message from ${call.first}: ${e.message}",
-                )
+                assertMessageContains(e, "statement is closed", " from ${call.first}")
             }
         }
     }
@@ -414,10 +423,7 @@ abstract class AbstractDriverConformanceTest {
         val connection = driver().open(":memory:")
         connection.close()
         val e = assertFailsWith<SQLiteException> { connection.inTransaction() }
-        assertTrue(
-            "connection is closed" in (e.message ?: ""),
-            "unexpected message: ${e.message}",
-        )
+        assertMessageContains(e, "connection is closed")
     }
 
     @Test

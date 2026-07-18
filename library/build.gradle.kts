@@ -253,12 +253,34 @@ room3 {
 }
 
 // commonTest's conformance suite compiles into every target's test task, but
-// its concrete per-driver classes only exist for jvmTest until PLAN.md Step 5
-// (androidHostTest) and Step 6 (linuxX64Test) add theirs — without this,
-// Gradle 9 fails those tasks for discovering zero tests.
+// its concrete per-driver classes only exist for jvmTest and androidHostTest
+// until PLAN.md Step 6 (linuxX64Test) adds theirs — without this, Gradle 9
+// fails that task for discovering zero tests.
 tasks.withType<AbstractTestTask>()
-    .matching { it.name == "testAndroidHostTest" || it.name == "linuxX64Test" }
+    .matching { it.name == "linuxX64Test" }
     .configureEach { failOnNoDiscoveredTests = false }
+
+// Android host tests run on the host JVM, where androidMain's
+// System.loadLibrary("doltroomsjni") searches java.library.path — reuse the
+// desktop .so from compileDoltliteJni instead of packaging a host lib into
+// the AAR (kmp-native-interop skill: jniLibs is a device mechanism).
+tasks.withType<Test>()
+    .matching { it.name == "testAndroidHostTest" }
+    .configureEach {
+        dependsOn(compileDoltliteJni)
+        val hostNativesDir = compileDoltliteJni.map {
+            it.outputDir.get().dir("natives/linux-x64").asFile.absolutePath
+        }
+        doFirst {
+            // Prepend rather than replace: AGP already sets a path that ends
+            // with the (unused) src/androidHostTest/jniLibs convention dir.
+            val existing = systemProperties["java.library.path"]?.toString()
+            systemProperty(
+                "java.library.path",
+                listOfNotNull(hostNativesDir.get(), existing).joinToString(File.pathSeparator),
+            )
+        }
+    }
 
 mavenPublishing {
     publishToMavenCentral()
