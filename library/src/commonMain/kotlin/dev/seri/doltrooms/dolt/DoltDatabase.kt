@@ -207,6 +207,25 @@ public class DoltDatabase(private val db: RoomDatabase) {
             }
         }
 
+    /**
+     * Merges [branch] into the current branch and returns the resulting
+     * head hash: the merged branch's head on a fast-forward, or a new
+     * merge commit after a clean three-way merge.
+     *
+     * A conflicted merge under autocommit throws
+     * [androidx.sqlite.SQLiteException] ("Merge conflict detected…") and
+     * rolls back, leaving the working tree untouched — see the class
+     * KDoc for the explicit-transaction resolution recipe.
+     */
+    public suspend fun merge(branch: String): String =
+        writer { conn ->
+            conn.usePrepared("SELECT dolt_merge(?)") { stmt ->
+                stmt.bindText(1, branch)
+                stmt.step()
+                stmt.getText(0)
+            }
+        }
+
     private suspend fun <R> writer(block: suspend (Transactor) -> R): R =
         db.useWriterConnection(block)
 }

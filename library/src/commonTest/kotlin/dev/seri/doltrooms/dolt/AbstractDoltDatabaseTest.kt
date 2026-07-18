@@ -181,6 +181,76 @@ abstract class AbstractDoltDatabaseTest {
         assertEquals(1, db.personDao().olderThan(-1).size)
     }
 
+    @Test
+    fun fastForwardMergeReturnsMergedHead() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("base")
+        dolt.checkout("side", create = true)
+        db.personDao().insert(Person(name = "Bob", age = 17))
+        val sideHead = dolt.commit("side work")
+
+        dolt.checkout("main")
+        assertEquals(1L, writerPersonCount(db))
+        // main has not diverged, so the merge fast-forwards to side's head.
+        assertEquals(sideHead, dolt.merge("side"))
+        assertEquals(2L, writerPersonCount(db))
+        assertEquals(sideHead, dolt.log().first().hash)
+    }
+
+    @Test
+    fun cleanThreeWayMergeCreatesMergeCommit() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("base")
+        dolt.checkout("side", create = true)
+        db.personDao().insert(Person(name = "Bob", age = 17))
+        val sideHead = dolt.commit("side work")
+        // Diverge main with a non-conflicting change (different row).
+        dolt.checkout("main")
+        db.personDao().insert(Person(name = "Eve", age = 63))
+        val mainHead = dolt.commit("main work")
+
+        val mergeCommit = dolt.merge("side")
+        // A real merge commit: a new hash on top of both parents.
+        assertEquals(mergeCommit, dolt.log().first().hash)
+        val hashes = dolt.log().map { it.hash }
+        assertContains(hashes, sideHead)
+        assertContains(hashes, mainHead)
+        assertEquals(3L, writerPersonCount(db))
+    }
+
+    @Test
+    fun conflictedMergeThrowsAndRollsBack() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        val id = db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("base")
+        dolt.checkout("other", create = true)
+        db.personDao().update(Person(id = id, name = "Ada", age = 40))
+        dolt.commit("other edit")
+        dolt.checkout("main")
+        db.personDao().update(Person(id = id, name = "Ada", age = 50))
+        val mainHead = dolt.commit("main edit")
+
+        // Under autocommit a conflicted merge throws and rolls back; the
+        // working tree stays on main's pre-merge state (probed at 0.11.33;
+        // resolving instead requires an explicit transaction — class KDoc).
+        val e = assertFailsWith<SQLiteException> { dolt.merge("other") }
+        if (exceptionMessagesObservable) assertContains(e.message ?: "", "conflict")
+        assertEquals("main", dolt.currentBranch())
+        assertEquals(mainHead, dolt.log().first().hash)
+        assertEquals(emptyList(), dolt.status())
+        assertEquals(
+            50L,
+            db.useWriterConnection { t ->
+                t.usePrepared("SELECT age FROM Person") {
+                    it.step()
+                    it.getLong(0)
+                }
+            },
+        )
+    }
+
     private suspend fun writerPersonCount(db: RoomConformanceDb): Long =
         db.useWriterConnection { t ->
             t.usePrepared("SELECT COUNT(*) FROM Person") {
