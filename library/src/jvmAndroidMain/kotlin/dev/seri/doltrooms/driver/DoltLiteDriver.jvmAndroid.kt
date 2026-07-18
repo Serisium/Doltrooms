@@ -1,5 +1,6 @@
 package dev.seri.doltrooms.driver
 
+import androidx.sqlite.SQLITE_DATA_NULL
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.SQLiteStatement
@@ -86,22 +87,33 @@ public actual class DoltLiteStatement internal constructor(
         DoltLiteNative.nativeFinalize(stmtPointer)
     }
 
-    // The full bind*/get*/reset surface is PLAN.md Step 3.
-    actual override fun bindBlob(index: Int, value: ByteArray): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindBlob(index: Int, value: ByteArray) {
+        checkBindResult(DoltLiteNative.nativeBindBlob(stmtPointer, index, value))
+    }
 
-    actual override fun bindDouble(index: Int, value: Double): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindDouble(index: Int, value: Double) {
+        checkBindResult(DoltLiteNative.nativeBindDouble(stmtPointer, index, value))
+    }
 
     actual override fun bindLong(index: Int, value: Long) {
         checkBindResult(DoltLiteNative.nativeBindLong(stmtPointer, index, value))
     }
 
-    actual override fun bindText(index: Int, value: String): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindText(index: Int, value: String) {
+        checkBindResult(DoltLiteNative.nativeBindText(stmtPointer, index, value))
+    }
 
-    actual override fun bindNull(index: Int): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindNull(index: Int) {
+        checkBindResult(DoltLiteNative.nativeBindNull(stmtPointer, index))
+    }
 
-    actual override fun getBlob(index: Int): ByteArray = TODO("PLAN.md Step 3")
+    actual override fun getBlob(index: Int): ByteArray {
+        return DoltLiteNative.nativeColumnBlob(stmtPointer, index)
+    }
 
-    actual override fun getDouble(index: Int): Double = TODO("PLAN.md Step 3")
+    actual override fun getDouble(index: Int): Double {
+        return DoltLiteNative.nativeColumnDouble(stmtPointer, index)
+    }
 
     actual override fun getLong(index: Int): Long {
         return DoltLiteNative.nativeColumnLong(stmtPointer, index)
@@ -114,13 +126,17 @@ public actual class DoltLiteStatement internal constructor(
             ?: throwSQLiteException(SQLITE_MISUSE, "no text value at column $index")
     }
 
-    actual override fun isNull(index: Int): Boolean = TODO("PLAN.md Step 3")
+    actual override fun isNull(index: Int): Boolean {
+        return getColumnType(index) == SQLITE_DATA_NULL
+    }
 
     actual override fun getColumnCount(): Int = TODO("PLAN.md Step 3")
 
     actual override fun getColumnName(index: Int): String = TODO("PLAN.md Step 3")
 
-    actual override fun getColumnType(index: Int): Int = TODO("PLAN.md Step 3")
+    actual override fun getColumnType(index: Int): Int {
+        return DoltLiteNative.nativeColumnType(stmtPointer, index)
+    }
 
     actual override fun reset(): Unit = TODO("PLAN.md Step 3")
 

@@ -46,8 +46,36 @@ internal object DoltLiteNative {
     /** `sqlite3_bind_int64`. Returns the result code. */
     external fun nativeBindLong(stmtPointer: Long, index: Int, value: Long): Int
 
+    /** `sqlite3_bind_double`. Returns the result code. */
+    external fun nativeBindDouble(stmtPointer: Long, index: Int, value: Double): Int
+
+    /** `sqlite3_bind_text16` with `SQLITE_TRANSIENT`. Returns the result code. */
+    external fun nativeBindText(stmtPointer: Long, index: Int, value: String): Int
+
+    /**
+     * `sqlite3_bind_blob` with `SQLITE_TRANSIENT` (`bind_zeroblob` for an
+     * empty array, which would otherwise bind NULL). Returns the result code.
+     */
+    external fun nativeBindBlob(stmtPointer: Long, index: Int, value: ByteArray): Int
+
+    /** `sqlite3_bind_null`. Returns the result code. */
+    external fun nativeBindNull(stmtPointer: Long, index: Int): Int
+
     /** `sqlite3_column_int64` (applies SQLite's coercion rules). */
     external fun nativeColumnLong(stmtPointer: Long, index: Int): Long
+
+    /** `sqlite3_column_double` (applies SQLite's coercion rules). */
+    external fun nativeColumnDouble(stmtPointer: Long, index: Int): Double
+
+    /**
+     * `sqlite3_column_blob` + `sqlite3_column_bytes` (blob first, then bytes,
+     * per https://www.sqlite.org/c3ref/column_blob.html), copied into a new
+     * array. NULL values and zero-length blobs both return an empty array.
+     */
+    external fun nativeColumnBlob(stmtPointer: Long, index: Int): ByteArray
+
+    /** `sqlite3_column_type` — one of the five SQLITE_DATA_* fundamental types. */
+    external fun nativeColumnType(stmtPointer: Long, index: Int): Int
 
     /**
      * `sqlite3_column_text16` + `sqlite3_column_bytes16` (text first, then
