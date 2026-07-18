@@ -30,21 +30,22 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 9 — resolved as DROPPED (the card's
-  pre-authorized droppable clause; D4 amended). No code, build, or
-  target changes: `wasmJs` was never added, so the repo is exactly its
-  Step 8 shape. Why (probed 2026-07-18, full detail in the Step Log):
-  a web target flips `commonMain`'s androidx.sqlite resolution from
-  the nonWeb actuals to the suspend web variants, breaking the entire
-  shared driver surface + `DoltDatabase` + all three commonTest
-  suites (would force a whole-tree nonWeb intermediate source-set
-  migration); the only web engine is the prebuilt
-  `@dolthub/doltlite-wasm` npm artifact (D9-rejected category); and
-  its OPFS storage is browser-only — untestable on this browserless
-  host. Upstream availability was NOT the blocker (androidx.sqlite
-  2.7.0 + room3-runtime 3.0.0 both publish wasmJs; npm was at
-  0.11.33 lockstep).
-- **Branch:** `claude/step-9-b192ee` (carries the Step 0–8 commits).
+- **Last completed step:** Step 10 — CI hardening + verification
+  matrix. Infra-only (no production code; D7 red-green N/A per the
+  card). `.github/workflows/ci.yml` hardened: actions/cache for the
+  two DoltLite release zips and `~/.konan` (keys hash
+  `gradle/libs.versions.toml`), concurrency cancel-in-progress per
+  ref, `timeout-minutes: 60`, test-report artifact upload on failure.
+  The enabling build-script change: both download tasks accept a
+  pre-seeded zip whose SHA-256 matches the pin without a network
+  fetch (a CI cache restore carries no Gradle task history, so
+  up-to-date checks alone can never skip the download; both branches
+  verified locally). `docs/deferred-verification.md` extended
+  (XCFramework packaging, first-observed-CI-run checklist). The
+  pipeline itself is still unobserved on GitHub — in-env sessions
+  don't push (AGENTS.md), so first observation lands with this
+  branch's PR (deferred-verification entry).
+- **Branch:** `claude/step-10-b20930` (carries the Step 0–9 commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
@@ -372,7 +373,11 @@ Each step below is executed in one fresh agent session:
   inside each task block because an `onlyIf` capturing a script-level
   val breaks the configuration cache) → jvmTest gets system property
   `dev.seri.doltrooms.remotesrv` pointing at the unpacked
-  `doltlite-remotesrv`. **Settled compile
+  `doltlite-remotesrv`. Step 10: BOTH download tasks accept a
+  pre-seeded zip whose SHA-256 already matches the pin without a
+  network fetch (makes the CI zip cache effective; anything else is
+  re-fetched, and the mismatch-after-download failure contract is
+  unchanged). **Settled compile
   flags:** androidx
   sqlite-bundled's set MINUS `SQLITE_OMIT_SHARED_CACHE` and
   `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` (both break DoltLite's fork — see
@@ -392,19 +397,22 @@ Each step below is executed in one fresh agent session:
   `SELECT dolt_version()` and only because we compile with
   `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
   `"doltlite-amalgamation"`).
-- **Build/test commands that pass:** `./gradlew build` (all targets;
-  the two iOS targets are SKIPPED on a Linux host now that they carry
-  a cinterop — exit stays 0), `./gradlew :library:jvmTest` (118),
-  `./gradlew :library:testAndroidHostTest` (52), `./gradlew
-  :library:linuxX64Test` (85),
-  `./gradlew :library:bundleAndroidMainAar
-  :library:assembleAndroidDeviceTest` (AAR + device-test APK both
-  carry `lib/<abi>/libdoltroomsjni.so`). CI:
-  `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android,
-  `sdkmanager "ndk;28.2.13676358"`, runs build + jvmTest +
-  testAndroidHostTest + linuxX64Test) — not yet observed running on
-  GitHub; note the linuxX64 test binary needs `libcrypt.so.1` at
-  runtime (ubuntu ships it; Fedora needed libxcrypt-compat).
+- **Build/test commands that pass — the canonical Linux matrix,
+  frozen at Step 10 (the same single line CI runs):**
+  `./gradlew build :library:jvmTest :library:testAndroidHostTest
+  :library:linuxX64Test` (118 + 52 + 85 tests; the two iOS targets
+  are SKIPPED on a Linux host since they carry a cinterop — exit
+  stays 0; no wasm target exists, D4). Also passing: `./gradlew
+  :library:bundleAndroidMainAar :library:assembleAndroidDeviceTest`
+  (AAR + device-test APK both carry `lib/<abi>/libdoltroomsjni.so`).
+  CI: `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android,
+  `sdkmanager "ndk;28.2.13676358"`, setup-gradle, actions/cache for
+  DoltLite zips + `~/.konan`, the canonical line, test-report upload
+  on failure, concurrency cancel, 60-min timeout) — never yet
+  observed running on GitHub (docs/deferred-verification.md has the
+  first-run checklist); note the linuxX64 test binary needs
+  `libcrypt.so.1` at runtime (ubuntu ships it; Fedora needed
+  libxcrypt-compat).
 - **Environment (re-check before building):** JDK 21 (dnf), gcc/g++ 15
   (dnf), Android SDK platform 36 + build-tools 36 at `/opt/android-sdk`
   (`local.properties`, gitignored — recreate it in fresh worktrees),
@@ -605,7 +613,7 @@ in-session evidence (probed compile failure, artifact facts, no
 browser in-env) is in the Step Log; the decision is the D4 amendment
 in ARCHITECTURE.md. Revisit only as a dedicated iteration.
 
-### [ ] Step 10 — CI hardening + verification matrix
+### [x] Step 10 — CI hardening + verification matrix
 - **Goal:** One workflow covering everything Linux-verifiable: build,
   jvmTest, linuxX64Test, testAndroidHostTest — NOT iOS:
   since Step 6's cinterop, Apple targets cannot compile on a Linux
@@ -1229,5 +1237,64 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   tree — `./gradlew build :library:jvmTest :library:testAndroidHostTest
   :library:linuxX64Test` all green (118 jvm + 52 androidHost +
   85 linuxX64), iOS tasks skipped as expected on a Linux host.
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  unchanged.
+
+### Step 10 — CI hardening + verification matrix (2026-07-18, branch `claude/step-10-b20930`)
+
+- Infra step; D7 red-green N/A per the card. Coverage needed no
+  change — the workflow's one `run` line has covered the full
+  Linux-verifiable matrix since Steps 6/8 — so the work was the
+  hardening, the cache-enabling build-script change, and the doc
+  extensions.
+- **Build-script change (the piece that makes CI caching real):**
+  `downloadDoltliteAmalgamation`/`downloadDoltliteTools` now accept a
+  pre-seeded zip whose SHA-256 matches the pin and skip the network
+  fetch. Rationale: `actions/cache` restores files, but Gradle task
+  history does not survive a fresh runner, so the tasks would
+  re-execute and re-download on every CI run regardless of the cache.
+  Both branches verified locally: `--rerun` with matching zips
+  present → task completes in ~1s with file mtimes unchanged (no
+  fetch); a corrupted zip → re-fetched, checksum green. The
+  mismatch-after-download failure contract is unchanged. The skip
+  logic is duplicated inline in each task's `doLast` deliberately — a
+  shared script-level helper captured inside a task action would
+  break the configuration cache (Step 8's `onlyIf` lesson, same
+  mechanism).
+- **Workflow hardening (`.github/workflows/ci.yml`):** two
+  `actions/cache` steps — `library/build/doltlite/*.zip` and
+  `~/.konan` (`gradle/actions/setup-gradle` caches neither) — with
+  keys hashing `gradle/libs.versions.toml`, since every relevant pin
+  (doltlite, kotlin/Konan) lives there; `concurrency`
+  cancel-in-progress per ref; `timeout-minutes: 60` (the cold local
+  matrix incl. downloads runs well under 15 min; CI adds Konan
+  provisioning once, then the cache carries it); on-failure artifact
+  upload of `library/build/reports/tests/` (path verified against the
+  local run's actual report layout: `jvmTest`/`testAndroidHostTest`/
+  `linuxX64Test`/`allTests`).
+- **Card's "green pipeline on a no-op change" — deferred, recorded:**
+  the workflow triggers on pushes to `main`/`develop` and on PRs, and
+  in-env sessions do not push (AGENTS.md working rule; every prior
+  step logged CI as "unverified until pushed"). Local stand-ins all
+  ran green on this tree: the canonical matrix (118 + 52 + 85), a
+  YAML parse check of the workflow, and both download branches above.
+  actionlint was attempted but unavailable (not in Fedora repos;
+  binary download blocked in-env). The first-observation checklist —
+  green run, cache miss-then-hit, no-network download-task pass-through,
+  timeout headroom — is now a `docs/deferred-verification.md` entry
+  and lands with this branch's PR.
+- **docs/deferred-verification.md extended (card):** new XCFramework
+  packaging section (Mac-only `XCFramework()` DSL +
+  `assembleXCFramework`, dependent on the iOS checklist's per-slice
+  archives; pointer to Step 11's publish-from-a-single-Mac
+  requirement) and the first-observed-CI-run section; the header's
+  step-ownership line updated. ARCHITECTURE.md codemap row for the
+  file synced (architecture-docs skill loaded; no decisions touched,
+  D-numbers unchanged).
+- **Canonical command list frozen into Current State (card):**
+  `./gradlew build :library:jvmTest :library:testAndroidHostTest
+  :library:linuxX64Test`.
+- **Environment delta:** recreated `local.properties` (fresh
+  worktree). No new packages.
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue
   unchanged.
