@@ -46,7 +46,7 @@ import kotlinx.coroutines.test.runTest
 // 0.11.33, 2026-07-18):
 // - [x] remote add/list/remove round-trip; duplicate add and push to an
 //       unknown remote fail cleanly
-// - [ ] push to a file:// remote + clone from it replicates rows and log
+// - [x] push to a file:// remote + clone from it replicates rows and log
 // - [ ] pull brings new commits pushed after the clone (completes the
 //       card's push-from-A/pull-into-B round-trip)
 // - [ ] fetch makes origin/<branch> mergeable (and it is NOT mergeable
@@ -74,8 +74,8 @@ abstract class AbstractDoltDatabaseTest {
     /** See AbstractDriverConformanceTest — false on Android host tests. */
     protected open val exceptionMessagesObservable: Boolean = true
 
-    private fun fileDb(): RoomConformanceDb =
-        Room.databaseBuilder<RoomConformanceDb>(name = tempDbPath())
+    private fun fileDb(path: String = tempDbPath()): RoomConformanceDb =
+        Room.databaseBuilder<RoomConformanceDb>(name = path)
             .setDriver(driver())
             .build()
 
@@ -343,6 +343,34 @@ abstract class AbstractDoltDatabaseTest {
 
         dolt.removeRemote("origin")
         assertEquals(emptyList(), dolt.remotes())
+    }
+
+    @Test
+    fun pushAndCloneReplicateDatabase() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("c1")
+        val remoteUrl = "file://" + tempDbPath()
+        dolt.addRemote("origin", remoteUrl)
+        dolt.push("origin", "main")
+
+        val e = assertFailsWith<SQLiteException> { dolt.push("nope", "main") }
+        if (exceptionMessagesObservable) assertContains(e.message ?: "", "remote not found")
+
+        // Clone is a pre-Room bootstrap on a raw driver connection (the
+        // engine demands a fresh database; Room dirties one at open).
+        val clonePath = tempDbPath()
+        DoltDatabase.clone(driver(), remoteUrl, clonePath)
+        val cloned = fileDb(clonePath)
+        try {
+            val clonedDolt = DoltDatabase(cloned)
+            // Rows and full history replicate; origin comes pre-configured.
+            assertEquals(listOf("Ada"), cloned.personDao().olderThan(-1).map { it.name })
+            assertEquals(dolt.log(), clonedDolt.log())
+            assertEquals(remoteUrl, clonedDolt.remotes().single().url)
+        } finally {
+            cloned.close()
+        }
     }
 
     private suspend fun writerPersonCount(db: RoomConformanceDb): Long =

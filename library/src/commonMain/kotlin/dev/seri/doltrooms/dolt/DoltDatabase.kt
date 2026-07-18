@@ -7,6 +7,7 @@ import androidx.sqlite.SQLITE_DATA_BLOB
 import androidx.sqlite.SQLITE_DATA_FLOAT
 import androidx.sqlite.SQLITE_DATA_INTEGER
 import androidx.sqlite.SQLITE_DATA_TEXT
+import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.SQLiteStatement
 
 /**
@@ -330,6 +331,53 @@ public class DoltDatabase(private val db: RoomDatabase) {
                 }
             }
         }
+
+    /**
+     * Pushes [branch] to [remote] (`dolt_push`). Throws
+     * [androidx.sqlite.SQLiteException] "remote not found" for an unknown
+     * remote and "push failed (not a fast-forward?)" when the remote has
+     * commits this database lacks; [force] (`'--force'`) overwrites the
+     * remote branch instead. A `file://` remote that does not exist yet
+     * is created by the first push.
+     */
+    public suspend fun push(remote: String, branch: String, force: Boolean = false): Unit =
+        writer { conn ->
+            val sql =
+                if (force) "SELECT dolt_push(?, ?, '--force')" else "SELECT dolt_push(?, ?)"
+            conn.usePrepared(sql) { stmt ->
+                stmt.bindText(1, remote)
+                stmt.bindText(2, branch)
+                stmt.step()
+            }
+        }
+
+    public companion object {
+        /**
+         * Clones the DoltLite remote at [url] into a new database file at
+         * [path] — including all branches, history, and the remote
+         * configuration (the source becomes the clone's `origin`).
+         *
+         * This is a **pre-Room bootstrap**, not a [DoltDatabase] member:
+         * the engine refuses to clone into anything but a fresh database
+         * ("clone into a fresh database", probed at 0.11.33), and a
+         * `RoomDatabase` is never fresh — Room's schema DDL dirties it at
+         * open. Clone first with the bare [driver], then open Room on
+         * [path].
+         *
+         * Blocking; call off the main thread.
+         */
+        public fun clone(driver: SQLiteDriver, url: String, path: String) {
+            val conn = driver.open(path)
+            try {
+                conn.prepare("SELECT dolt_clone(?)").use { stmt ->
+                    stmt.bindText(1, url)
+                    stmt.step()
+                }
+            } finally {
+                conn.close()
+            }
+        }
+    }
 
     private fun SQLiteStatement.typedValue(index: Int): Any? =
         when (getColumnType(index)) {
