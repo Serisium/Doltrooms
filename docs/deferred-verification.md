@@ -37,7 +37,12 @@ On a Mac, in order:
 4. `./gradlew :library:iosSimulatorArm64Test` — runs both commonTest
    conformance suites (the linuxX64Test concrete classes have iOS
    equivalents only if added; create `iosTest` concretes mirroring
-   `library/src/linuxX64Test/` first).
+   `library/src/linuxX64Test/` first). Do NOT add Bundled-oracle
+   concretes or a `sqlite-bundled` dependency on Apple test
+   compilations: two statically linked engines exporting the same
+   `sqlite3_*` symbols in one binary silently resolve both drivers to
+   one engine (the post-Step-11 linuxX64 lesson — PLAN.md maintenance
+   log entry).
 5. Glibc-style symbol skew does not apply (Apple libSystem), but
    verify the archive links clean against the device and simulator
    sysroots.
@@ -86,18 +91,24 @@ after the iOS checklist above: `./gradlew publishToMavenLocal` (now
 including `-iosarm64`/`-iossimulatorarm64`), inspect, then
 `./gradlew publishToMavenCentral` with credentials + key in env.
 
-## First observed CI run (needs a push/PR on GitHub) — noted by Step 10
+## First observed CI run — PARTIALLY OBSERVED 2026-07-18 (PR #2)
 
-`.github/workflows/ci.yml` has been maintained since Step 1 but never
-observed running: it triggers on pushes to `main`/`develop` and on
-pull requests, and in-env sessions do not push (AGENTS.md working
-rules). Every command it runs is verified green locally each step; the
-workflow file itself is unexercised. On the first PR, check: the run
-is green end-to-end; the two `actions/cache` steps miss then populate
-(DoltLite zips, `~/.konan`), and a re-run hits both (the Gradle log
-should show the download tasks completing without a network fetch —
-the pre-seeded-zip acceptance in `library/build.gradle.kts`); the
-60-minute timeout leaves comfortable headroom.
+`.github/workflows/ci.yml` ran for the first time on PR #2. Observed:
+the workflow executes end-to-end (checkout, JDK, SDK/NDK, caches,
+Gradle) and completed in ~5 min — ample 60-minute headroom; the first
+run failed legitimately in `linuxX64Test` (the two-static-engines
+symbol collision, since fixed — see the PLAN.md maintenance log
+entry), which also proved the on-failure test-report upload works
+(the report artifact diagnosed the failure). It also exposed two
+unmaintained template workflows from the initial commit: `gradle.yml`
+(deleted — duplicated ci.yml, and its macos `iosSimulatorArm64Test`
+job cannot pass before the iOS checklist above lands) and
+`publish.yml` (kept — release-triggered, dormant; review its secrets
+and env names against the finalized signing setup before the first
+release). Still to observe on a subsequent run: a green run
+end-to-end, and the `actions/cache` steps hitting (DoltLite zips,
+`~/.konan`) with the download tasks passing through without a network
+fetch (the pre-seeded-zip acceptance in `library/build.gradle.kts`).
 
 ## Android on-device (needs a device/emulator) — deferred by Step 5
 
