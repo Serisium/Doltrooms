@@ -30,10 +30,10 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 2 (driver skeleton: commonMain API +
-  JVM open/exec/close).
-- **Branch:** `claude/plan-step-2-2f8885` (carries the Step 0–1
-  commits from `claude/doltrooms-kmp-plan-932ed0`).
+- **Last completed step:** Step 3 (full statement API + differential
+  conformance harness on JVM).
+- **Branch:** `claude/step-3-continuation-5b6dba` (carries the Step 0–2
+  commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
@@ -50,22 +50,47 @@ Each step below is executed in one fresh agent session:
   → `jvmMain` (`NativeLibraryLoader`: JAR-resource extraction from
   `natives/<os>-<arch>/`, override `-Ddev.seri.doltrooms.lib.path`)
   and `androidMain` (`System.loadLibrary`, no packaged `.so` until
-  Step 5). `nativeMain` holds TODO-stub actuals until Step 6. jvmTest:
-  `NativeLoadTest` (1) + `DoltLiteDriverTest` (6) — all green.
-- **Driver class map (Step 2):**
-  - `commonMain …/driver/DoltLiteDriver.kt` — public expect API.
+  Step 5). `nativeMain` holds TODO-stub actuals until Step 6.
+- **Test map (66 jvm tests, all green):** `commonTest
+  …/AbstractDriverConformanceTest.kt` — the differential conformance
+  suite (27 cases; its header carries the coverage checklist: type
+  roundtrips incl. empty blob + NULL + unbound params, all five
+  column types, column metadata before stepping, multi-row step,
+  reset/rebind/clearBindings, RANGE/no-row/closed-statement error
+  contract, invalid-SQL prepare, idempotent closes, BEGIN/COMMIT/
+  ROLLBACK + inTransaction, user_version round-trip across reopen,
+  4-reader+1-writer file visibility, not-thread-affine sequential
+  use via runTest+Dispatchers.Default). jvmTest concretes:
+  `DoltLiteDriverConformanceTest` + `BundledSQLiteDriverConformanceTest`
+  (the oracle — a test failing there is a bad test, not a divergence),
+  `KnownDivergenceTest` (5 probes asserting BOTH engines' observed
+  behavior so upstream changes surface as failures),
+  `DoltLiteDriverTest` (6), `NativeLoadTest` (1). androidHostTest and
+  linuxX64Test concrete classes are Step 5/6 work.
+- **Driver class map (Steps 2–3):**
+  - `commonMain …/driver/DoltLiteDriver.kt` — public expect API; the
+    connection now also declares `inTransaction`.
   - `jvmAndroidMain …/driver/DoltLiteDriver.jvmAndroid.kt` — actuals:
     `open` (`sqlite3_open_v2` READWRITE|CREATE + extended result
     codes, rc-checked, handle closed on eager failure), `prepare`
-    (`sqlite3_prepare16_v2`), `step` (ROW→true/DONE→false/else throw),
-    idempotent connection `close` via `@Volatile isClosed` (prepare
-    after close throws MISUSE "connection is closed"), statement
-    `close` (finalize), minimal `getText`; every other statement
-    member is `TODO("PLAN.md Step 3")`.
+    (`sqlite3_prepare16_v2`), connection `inTransaction`
+    (`sqlite3_get_autocommit == 0`, throws when closed), idempotent
+    connection `close` via `@Volatile isClosed`; statement: full
+    bind*/get* surface (1-based binds rc-checked with errmsg,
+    0-based gets), `step` (ROW→true/DONE→false/else throw), `reset`,
+    `clearBindings`, column metadata (`getColumnCount/Name/Type`,
+    `isNull` via type==NULL), statement-side `@Volatile isClosed`
+    guard (all members throw MISUSE "statement is closed" after
+    close — load-bearing: sqlite3_* on a finalized stmt SIGABRTed
+    the test JVM), pre-check trio on value getters (closed → no-row
+    via `sqlite3_stmt_busy` → column-range vs `column_count`),
+    `getColumnName` null → `OutOfMemoryError`.
   - `jvmAndroidMain …/driver/DoltLiteNative.kt` + `jni/doltrooms_jni.cpp`
-    — registered natives: `nativeLibVersion`, `nativeOpen`,
-    `nativeClose`, `nativePrepare`, `nativeStep`, `nativeFinalize`,
-    `nativeErrmsg` (errmsg16), `nativeColumnText` (text16+bytes16).
+    — registered natives: lib version, open/close, prepare, step,
+    finalize, reset, clearBindings, stmtBusy, errmsg16,
+    getAutocommit, bind long/double/text16/blob/null (TRANSIENT;
+    empty blob via `bind_zeroblob` since a null data pointer would
+    bind SQL NULL), column long/double/text16/blob/type/count/name.
     JNI returns raw rc values; **Kotlin** throws via
     `androidx.sqlite.throwSQLiteException` (deliberate divergence from
     bundled's C++-side throwing — keeps the Android
@@ -75,16 +100,13 @@ Each step below is executed in one fresh agent session:
     (replaced by cinterop actuals in Step 6).
 - **Copied from bundled vs diverged:** copied — open flags, extended
   result codes at open, UTF-16 prepare/column-text, error-message
-  format, idempotent closes. Diverged — error throwing lives in
+  format, idempotent closes, the no-row/column-range pre-check trio,
+  TRANSIENT text/blob binds. Diverged — error throwing lives in
   Kotlin (above); `sqlite3_db_config(ENABLE_LOAD_EXTENSION)` dropped
-  per the adaptation checklist; statement-side `isClosed` guard +
-  no-row/column-range/NOMEM pre-check trio deferred to Step 3.
-- **Known divergences vs stock/Bundled (running table, promote+extend
-  at Step 3):**
-  1. Compile flags: `SQLITE_OMIT_SHARED_CACHE` and
-     `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` dropped (Step 1); WAL default
-     synchronous is FULL, not androidx's NORMAL — probe at Step 3.
-  2. **Deferred open (probed 2026-07-17, C probes vs system sqlite
+  per the adaptation checklist.
+- **Known divergences vs stock/Bundled (permanent table; each row is
+  asserted by a test):**
+  1. **Deferred open (probed 2026-07-17, C probes vs system sqlite
      3.50.2):** DoltLite 0.11.33 `sqlite3_open_v2(READWRITE|CREATE)`
      returns OK for an unopenable path (missing parent directory);
      `SQLITE_CANTOPEN` (14) surfaces at the first `sqlite3_step`
@@ -93,11 +115,40 @@ Each step below is executed in one fresh agent session:
      open; invalid flags → 21), so `open()` keeps its rc check.
      Documented as contract by
      `DoltLiteDriverTest.openFailureIsDeferredToFirstStatement`.
+  2. **Default journal mode (probed 2026-07-17 via driver):** DoltLite
+     reports `PRAGMA journal_mode` = `wal` out of the box on file
+     databases; stock defaults to `delete`. `PRAGMA journal_mode=WAL`
+     returns `wal` on both. `KnownDivergenceTest`.
+  3. **WITHOUT ROWID storage for non-INTEGER-PK tables (probed
+     2026-07-17):** after inserting into a TEXT-PK table,
+     `last_insert_rowid()` is 0 on DoltLite (1 on stock) and
+     `SELECT rowid` errors "no such column" (returns the rowid on
+     stock). INTEGER-PK tables agree on both engines — which is what
+     Room's generated inserts use. `KnownDivergenceTest`.
+  4. Compile flags: `SQLITE_OMIT_SHARED_CACHE` and
+     `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` dropped (Step 1). The feared
+     WAL-synchronous divergence did NOT materialize: after
+     `PRAGMA journal_mode=WAL` both engines report `synchronous` = 2
+     (FULL) on the plain open→WAL path (Step 1 follow-up closed;
+     asserted by `KnownDivergenceTest`). Shared-cache code is merely
+     compiled in, unused.
+  Conforming probes worth remembering (same runs): `user_version`
+  round-trips across close/reopen (Room's schema store works),
+  `changes()` counts, 4r+1w multi-connection visibility,
+  uncommitted-write isolation, cross-thread sequential connection
+  use.
 - **Build facts:** `applyDefaultHierarchyTemplate()` in
   `library/build.gradle.kts` must stay — the custom `jvmAndroidMain`
   dependsOn edges disable Kotlin's default hierarchy and orphan
   `nativeMain` without it. `-Xexpect-actual-classes` acknowledges
-  expect/actual-class Beta (androidx does the same).
+  expect/actual-class Beta (androidx does the same). Test deps:
+  commonTest adds `kotlinx-coroutines-test` 1.10.2; jvmTest adds
+  `androidx.sqlite:sqlite-bundled` (the oracle). Because commonTest
+  now has sources, `testAndroidHostTest`/`linuxX64Test` produce
+  zero-test runs until their concrete classes land —
+  `failOnNoDiscoveredTests = false` carve-outs in
+  `library/build.gradle.kts` must be REMOVED at Step 5
+  (androidHostTest) and Step 6 (linuxX64Test).
 - **Native build plumbing** (`library/build.gradle.kts`): tasks
   `downloadDoltliteAmalgamation` (release zip
   `doltlite-amalgamation-0.11.33.zip`, SHA-256
@@ -112,21 +163,26 @@ Each step below is executed in one fresh agent session:
   Step 1 log), PLUS `-DDOLTLITE_VERSION="0.11.33"`.
 - **Pinned versions** (`gradle/libs.versions.toml`): doltlite `0.11.33`,
   room3 `3.0.0`, androidxSqlite `2.7.0`, ksp `2.3.10`, kotlin `2.3.10`,
-  agp `9.0.1`. Room/sqlite catalog aliases exist but are not yet wired.
+  agp `9.0.1`, kotlinxCoroutines `1.10.2`. androidx-sqlite (commonMain
+  api), sqlite-bundled (jvmTest) and coroutines-test (commonTest) are
+  wired; room3 aliases exist but stay unwired until Step 4.
 - **Engine version facts:** the 0.11.33 amalgamation carries
   `SQLITE_VERSION "3.54.0"` (what `sqlite3_libversion()` returns); the
   DoltLite release version is only observable via SQL
   `SELECT dolt_version()` and only because we compile with
   `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
   `"doltlite-amalgamation"`).
-- **Build/test commands that pass:** `./gradlew build`,
-  `./gradlew :library:jvmTest` (7 tests). CI:
+- **Build/test commands that pass:** `./gradlew build` (all five
+  targets), `./gradlew :library:jvmTest` (66 tests). CI:
   `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android) — not yet
-  observed running on GitHub.
+  observed running on GitHub; note the linuxX64 test binary needs
+  `libcrypt.so.1` at runtime (ubuntu ships it; Fedora needed
+  libxcrypt-compat).
 - **Environment (re-check before building):** JDK 21 (dnf), gcc/g++ 15
   (dnf), Android SDK platform 36 + build-tools 36 at `/opt/android-sdk`
   (`local.properties`, gitignored — recreate it in fresh worktrees),
-  sqlite-devel 3.50.2 (dnf; for differential C probes against stock).
+  sqlite-devel 3.50.2 (dnf; for differential C probes against stock),
+  libxcrypt-compat (dnf; linuxX64 test.kexe links libcrypt.so.1).
 - **Open problems handed to next session:** none.
 
 ## Step Backlog
@@ -178,7 +234,7 @@ Done — see Step Log.
 - **Risks:** contract deviations here poison everything downstream —
   keep the re-skin literal.
 
-### [ ] Step 3 — Full statement API + differential conformance harness (JVM)
+### [x] Step 3 — Full statement API + differential conformance harness (JVM)
 - **Goal:** Complete `SQLiteStatement` + `inTransaction`; identical
   commonTest conformance suite passes against DoltLiteDriver AND
   BundledSQLiteDriver on JVM.
@@ -236,9 +292,12 @@ Done — see Step Log.
 - **Key tasks:** NDK cross-compile amalgamation+glue; wire jniLibs into
   AGP KMP `androidLibrary{}`; `androidMain` loader
   (`System.loadLibrary`); host tests reuse the desktop `.so`
-  (`:library:testAndroidHostTest`); `withDeviceTestBuilder` configured,
-  device runs deferred; record the skip-doltlite-AAR decision in
-  ARCHITECTURE.md.
+  (`:library:testAndroidHostTest`); androidHostTest concrete classes
+  for the Step 3 conformance suite, then REMOVE the
+  `testAndroidHostTest` zero-test carve-out
+  (`failOnNoDiscoveredTests`) from `library/build.gradle.kts`;
+  `withDeviceTestBuilder` configured, device runs deferred; record
+  the skip-doltlite-AAR decision in ARCHITECTURE.md.
 - **Red-green:** red = androidHostTest concrete conformance classes
   failing to load the native lib; green = loader + packaging.
 - **Verify:** `./gradlew :library:testAndroidHostTest` and android
@@ -255,7 +314,9 @@ Done — see Step Log.
 - **Key tasks:** `nativeInterop/cinterop/doltlite.def` (headers +
   static `libdoltlite.a` built per KonanTarget by extending Step-1
   plumbing); `nativeMain` actuals; `linuxX64Test` concrete classes for
-  both suites (BundledSQLiteDriver is KMP — differential works);
+  both suites (BundledSQLiteDriver is KMP — differential works), then
+  REMOVE the `linuxX64Test` zero-test carve-out
+  (`failOnNoDiscoveredTests`) from `library/build.gradle.kts`;
   iOS compiles on Linux, link+test deferred to a Mac (write the
   deferred checklist).
 - **Red-green:** red = linuxX64 conformance classes on stubs; green =
@@ -484,3 +545,68 @@ Done — see Step Log.
   skill-maintenance — queued with the Step 0 (KSP note) and Step 1
   (release-asset naming) items. Statement-side `isClosed` guard and
   pre-check trio are Step 3 work, already on its card.
+
+### Step 3 — Full statement API + differential conformance harness (2026-07-17, branch `claude/step-3-continuation-5b6dba`)
+
+- **Red-green, eight increments, one commit each:** (1) harness
+  bootstrap — commonTest `AbstractDriverConformanceTest` (abstract
+  `driver()`), jvmTest concretes for DoltLite + Bundled (the oracle),
+  first red on `bindLong`'s TODO; (2) full type surface — text (UTF-16
+  incl. surrogate pair), double, blob (incl. empty), null/isNull,
+  unbound-param-is-NULL, getColumnType×5; (3) column metadata before
+  stepping; (4) cursor control — multi-row step, reset retains
+  bindings, rebind, clearBindings; (5) error contract — RANGE/no-row/
+  closed-statement guards; (6) `inTransaction` (expect-surface
+  addition) + BEGIN/COMMIT/ROLLBACK semantics; (7) 4r+1w
+  multi-connection visibility + not-thread-affine sequential use
+  (runTest + Dispatchers.Default; needed kotlinx-coroutines-test and
+  an abstract `tempDbPath()`); (8) `user_version` conformance +
+  `KnownDivergenceTest`. Final: 66 jvm tests green (27 conformance ×
+  both drivers + 12 others), `./gradlew build` green on all targets.
+- **The harness worked as designed:** every DoltLite red listed above
+  appeared while the identical test passed on Bundled, so no test
+  ambiguity ever needed debugging. Increments 7's probes passed
+  without new driver code — recorded as acceptance-style differential
+  checks rather than true reds (the red-green skill's "test that
+  cannot fail" caveat acknowledged: their oracle leg is what
+  validates them).
+- **A red that was a SIGABRT:** `statementUseAfterCloseThrows` didn't
+  fail with an assertion — it killed the test JVM (exit 134,
+  "segfaults and heap corruption" per the finalize doc) and silently
+  truncated the DoltLite suite run to 5 tests. The statement-side
+  `@Volatile isClosed` guard is load-bearing, not cosmetic. Lesson:
+  when a test-run count looks short, suspect a native crash, not
+  Gradle filtering.
+- **Fork-divergence discoveries (promoted to the permanent Current
+  State table, each asserted by `KnownDivergenceTest`):** DoltLite
+  file DBs report `journal_mode` = `wal` by default (stock:
+  `delete`); WITHOUT ROWID semantics for non-INTEGER-PK tables
+  (last_insert_rowid 0, `SELECT rowid` errors); the Step 1
+  WAL-synchronous worry did NOT materialize (both engines report
+  FULL after `journal_mode=WAL`) — Step 1 follow-up closed.
+  Conforming: user_version across reopen, changes(), 4r+1w
+  visibility, uncommitted-write isolation, cross-thread use.
+  Discovery method: a throwaway `ScratchProbeTest` printed both
+  engines' behavior, results were encoded as assertions on BOTH
+  engines, probe deleted.
+- **Card divergences:** (a) NOMEM → OutOfMemoryError is implemented
+  (getColumnName) but untestable — no test forces allocation
+  failure; (b) `SQLITE_TRANSIENT` empty-blob bind needed
+  `bind_zeroblob` because a null data pointer binds SQL NULL — found
+  by the oracle leg of `emptyBlobRoundTripsAsEmpty`; (c) the card's
+  "multi-connection WAL shape" needed no WAL-specific driver work
+  (DoltLite is effectively always-WAL); (d) added `user_version`
+  round-trip beyond the card (Room's schema store — the watchlist
+  said verify it).
+- **Build/environment deltas:** commonTest gaining sources made
+  Gradle 9 fail `testAndroidHostTest`/`linuxX64Test` for discovering
+  zero tests — `failOnNoDiscoveredTests = false` carve-outs added,
+  removal queued on the Step 5/6 cards (updated in place); installed
+  `libxcrypt-compat` (linuxX64 test.kexe links `libcrypt.so.1`);
+  catalog gained `kotlinxCoroutines` 1.10.2.
+- **Follow-ups (queued for skill-maintenance, with Step 0–2 items):**
+  fold into `doltlite` skill gotchas — default `journal_mode=wal`,
+  the WITHOUT ROWID probe results, and the WAL-synchronous
+  non-divergence; fold the stmt-busy/no-row and finalize-SIGABRT
+  notes into `sqlite-c-api` watchlist as confirmed-preserved vs
+  confirmed-diverged entries.
