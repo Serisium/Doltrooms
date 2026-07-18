@@ -12,6 +12,7 @@ private const val SQLITE_OPEN_CREATE = 0x04
 
 // sqlite3 result codes the driver branches on (https://www.sqlite.org/rescode.html).
 private const val SQLITE_OK = 0
+private const val SQLITE_MISUSE = 21
 private const val SQLITE_ROW = 100
 private const val SQLITE_DONE = 101
 
@@ -41,7 +42,11 @@ public actual class DoltLiteConnection internal constructor(
     private val dbPointer: Long,
 ) : SQLiteConnection {
 
+    @Volatile
+    private var isClosed = false
+
     override fun prepare(sql: String): SQLiteStatement {
+        throwIfClosed()
         val stmtOut = LongArray(1)
         val rc = DoltLiteNative.nativePrepare(dbPointer, sql, stmtOut)
         if (rc != SQLITE_OK) {
@@ -51,7 +56,16 @@ public actual class DoltLiteConnection internal constructor(
     }
 
     override fun close() {
-        DoltLiteNative.nativeClose(dbPointer)
+        if (!isClosed) {
+            isClosed = true
+            DoltLiteNative.nativeClose(dbPointer)
+        }
+    }
+
+    private fun throwIfClosed() {
+        if (isClosed) {
+            throwSQLiteException(SQLITE_MISUSE, "connection is closed")
+        }
     }
 }
 
