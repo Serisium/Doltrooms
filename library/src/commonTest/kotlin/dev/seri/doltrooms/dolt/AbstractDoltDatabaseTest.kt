@@ -24,22 +24,23 @@ import kotlinx.coroutines.test.runTest
 // per the Step 3/4 precedent. Version-sensitive; re-probe on upgrade.
 //
 // Test list (red-green; add cases as they occur):
-// - [ ] commit returns the new head hash; log lists it newest-first and
+// - [x] commit returns the new head hash; log lists it newest-first and
 //       ends with DoltLite's own "Initialize data repository" commit
-// - [ ] guard: an engine without dolt_* support throws SQLiteException
+// - [x] guard: an engine without dolt_* support throws SQLiteException
 //       (not a crash) from the helpers
-// - [ ] status: new tables before first commit, empty tree after,
+// - [x] status: new tables before first commit, empty tree after,
 //       unstaged modification after a write; commit on a clean tree
 //       throws "nothing to commit"
-// - [ ] branch/checkout/currentBranch/branches/deleteBranch round-trip;
-//       fast-forward merge returns the merged head
-// - [ ] branch state is per-connection: Room's reader connections do NOT
+// - [x] branch/checkout/currentBranch/branches/deleteBranch round-trip
+// - [x] branch state is per-connection: Room's reader connections do NOT
 //       follow a checkout made on the writer connection
-// - [ ] clean three-way merge returns a new merge commit; conflicted
-//       merge throws cleanly and leaves the working tree on the
-//       pre-merge state (autocommit rollback)
-// - [ ] diff between two commits types added/removed/modified rows
-// - [ ] @SkipQueryVerification lets a DAO @Query call dolt_version()
+// - [x] fast-forward merge returns the merged head; clean three-way
+//       merge returns a new merge commit; conflicted merge throws
+//       cleanly and leaves the working tree on the pre-merge state
+//       (autocommit rollback)
+// - [x] diff between two commits types added/removed/modified rows;
+//       diff against the WORKING pseudo-ref sees uncommitted changes
+// - [x] @SkipQueryVerification lets a DAO @Query call dolt_version()
 abstract class AbstractDoltDatabaseTest {
 
     /** The driver under test. */
