@@ -30,25 +30,53 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 0 (repo hygiene + plan bootstrap).
-- **Branch:** `claude/doltrooms-kmp-plan-932ed0` (fast-forwarded onto
-  `origin/main` `1f09e16`, which added the red-green-testing skill + D7).
-- **Repo shape:** root project renamed `doltrooms`; single `:library`
-  module (D5); group `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`,
-  Android namespace `dev.seri.doltrooms`, publish coordinates
-  `dev.seri.doltrooms:doltrooms`. All template Fibi code deleted —
-  `library/src/` is empty; targets `jvm()`, `androidLibrary{}`,
-  `iosArm64`, `iosSimulatorArm64`, `linuxX64` compile with zero sources.
+- **Last completed step:** Step 1 (amalgamation + JVM native plumbing
+  + minimal CI).
+- **Branch:** `claude/doltrooms-kmp-plan-932ed0` (forked from
+  `origin/main` `1f09e16`).
+- **Repo shape:** single `:library` module (D5); group
+  `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
+  `dev.seri.doltrooms`, publish coordinates
+  `dev.seri.doltrooms:doltrooms`. Targets: `jvm()`, `androidLibrary{}`,
+  `iosArm64`, `iosSimulatorArm64`, `linuxX64`.
+- **Source-set map:** `commonMain` (empty) → `jvmAndroidMain`
+  (`DoltLiteNative` JNI object + `expect fun loadNativeLibrary()`;
+  C++ glue at `src/jvmAndroidMain/jni/doltrooms_jni.cpp` using
+  `JNI_OnLoad`+`RegisterNatives`) → `jvmMain` (`NativeLibraryLoader`:
+  JAR-resource extraction from `natives/<os>-<arch>/`, override
+  `-Ddev.seri.doltrooms.lib.path`) and `androidMain`
+  (`System.loadLibrary`, no packaged `.so` until Step 5).
+  `jvmTest/dev/seri/doltrooms/driver/NativeLoadTest.kt` is green.
+- **Native build plumbing** (`library/build.gradle.kts`): tasks
+  `downloadDoltliteAmalgamation` (release zip
+  `doltlite-amalgamation-0.11.33.zip`, SHA-256
+  `12e47892ead2b8016234eed3377e9e659bd61a9a6e932f9364d7326dbc095d13`,
+  cached under `library/build/doltlite/`) → `unpackDoltliteAmalgamation`
+  (flattens to `build/doltlite/src/{doltlite.c,doltlite.h,doltliteext.h}`)
+  → `compileDoltliteJni` (gcc/g++ host build →
+  `build/nativeLibs/jvm/natives/linux-x64/libdoltroomsjni.so`, wired
+  into jvmMain resources). **Settled compile flags:** androidx
+  sqlite-bundled's set MINUS `SQLITE_OMIT_SHARED_CACHE` and
+  `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` (both break DoltLite's fork — see
+  Step 1 log), PLUS `-DDOLTLITE_VERSION="0.11.33"`.
 - **Pinned versions** (`gradle/libs.versions.toml`): doltlite `0.11.33`,
   room3 `3.0.0`, androidxSqlite `2.7.0`, ksp `2.3.10`, kotlin `2.3.10`,
-  agp `9.0.1`. Catalog aliases exist for androidx-sqlite(-bundled),
-  room3-runtime/compiler/testing, and the ksp + room3 plugins; nothing
-  is wired into build scripts yet.
-- **Build/test commands that pass:** `./gradlew build`
-  (see Step 0 log for environment notes: JDK 21 via dnf, Android SDK
-  platform 36 at `/opt/android-sdk`, `local.properties` gitignored).
-- **Known divergences vs BundledSQLiteDriver:** none recorded yet
-  (table starts at Step 3).
+  agp `9.0.1`. Room/sqlite catalog aliases exist but are not yet wired.
+- **Engine version facts:** the 0.11.33 amalgamation carries
+  `SQLITE_VERSION "3.54.0"` (what `sqlite3_libversion()` returns); the
+  DoltLite release version is only observable via SQL
+  `SELECT dolt_version()` and only because we compile with
+  `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
+  `"doltlite-amalgamation"`).
+- **Build/test commands that pass:** `./gradlew build`,
+  `./gradlew :library:jvmTest` (1 test). CI:
+  `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android) — not yet
+  observed running on GitHub.
+- **Environment (re-check before building):** JDK 21 (dnf), gcc/g++ 15
+  (dnf), Android SDK platform 36 + build-tools 36 at `/opt/android-sdk`
+  (`local.properties`, gitignored).
+- **Known divergences vs BundledSQLiteDriver:** compile-flag set (2
+  flags dropped, above). Behavior table starts at Step 3.
 - **Open problems handed to next session:** none.
 
 ## Step Backlog
@@ -56,7 +84,7 @@ Each step below is executed in one fresh agent session:
 ### [x] Step 0 — Repo hygiene + living-plan bootstrap
 Done — see Step Log.
 
-### [ ] Step 1 — Amalgamation acquisition + JVM native plumbing + minimal CI
+### [x] Step 1 — Amalgamation acquisition + JVM native plumbing + minimal CI
 - **Goal:** Pinned DoltLite 0.11.33 amalgamation downloads reproducibly
   and compiles (with minimal JNI glue) into a loadable
   `libdoltroomsjni.so`; a jvm test proves the lib loads.
@@ -308,3 +336,47 @@ Done — see Step Log.
 - Verification: `./gradlew build` PASSED (exit 0) — jvm, android,
   iosArm64/iosSimulatorArm64 klibs, linuxX64 all compile with the
   emptied source tree; Konan toolchain provisioned on first run.
+
+### Step 1 — Amalgamation + JVM native plumbing + minimal CI (2026-07-17)
+
+- **Red first:** `NativeLoadTest.nativeLibraryLoadsAndReportsEngineVersion`
+  written before any production code; watched it fail
+  (`Unresolved reference 'DoltLiteNative'` — compile error counts as
+  red). Green after loader + glue + build plumbing; refactors on green
+  (checksum-failure cleanup, `const_cast` to silence the
+  JNINativeMethod warning). 1 test, 0 failures.
+- **Card divergence:** the card said the test should assert the
+  "doltlite version string" — wrong at the C level. The amalgamation
+  has no DoltLite-version C symbol; `sqlite3_libversion()` returns
+  `"3.54.0"` (`SQLITE_VERSION` in doltlite.h). The test asserts that
+  instead. The DoltLite release version is exposed only through SQL
+  `dolt_version()`, which reads the `DOLTLITE_VERSION` compile-time
+  define — fallback `"doltlite-amalgamation"` — so we pass
+  `-DDOLTLITE_VERSION="0.11.33"`. A Step-2+ test should assert
+  `SELECT dolt_version()` = `0.11.33` once prepare/step exists.
+- **Release asset naming confirmed** (risk from the card, resolved):
+  `doltlite-amalgamation-0.11.33.zip` containing
+  `doltlite-amalgamation-0.11.33/{doltlite.c,doltlite.h,doltliteext.h}`.
+  Also present per release: `doltlite-lib-<os>-<arch>` prebuilt zips,
+  `doltlite-tools-<os>-<arch>` zips (likely carries
+  `doltlite-remotesrv` — relevant to Step 8), xcframework, wasm zip,
+  autoconf tarball, deb packages.
+- **Fork-divergence discovery (settled decision, recorded in the build
+  script):** DoltLite 0.11.33 does NOT compile with two androidx
+  sqlite-bundled flags: `SQLITE_OMIT_SHARED_CACHE` (fork's btree shim
+  redefines/calls the Btree lock functions that flag empties out) and
+  `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` (activates `setDefaultSyncFlag`,
+  which dereferences the fork-opaque `Btree` struct). Both dropped;
+  all other androidx flags compile clean. Consequences: shared-cache
+  code is compiled in (unused by the driver) and WAL default
+  synchronous stays at SQLite's default (`FULL`) instead of androidx's
+  `NORMAL` — candidate `PRAGMA synchronous` tuning later; probe at
+  Step 3.
+- **Environment delta:** installed `gcc`/`gcc-c++` 15 via dnf.
+- CI workflow added (`.github/workflows/ci.yml`): ubuntu-latest,
+  temurin JDK 21, `android-actions/setup-android@v3`,
+  `gradle/actions/setup-gradle@v4`, runs
+  `./gradlew build :library:jvmTest`. Unverified until pushed.
+- **Follow-ups:** fold the release-asset naming facts into the
+  doltlite skill (artifacts reference) per skill-maintenance — queued
+  with the existing KSP-note follow-up from Step 0.
