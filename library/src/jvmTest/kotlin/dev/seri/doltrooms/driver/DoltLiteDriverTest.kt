@@ -42,6 +42,23 @@ class DoltLiteDriverTest {
     }
 
     @Test
+    fun prepareOnClosedConnectionThrows() {
+        val connection = DoltLiteDriver().open(":memory:")
+        connection.close()
+        val e = assertFailsWith<SQLiteException> { connection.prepare("SELECT 1") }
+        assertTrue("connection is closed" in (e.message ?: ""), "unexpected message: ${e.message}")
+    }
+
+    @Test
+    fun connectionCloseIsIdempotent() {
+        val connection = DoltLiteDriver().open(":memory:")
+        connection.close()
+        // Contract: "Calling this function on an already closed database
+        // connection is a no-op."
+        connection.close()
+    }
+
+    @Test
     fun execSqlRunsDdl() {
         val connection = DoltLiteDriver().open(":memory:")
         try {
