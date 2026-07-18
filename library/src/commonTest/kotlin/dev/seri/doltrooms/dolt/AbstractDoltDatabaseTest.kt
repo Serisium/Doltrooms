@@ -41,6 +41,21 @@ import kotlinx.coroutines.test.runTest
 // - [x] diff between two commits types added/removed/modified rows;
 //       diff against the WORKING pseudo-ref sees uncommitted changes
 // - [x] @SkipQueryVerification lets a DAO @Query call dolt_version()
+//
+// Step 8 additions (remotes + sync; probed via ScratchRemoteProbeTest,
+// 0.11.33, 2026-07-18):
+// - [x] remote add/list/remove round-trip; duplicate add and push to an
+//       unknown remote fail cleanly
+// - [ ] push to a file:// remote + clone from it replicates rows and log
+// - [ ] pull brings new commits pushed after the clone (completes the
+//       card's push-from-A/pull-into-B round-trip)
+// - [ ] fetch makes origin/<branch> mergeable (and it is NOT mergeable
+//       before the first fetch — fetch's observable effect)
+// - [ ] non-fast-forward push is rejected; --force push succeeds
+// - [ ] conflicted pull throws and rolls back (autocommit, like merge)
+// - [ ] clone requires a fresh database (a Room-opened db is already
+//       dirty — clone is a pre-Room bootstrap); missing remote fails
+//       cleanly
 abstract class AbstractDoltDatabaseTest {
 
     /** The driver under test. */
@@ -309,6 +324,25 @@ abstract class AbstractDoltDatabaseTest {
         // embedded SQL grammar tolerates the unknown function name; this
         // call validates it at runtime on DoltLite.
         assertEquals("0.11.33", db.personDao().doltVersion())
+    }
+
+    @Test
+    fun remoteAddListRemoveRoundTrip() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        val url = "file://" + tempDbPath()
+        dolt.addRemote("origin", url)
+
+        val remote = dolt.remotes().single()
+        assertEquals("origin", remote.name)
+        assertEquals(url, remote.url)
+        // The default fetch spec mirrors git's refs/heads -> refs/remotes map.
+        assertContains(remote.fetchSpecs, "refs/remotes/origin")
+
+        val dup = assertFailsWith<SQLiteException> { dolt.addRemote("origin", url) }
+        if (exceptionMessagesObservable) assertContains(dup.message ?: "", "remote already exists")
+
+        dolt.removeRemote("origin")
+        assertEquals(emptyList(), dolt.remotes())
     }
 
     private suspend fun writerPersonCount(db: RoomConformanceDb): Long =
