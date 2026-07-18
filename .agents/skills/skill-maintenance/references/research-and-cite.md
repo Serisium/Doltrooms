@@ -86,7 +86,7 @@ The driver never exposes bridge-level version-control APIs
 (ARCHITECTURE.md D4, §4).
 ```
 
-**Never cite a repo document by file:line.** Line numbers are brittle; decision ids (D1–D9) and section numbers (§1–§4) survive edits.
+**Never cite a repo document by file:line.** Line numbers are brittle; decision ids (D1–D10) and section numbers (§1–§4) survive edits.
 
 ## What never to do
 

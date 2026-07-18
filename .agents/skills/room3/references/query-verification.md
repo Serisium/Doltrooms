@@ -46,10 +46,12 @@ suspend fun commit(msg: String): String
 
 Even skipped, the SQL must parse under Room's embedded ANTLR SQLite
 grammar (`room3-external-antlr`); an unknown function name is
-ordinary call syntax and should parse. **Caveat:** grammar tolerance
-under `@SkipQueryVerification` is inferred from compiler structure
-and Room 2 behavior, not doc-quoted — validate with a one-line
-compile test early in the JVM PoC (ARCHITECTURE.md D4).
+ordinary call syntax and parses. **Validated empirically** (Room
+3.0.0 / KSP 2.3.10, PLAN.md Step 7): a
+`@SkipQueryVerification @Query("SELECT dolt_version()")` DAO function
+compiles through every target's test KSP and returns the engine
+string at runtime on DoltLite — this repo's `PersonDao.doltVersion`
+is the living compile test.
 
 Recommendation for this project: scope the annotation per-function
 (keep verification for all ordinary queries), and prefer
