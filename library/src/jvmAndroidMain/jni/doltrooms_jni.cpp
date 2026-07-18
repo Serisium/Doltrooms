@@ -61,6 +61,14 @@ jstring NativeErrmsg(JNIEnv* env, jobject, jlong db_pointer) {
     return env->NewString(msg, length);
 }
 
+jint NativeBindLong(JNIEnv*, jobject, jlong stmt_pointer, jint index, jlong value) {
+    return sqlite3_bind_int64(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index, value);
+}
+
+jlong NativeColumnLong(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
+    return sqlite3_column_int64(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
+}
+
 jstring NativeColumnText(JNIEnv* env, jobject, jlong stmt_pointer, jint index) {
     sqlite3_stmt* stmt = reinterpret_cast<sqlite3_stmt*>(stmt_pointer);
     // Call column_text16 before column_bytes16 (https://www.sqlite.org/c3ref/column_blob.html).
@@ -88,6 +96,10 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeFinalize)},
     {const_cast<char*>("nativeErrmsg"), const_cast<char*>("(J)Ljava/lang/String;"),
      reinterpret_cast<void*>(NativeErrmsg)},
+    {const_cast<char*>("nativeBindLong"), const_cast<char*>("(JIJ)I"),
+     reinterpret_cast<void*>(NativeBindLong)},
+    {const_cast<char*>("nativeColumnLong"), const_cast<char*>("(JI)J"),
+     reinterpret_cast<void*>(NativeColumnLong)},
     {const_cast<char*>("nativeColumnText"), const_cast<char*>("(JI)Ljava/lang/String;"),
      reinterpret_cast<void*>(NativeColumnText)},
 };
