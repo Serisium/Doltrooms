@@ -120,6 +120,76 @@ abstract class AbstractDoltDatabaseTest {
     }
 
     @Test
+    fun branchCheckoutAndBranchListRoundTrip() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        val base = dolt.commit("base")
+        assertEquals("main", dolt.currentBranch())
+
+        dolt.branch("side")
+        val listed = dolt.branches()
+        assertEquals(setOf("main", "side"), listed.map { it.name }.toSet())
+        // A fresh branch points at the same head as its source.
+        assertEquals(base, listed.single { it.name == "side" }.hash)
+
+        dolt.checkout("side")
+        assertEquals("side", dolt.currentBranch())
+        db.personDao().insert(Person(name = "Bob", age = 17))
+        val sideHead = dolt.commit("side work")
+        val after = dolt.branches()
+        assertEquals(sideHead, after.single { it.name == "side" }.hash)
+        assertEquals(base, after.single { it.name == "main" }.hash)
+        assertEquals("side work", after.single { it.name == "side" }.latestCommitMessage)
+
+        // Back on main the writer connection sees only the base row.
+        dolt.checkout("main")
+        assertEquals("main", dolt.currentBranch())
+        assertEquals(1L, writerPersonCount(db))
+
+        // checkout(create = true) switches immediately; a branch equal to
+        // head deletes cleanly with -d.
+        dolt.checkout("tmp", create = true)
+        assertEquals("tmp", dolt.currentBranch())
+        dolt.checkout("main")
+        dolt.deleteBranch("tmp")
+        assertEquals(setOf("main", "side"), dolt.branches().map { it.name }.toSet())
+
+        // Checking out something that isn't a branch fails cleanly.
+        val e = assertFailsWith<SQLiteException> { dolt.checkout("nope") }
+        if (exceptionMessagesObservable) assertContains(e.message ?: "", "no such branch")
+    }
+
+    @Test
+    fun readerConnectionsDoNotFollowCheckout() = doltTest { db ->
+        // DoltLite's checked-out branch is per-connection session state
+        // (probed at 0.11.33: it does not even persist across reopen). The
+        // helpers switch only Room's single writer connection; reader
+        // connections open on / stay on the default branch. This test pins
+        // that contract — it is documentation, not a bug.
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("base")
+
+        dolt.checkout("feature", create = true)
+        db.personDao().insert(Person(name = "Bob", age = 17))
+        dolt.commit("feature work")
+
+        // The writer connection is on 'feature' and sees both rows...
+        assertEquals("feature", dolt.currentBranch())
+        assertEquals(2L, writerPersonCount(db))
+        // ...but a DAO read runs on a reader connection, which is on 'main'.
+        assertEquals(1, db.personDao().olderThan(-1).size)
+    }
+
+    private suspend fun writerPersonCount(db: RoomConformanceDb): Long =
+        db.useWriterConnection { t ->
+            t.usePrepared("SELECT COUNT(*) FROM Person") {
+                it.step()
+                it.getLong(0)
+            }
+        }
+
+    @Test
     fun engineWithoutDoltSupportFailsCleanly() = runTest {
         if (engineSupportsDolt) return@runTest
         val db = fileDb()
