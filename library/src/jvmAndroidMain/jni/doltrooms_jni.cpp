@@ -61,6 +61,17 @@ jstring NativeErrmsg(JNIEnv* env, jobject, jlong db_pointer) {
     return env->NewString(msg, length);
 }
 
+jstring NativeColumnText(JNIEnv* env, jobject, jlong stmt_pointer, jint index) {
+    sqlite3_stmt* stmt = reinterpret_cast<sqlite3_stmt*>(stmt_pointer);
+    // Call column_text16 before column_bytes16 (https://www.sqlite.org/c3ref/column_blob.html).
+    const jchar* text = static_cast<const jchar*>(sqlite3_column_text16(stmt, index));
+    if (text == nullptr) {
+        return nullptr;
+    }
+    const jsize length = sqlite3_column_bytes16(stmt, index) / 2;
+    return env->NewString(text, length);
+}
+
 // JNINativeMethod's name/signature fields are non-const char* in jni.h.
 const JNINativeMethod kMethods[] = {
     {const_cast<char*>("nativeLibVersion"), const_cast<char*>("()Ljava/lang/String;"),
@@ -77,6 +88,8 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeFinalize)},
     {const_cast<char*>("nativeErrmsg"), const_cast<char*>("(J)Ljava/lang/String;"),
      reinterpret_cast<void*>(NativeErrmsg)},
+    {const_cast<char*>("nativeColumnText"), const_cast<char*>("(JI)Ljava/lang/String;"),
+     reinterpret_cast<void*>(NativeColumnText)},
 };
 
 }  // namespace
