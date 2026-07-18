@@ -85,6 +85,21 @@ resulting linker errors.
 - **Opaque handles import from `cnames.structs`**, not the def's
   package: `import cnames.structs.sqlite3` — the package gets no
   typealias when the typedef name equals the struct tag.
+- **Two embedded static archives exporting the same symbols = silent
+  engine roulette** (observed 2026-07-18, post-Step-11 CI). Linking
+  two klibs that each embed a C library with identical exported
+  symbols (our `libdoltlite.a` and androidx sqlite-bundled's
+  `libandroidXBundledSqlite.a` — both export the full unprefixed
+  `sqlite3_*` surface) produces NO duplicate-symbol error: archive
+  semantics mean the first archive providing a symbol wins, for EVERY
+  caller in the binary. Which archive comes first is
+  environment-dependent — the repo observed DoltLite winning on the
+  Fedora dev host and androidx's sqlite winning on ubuntu CI (every
+  dolt_* call then failed "no such function: dolt_commit"). Never put
+  two engines with a shared C ABI into one native binary; this is why
+  linuxX64Test has no sqlite-bundled oracle leg (the differential
+  oracle lives on jvmTest, where engines are separate dynamic
+  libraries).
 
 ## Gradle wiring
 

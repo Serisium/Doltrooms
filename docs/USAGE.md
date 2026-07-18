@@ -57,6 +57,16 @@ Every platform runs the same engine version: one DoltLite pin,
 compiled from the release amalgamation by this build (no upstream
 prebuilt binaries).
 
+> **Kotlin/Native warning — do not link a second SQLite into the same
+> binary.** doltrooms' klib embeds a static `libdoltlite.a` exporting
+> the standard `sqlite3_*` symbols. If another dependency of your
+> native binary also statically links a SQLite engine (e.g.
+> `androidx.sqlite:sqlite-bundled`), the linker silently resolves
+> *both* drivers to whichever archive it reads first — one of the two
+> engines is not the one you think it is (first symptom: `no such
+> function: dolt_version`). Keep exactly one SQLite engine per native
+> binary. JVM and Android are unaffected (separate dynamic libraries).
+
 ## The dolt_* tour
 
 `DoltDatabase` wraps any `RoomDatabase` opened over `DoltLiteDriver`:

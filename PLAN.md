@@ -91,8 +91,9 @@ Each step below is executed in one fresh agent session:
   commonized cinterop bindings from
   `src/nativeInterop/cinterop/doltlite.def` (headers-only bindings —
   see the class map; engine archives per D9).
-- **Test map (118 jvm + 52 androidHost + 85 linuxX64 tests, all
-  green):** `commonTest
+- **Test map (118 jvm + 52 androidHost + 52 linuxX64 tests, all
+  green; linuxX64 lost its 33 Bundled-oracle legs to the post-Step-11
+  symbol-collision fix — see the maintenance log entry):** `commonTest
   …/driver/AbstractDriverConformanceTest.kt` — the differential
   conformance suite (27 cases; its header carries the coverage
   checklist: type roundtrips incl. empty blob + NULL + unbound params,
@@ -158,13 +159,16 @@ Each step below is executed in one fresh agent session:
   `android.database.SQLException` constructor, so exception MESSAGES
   are unobservable in android host tests — types/behavior still
   assert; message content is covered by jvm/native legs and
-  on-device. linuxX64Test concretes (Step 6): BOTH legs of BOTH
-  conformance suites (sqlite-bundled is KMP, so the Bundled oracle
-  runs natively — unlike androidHostTest) plus the DoltLite dolt
-  suite (Step 7) and `NativeTempDbPath.kt`
-  (`kotlin.random`-suffixed /tmp paths standing in for
-  `File.createTempFile`); exception messages observable, no
-  overrides.
+  on-device. linuxX64Test concretes (Step 6, narrowed post-Step-11):
+  the DoltLite legs of both conformance suites plus the dolt suite
+  (Step 7) and `NativeTempDbPath.kt` (`kotlin.random`-suffixed /tmp
+  paths standing in for `File.createTempFile`); exception messages
+  observable, no overrides. NO Bundled oracle on native: both engines
+  would be statically linked into the one test binary, and both
+  archives export the same unprefixed `sqlite3_*` symbols — the
+  linker silently resolves BOTH drivers to whichever archive comes
+  first (maintenance log entry, 2026-07-18). The oracle lives on
+  jvmTest only; the dolt suite pins engine identity on native.
 - **Step 4 Room-level findings (no new divergences):** DoltLite runs
   Room's full JVM stack identically to Bundled — InvalidationTracker's
   temp-table + trigger machinery works, Flow re-emission works, WAL
@@ -184,11 +188,16 @@ Each step below is executed in one fresh agent session:
   AAR + device-test APK); actual on-device runs stay deferred
   (`withDeviceTestBuilder` configured, `connectedAndroidDeviceTest`
   exists but needs a device/emulator).
-- **Step 6 native findings:** the full differential matrix (27 driver
-  + 6 Room cases, BOTH engines) is green on linuxX64 with ZERO
-  driver-semantics changes — the nativeMain actuals are a literal
-  port of the jvmAndroid ones onto cinterop, and every documented
-  divergence held identically. Exception messages ARE observable on
+- **Step 6 native findings:** the conformance + Room suites are green
+  on linuxX64 with ZERO driver-semantics changes — the nativeMain
+  actuals are a literal port of the jvmAndroid ones onto cinterop.
+  (Step 6 believed it ran a native differential matrix with BOTH
+  engines; the post-Step-11 CI run exposed that as illusory — with
+  two engines statically linked into one binary, one archive's
+  `sqlite3_*` symbols capture both drivers, so the "oracle" leg was
+  DoltLite locally and the "DoltLite" leg was stock sqlite on CI.
+  The Bundled legs were removed; see the maintenance log entry.)
+  Exception messages ARE observable on
   native (no android.jar in the way). iOS diverged from the card: KGP
   disables Apple-target compilation on a Linux host once the target
   has a cinterop ("cross compilation … has been disabled because it
@@ -345,9 +354,11 @@ Each step below is executed in one fresh agent session:
   configuration only: `kspJvmTest`, `kspAndroidHostTest`,
   `kspAndroidDeviceTest`, `kspLinuxX64Test`, `kspIosArm64Test`,
   `kspIosSimulatorArm64Test` (main compilations get no KSP — no Room
-  code ships). Step 6: linuxX64Test also gets `sqlite-bundled` (the
-  oracle is KMP), and the LAST `failOnNoDiscoveredTests` carve-out is
-  gone. Step 5 wired
+  code ships). Step 6 removed the LAST `failOnNoDiscoveredTests`
+  carve-out; its `sqlite-bundled` dependency on linuxX64Test was
+  REVERTED post-Step-11 (symbol collision — see the build-script
+  comment at the former wiring site and the maintenance log entry).
+  Step 5 wired
   `testAndroidHostTest` to depend on `compileDoltliteJni` and prepend
   its output dir to the forked JVM's `java.library.path` (AGP already
   sets that property, ending with the unused
@@ -420,7 +431,7 @@ Each step below is executed in one fresh agent session:
 - **Build/test commands that pass — the canonical Linux matrix,
   frozen at Step 10 (the same single line CI runs):**
   `./gradlew build :library:jvmTest :library:testAndroidHostTest
-  :library:linuxX64Test` (118 + 52 + 85 tests; the two iOS targets
+  :library:linuxX64Test` (118 + 52 + 52 tests; the two iOS targets
   are SKIPPED on a Linux host since they carry a cinterop — exit
   stays 0; no wasm target exists, D4). Also passing: `./gradlew
   :library:bundleAndroidMainAar :library:assembleAndroidDeviceTest`
@@ -1404,3 +1415,55 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   worktree). No new packages (Dokka arrives via Gradle).
 - **Follow-ups:** none — see the maintenance-mode preamble for what
   future sessions may do.
+
+### Maintenance — linuxX64 engine symbol collision + template-workflow cleanup (2026-07-18, post-Step-11, same branch/session, PR #2)
+
+- **Trigger:** the first observed CI run (PR #2, created this
+  session on user request along with `docs/BUILDOUT_PLAN.md`, a
+  frozen snapshot of this file). `ci.yml` failed in `linuxX64Test`:
+  all 18 dolt-touching cases red with "no such function:
+  dolt_commit" (messages recovered from the Step 10 on-failure
+  test-report artifact — that machinery paid for itself on its first
+  outing), while every driver/Room conformance case passed.
+- **Root cause (verified structurally, not guessed):** the linuxX64
+  test binary statically linked TWO engines — our `libdoltlite.a`
+  (275 exported `sqlite3_*` globals) and androidx sqlite-bundled's
+  `libandroidXBundledSqlite.a` (269, inside its cinterop klib). With
+  identical strong symbols, archive link semantics produce no
+  duplicate-symbol error: the first archive wins for EVERY caller,
+  so ONE engine served BOTH drivers. Locally DoltLite won (nm on the
+  kexe: single `sqlite3_open_v2`, 443 dolt strings) — meaning Step
+  6's "native differential matrix" was illusory (the oracle leg ran
+  DoltLite); on ubuntu CI androidx's engine won — DoltLiteDriver
+  drove stock sqlite, and only the dolt suite could notice. No local
+  test could catch it: the conformance suites deliberately avoid
+  divergent behaviors, and no Bundled dolt-guard concrete existed on
+  native.
+- **Fix (user-approved option: drop the native oracle legs):**
+  removed `sqlite-bundled` from linuxX64Test dependencies (replaced
+  by an explanatory comment at the wiring site) and deleted the two
+  Bundled concrete classes in `library/src/linuxX64Test/`. Exactly
+  one engine now links into the native test binary on every host.
+  The differential oracle remains on jvmTest (separate dynamic
+  libraries — no collision possible); on native the dolt suite pins
+  engine identity (it is precisely what failed when the wrong engine
+  captured the binary). linuxX64 test count: 85 → 52. Current State
+  synced (test map, Step 6 findings, build facts, canonical counts
+  118 + 52 + 52).
+- **Also (user-approved): deleted `.github/workflows/gradle.yml`** —
+  an unmaintained `multiplatform-library-template` leftover from the
+  initial commit (never tracked by any step): its matrix duplicated
+  ci.yml without the caching/NDK setup, and its macos
+  `iosSimulatorArm64Test` job cannot pass before the deferred iOS
+  archive work. `publish.yml` (same origin, release-triggered,
+  dormant) KEPT for later review against the finalized signing env
+  names before the first release.
+- **Docs/skills:** USAGE.md gained the consumer-facing warning
+  (never statically link a second SQLite into the same native
+  binary); deferred-verification's first-CI-run entry rewritten as
+  partially observed + the iOS checklist warned off Apple Bundled
+  legs; kmp-native-interop cinterop gotchas gained the
+  archive-order-roulette entry. BUILDOUT_PLAN.md deliberately NOT
+  updated (frozen snapshot).
+- **Verification:** full canonical matrix green post-fix
+  (118 + 52 + 52); CI on PR #2 re-observed after push.

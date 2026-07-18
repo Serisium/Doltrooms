@@ -415,12 +415,15 @@ kotlin {
             implementation(libs.androidx.sqlite.bundled)
         }
 
-        linuxX64Test.dependencies {
-            // The oracle also runs on linuxX64 — sqlite-bundled is KMP, so
-            // the differential pattern carries to the native rung (PLAN.md
-            // Step 6).
-            implementation(libs.androidx.sqlite.bundled)
-        }
+        // linuxX64Test deliberately does NOT get sqlite-bundled: on native
+        // both engines would be STATICALLY linked into the one test binary,
+        // and libdoltlite.a and androidx's libandroidXBundledSqlite.a export
+        // the same unprefixed sqlite3_* symbols — the linker silently
+        // resolves BOTH drivers to whichever archive comes first (observed:
+        // DoltLite locally, androidx's sqlite on CI, where every dolt_* test
+        // then failed with "no such function"). The differential oracle
+        // lives on jvmTest, where the engines are separate dynamic
+        // libraries; the dolt suite pins engine identity here.
 
         // Shared JNI declarations for desktop JVM + Android, exactly like
         // androidx sqlite-bundled's jvmAndroidMain (kmp-native-interop skill).
