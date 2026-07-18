@@ -15,6 +15,17 @@ internal object DoltLiteNative {
     fun libVersion(): String = nativeLibVersion()
 
     private external fun nativeLibVersion(): String
+
+    /**
+     * `sqlite3_open_v2` (+ `sqlite3_extended_result_codes(db, 1)` on
+     * success). Returns the `sqlite3*` handle — non-null even on most
+     * failures, per https://www.sqlite.org/c3ref/open.html — and writes
+     * the result code into `rcOut[0]`.
+     */
+    external fun nativeOpen(fileName: String, flags: Int, rcOut: IntArray): Long
+
+    /** `sqlite3_close_v2`. */
+    external fun nativeClose(dbPointer: Long)
 }
 
 /**

@@ -11,10 +11,30 @@ jstring NativeLibVersion(JNIEnv* env, jobject) {
     return env->NewStringUTF(sqlite3_libversion());
 }
 
+jlong NativeOpen(JNIEnv* env, jobject, jstring file_name, jint flags, jintArray rc_out) {
+    const char* path = env->GetStringUTFChars(file_name, nullptr);
+    sqlite3* db = nullptr;
+    jint rc = sqlite3_open_v2(path, &db, flags, nullptr);
+    env->ReleaseStringUTFChars(file_name, path);
+    if (rc == SQLITE_OK) {
+        sqlite3_extended_result_codes(db, 1);
+    }
+    env->SetIntArrayRegion(rc_out, 0, 1, &rc);
+    return reinterpret_cast<jlong>(db);
+}
+
+void NativeClose(JNIEnv*, jobject, jlong db_pointer) {
+    sqlite3_close_v2(reinterpret_cast<sqlite3*>(db_pointer));
+}
+
 // JNINativeMethod's name/signature fields are non-const char* in jni.h.
 const JNINativeMethod kMethods[] = {
     {const_cast<char*>("nativeLibVersion"), const_cast<char*>("()Ljava/lang/String;"),
      reinterpret_cast<void*>(NativeLibVersion)},
+    {const_cast<char*>("nativeOpen"), const_cast<char*>("(Ljava/lang/String;I[I)J"),
+     reinterpret_cast<void*>(NativeOpen)},
+    {const_cast<char*>("nativeClose"), const_cast<char*>("(J)V"),
+     reinterpret_cast<void*>(NativeClose)},
 };
 
 }  // namespace

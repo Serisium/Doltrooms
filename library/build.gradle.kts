@@ -178,7 +178,9 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            //put your multiplatform dependencies here
+            // The driver contract we implement (ARCHITECTURE.md D1); api because
+            // DoltLiteDriver's public surface exposes the androidx.sqlite types.
+            api(libs.androidx.sqlite)
         }
 
         commonTest.dependencies {
