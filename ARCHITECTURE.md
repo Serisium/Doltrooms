@@ -189,6 +189,7 @@ checkout.
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
+| `docs/BUILDOUT_PLAN.md` | Historical snapshot of `PLAN.md` frozen at the close of the implementation iteration (Step 11) — record only, never executed from. |
 | `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
 | `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test, XCFramework packaging, and Maven Central publishing (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
