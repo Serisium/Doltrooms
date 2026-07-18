@@ -120,6 +120,21 @@ bypasses the shared `DoltLiteNative` JNI binding. Android host tests
 run the same suites on the host JVM against the desktop `.so`; device
 ABIs are exercised by the (deferred) device test run.
 
+### D9 — Every platform builds `libdoltlite` from the one pinned amalgamation
+
+The engine under every platform binding is compiled by this build from
+the same release amalgamation, at the single version pinned in the
+version catalog, with the settled compile-flag set: the desktop JVM
+`.so`, the Android per-ABI `.so` (D8), and the Kotlin/Native klibs
+(cinterop binds `doltlite.h` headers-only; linuxX64 embeds a static
+archive of the amalgamation into the klib, and iOS archives are built
+the same way on a macOS host — see `docs/deferred-verification.md`).
+Upstream prebuilt platform artifacts are not consumed — the JNA-based
+Android AAR (D8), the doltlite-swift XCFramework (which lagged the pin,
+0.11.17 vs 0.11.33, when this was settled), and the per-OS prebuilt
+lib zips all version independently of each other and would break the
+one-pin rule (AGENTS.md).
+
 ## 3. Codemap
 
 ### 3.1 Repository layout
@@ -127,10 +142,11 @@ ABIs are exercised by the (deferred) device test run.
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D8. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D9. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
+| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test (needs a Mac), Android on-device tests. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
@@ -160,8 +176,9 @@ The repo keeps the `multiplatform-library-template` build shape:
   test suites only — the shipped artifact depends on androidx.sqlite,
   never on Room (D1).
 - `gradle.properties` — configuration cache and build cache on;
-  `kotlin.mpp.enableCInteropCommonization=true` is already set, which
-  matters once the iOS driver rung adds cinterop (D4).
+  `kotlin.mpp.enableCInteropCommonization=true` commonizes the shared
+  `doltlite` cinterop bindings across the native targets, so the one
+  `nativeMain` driver implementation compiles against them (D9).
 - Publishing: the vanniktech plugin targets Maven Central with
   signing. Coordinates are decided: group `dev.seri.doltrooms`,
   artifact `doltrooms` (Android namespace `dev.seri.doltrooms`).
@@ -193,7 +210,9 @@ macOS) only when an iteration needs it.
 `DoltLiteStatement` expect classes (D1's three interfaces);
 `jvmAndroidMain` carries the shared JNI binding (`DoltLiteNative` plus
 the C++ glue) with `jvmMain`/`androidMain` library loaders beneath it;
-`nativeMain` holds stub actuals until the cinterop rung (D4). The tree
+`nativeMain` carries the Kotlin/Native actuals over the cinterop
+bindings defined by `library/src/nativeInterop/cinterop/doltlite.def`
+(headers-only bindings, engine archives per D9). The tree
 keeps the template's source-set shape: `commonMain` with per-platform
 `*Main` sets below it, `commonTest` running on every target with
 per-platform `*Test` sets (`jvmTest`, `iosTest`, `linuxX64Test`,

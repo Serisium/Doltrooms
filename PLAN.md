@@ -9,7 +9,7 @@
 Each step below is executed in one fresh agent session:
 
 1. Read this file top to bottom. Then read `ARCHITECTURE.md` (decisions
-   D1–D8) and `AGENTS.md` (working rules, skills index).
+   D1–D9) and `AGENTS.md` (working rules, skills index).
 2. Read the skill references listed on your step's card — never answer
    from memory about Room 3, DoltLite, androidx.sqlite, or KSP. Any step
    that writes net-new production code loads
@@ -30,9 +30,10 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 5 (Android target: NDK-built jniLibs +
-  androidHostTest).
-- **Branch:** `claude/plan-step-5-a532ac` (carries the Step 0–4
+- **Last completed step:** Step 6 (native targets: linuxX64 full
+  conformance via cinterop; iOS deferred to a Mac entirely — see
+  findings).
+- **Branch:** `claude/step-6-plan-5c003b` (carries the Step 0–5
   commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
@@ -53,8 +54,12 @@ Each step below is executed in one fresh agent session:
   on device from the AAR's jniLibs, which Step 5 packages per ABI
   (arm64-v8a, x86_64) from our own NDK build (D8), and on host tests
   from `java.library.path` pointing at the desktop `.so`).
-  `nativeMain` holds TODO-stub actuals until Step 6.
-- **Test map (78 jvm + 33 androidHost tests, all green):** `commonTest
+  `nativeMain` (Step 6) holds the real Kotlin/Native actuals over the
+  commonized cinterop bindings from
+  `src/nativeInterop/cinterop/doltlite.def` (headers-only bindings —
+  see the class map; engine archives per D9).
+- **Test map (78 jvm + 33 androidHost + 66 linuxX64 tests, all
+  green):** `commonTest
   …/driver/AbstractDriverConformanceTest.kt` — the differential
   conformance suite (27 cases; its header carries the coverage
   checklist: type roundtrips incl. empty blob + NULL + unbound params,
@@ -91,7 +96,12 @@ Each step below is executed in one fresh agent session:
   `android.database.SQLException` constructor, so exception MESSAGES
   are unobservable in android host tests — types/behavior still
   assert; message content is covered by jvm/native legs and
-  on-device. linuxX64Test concrete classes are Step 6 work.
+  on-device. linuxX64Test concretes (Step 6): BOTH legs of BOTH
+  suites (sqlite-bundled is KMP, so the Bundled oracle runs natively
+  — unlike androidHostTest) plus `NativeTempDbPath.kt`
+  (`kotlin.random`-suffixed /tmp paths standing in for
+  `File.createTempFile`); exception messages observable, no
+  overrides.
 - **Step 4 Room-level findings (no new divergences):** DoltLite runs
   Room's full JVM stack identically to Bundled — InvalidationTracker's
   temp-table + trigger machinery works, Flow re-emission works, WAL
@@ -111,6 +121,20 @@ Each step below is executed in one fresh agent session:
   AAR + device-test APK); actual on-device runs stay deferred
   (`withDeviceTestBuilder` configured, `connectedAndroidDeviceTest`
   exists but needs a device/emulator).
+- **Step 6 native findings:** the full differential matrix (27 driver
+  + 6 Room cases, BOTH engines) is green on linuxX64 with ZERO
+  driver-semantics changes — the nativeMain actuals are a literal
+  port of the jvmAndroid ones onto cinterop, and every documented
+  divergence held identically. Exception messages ARE observable on
+  native (no android.jar in the way). iOS diverged from the card: KGP
+  disables Apple-target compilation on a Linux host once the target
+  has a cinterop ("cross compilation … has been disabled because it
+  contains cinterops"), so the iOS tasks are SKIPPED (builds stay
+  green) and compile+link+test ALL defer to a Mac —
+  `docs/deferred-verification.md` (created this step) has the
+  ordered checklist, incl. building per-slice iOS archives of the
+  amalgamation to keep the 0.11.33 pin (now decision D9; the
+  upstream XCFramework lags at 0.11.17).
 - **Driver class map (Steps 2–3):**
   - `commonMain …/driver/DoltLiteDriver.kt` — public expect API; the
     connection now also declares `inTransaction`.
@@ -140,8 +164,25 @@ Each step below is executed in one fresh agent session:
     bundled's C++-side throwing — keeps the Android
     `SQLiteException = android.database.SQLException` typealias
     working for free).
-  - `nativeMain …/driver/DoltLiteDriver.native.kt` — TODO stubs
-    (replaced by cinterop actuals in Step 6).
+  - `nativeMain …/driver/DoltLiteDriver.native.kt` (Step 6) — the
+    cinterop actuals, a literal port of the jvmAndroid semantics:
+    same open/prepare/step/bind/get surface, guards, and error paths,
+    calling `dev.seri.doltrooms.doltlite.c.*` bindings. Native-only
+    mechanics: opaque handles import from `cnames.structs`
+    (`sqlite3`, `sqlite3_stmt` — no package typealias when typedef
+    name == struct tag); `SQLITE_TRANSIENT` recreated as
+    `(-1L).toCPointer()` (SQLiter pattern; a macro cast cinterop
+    can't expose); UTF-16 prepare/bind via `String.utf16` with
+    `length * 2` byte counts; blob reads via `readBytes`, text reads
+    length-based from `column_bytes16`; empty-blob `bind_zeroblob`;
+    errmsg via UTF-8 `sqlite3_errmsg().toKString()`.
+  - `src/nativeInterop/cinterop/doltlite.def` — headers-only bindings
+    (`headers = doltlite.h`, `headerFilter`, `noStringConversion` on
+    the UTF-8 prepares, `linkerOpts.linux_x64`). Deliberately does
+    NOT compile/parse doltlite.c: parsing it would fully define
+    `struct sqlite3` on that target, moving the type out of
+    `cnames.structs` and breaking the shared nativeMain source set
+    (kmp-native-interop skill, cinterop gotchas).
 - **Copied from bundled vs diverged:** copied — open flags, extended
   result codes at open, UTF-16 prepare/column-text, error-message
   format, idempotent closes, the no-row/column-range pre-check trio,
@@ -198,8 +239,9 @@ Each step below is executed in one fresh agent session:
   configuration only: `kspJvmTest`, `kspAndroidHostTest`,
   `kspAndroidDeviceTest`, `kspLinuxX64Test`, `kspIosArm64Test`,
   `kspIosSimulatorArm64Test` (main compilations get no KSP — no Room
-  code ships). Only ONE `failOnNoDiscoveredTests = false` carve-out
-  remains (`linuxX64Test`) — REMOVE it at Step 6. Step 5 wired
+  code ships). Step 6: linuxX64Test also gets `sqlite-bundled` (the
+  oracle is KMP), and the LAST `failOnNoDiscoveredTests` carve-out is
+  gone. Step 5 wired
   `testAndroidHostTest` to depend on `compileDoltliteJni` and prepend
   its output dir to the forked JVM's `java.library.path` (AGP already
   sets that property, ending with the unused
@@ -224,7 +266,19 @@ Each step below is executed in one fresh agent session:
   `onVariants`, not `onVariant`; verified in the artifact: correct
   ELF machines, 16 KB LOAD alignment, NEEDED = libc/libm/libdl only;
   NDK dir resolved from `local.properties` sdk.dir or `ANDROID_HOME`
-  + the catalog's ndk pin). **Settled compile flags:** androidx
+  + the catalog's ndk pin). Step 6 native plumbing:
+  `compileDoltliteStaticLinuxX64` (host gcc → `ar` →
+  `build/nativeLibs/linuxX64/libdoltlite.a`, embedded into the klib
+  via cinterop `extraOpts -staticLibrary/-libraryPath`; the archive
+  must dodge Konan's bundled glibc-2.19 sysroot skew:
+  `-DSQLITE_DISABLE_LFS` kills the fcntl→fcntl64 redirect — no-op on
+  x86_64 — and `objcopy --redefine-sym` maps the `_GNU_SOURCE`-forced
+  glibc-2.38 `__isoc23_strto*` C23 redirects back to classic
+  symbols); one shared `doltlite` cinterop on all three native
+  targets' main compilations (commonized into nativeMain), with
+  explicit task deps — cinterop does NOT track the embedded archive
+  as an input, so it's declared via `inputs.files`. **Settled compile
+  flags:** androidx
   sqlite-bundled's set MINUS `SQLITE_OMIT_SHARED_CACHE` and
   `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` (both break DoltLite's fork — see
   Step 1 log), PLUS `-DDOLTLITE_VERSION="0.11.33"`.
@@ -243,17 +297,19 @@ Each step below is executed in one fresh agent session:
   `SELECT dolt_version()` and only because we compile with
   `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
   `"doltlite-amalgamation"`).
-- **Build/test commands that pass:** `./gradlew build` (all five
-  targets, now incl. NDK jniLibs in the AAR), `./gradlew
-  :library:jvmTest` (78 tests), `./gradlew
-  :library:testAndroidHostTest` (33 tests), `./gradlew
-  :library:bundleAndroidMainAar :library:assembleAndroidDeviceTest`
-  (AAR + device-test APK both carry `lib/<abi>/libdoltroomsjni.so`).
-  CI: `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android,
+- **Build/test commands that pass:** `./gradlew build` (all targets;
+  the two iOS targets are SKIPPED on a Linux host now that they carry
+  a cinterop — exit stays 0), `./gradlew :library:jvmTest` (78),
+  `./gradlew :library:testAndroidHostTest` (33), `./gradlew
+  :library:linuxX64Test` (66 = both suites × both engines),
+  `./gradlew :library:bundleAndroidMainAar
+  :library:assembleAndroidDeviceTest` (AAR + device-test APK both
+  carry `lib/<abi>/libdoltroomsjni.so`). CI:
+  `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android,
   `sdkmanager "ndk;28.2.13676358"`, runs build + jvmTest +
-  testAndroidHostTest) — not yet observed running on GitHub; note the
-  linuxX64 test binary needs `libcrypt.so.1` at runtime (ubuntu ships
-  it; Fedora needed libxcrypt-compat).
+  testAndroidHostTest + linuxX64Test) — not yet observed running on
+  GitHub; note the linuxX64 test binary needs `libcrypt.so.1` at
+  runtime (ubuntu ships it; Fedora needed libxcrypt-compat).
 - **Environment (re-check before building):** JDK 21 (dnf), gcc/g++ 15
   (dnf), Android SDK platform 36 + build-tools 36 at `/opt/android-sdk`
   (`local.properties`, gitignored — recreate it in fresh worktrees),
@@ -385,7 +441,7 @@ Done — see Step Log.
 - **Risks:** NDK availability in-env (install, or defer device-ABI
   compile to CI with the decision recorded).
 
-### [ ] Step 6 — Native targets: linuxX64 (full) + iOS (compile-only)
+### [x] Step 6 — Native targets: linuxX64 (full) + iOS (compile-only)
 - **Goal:** `nativeMain` actuals via cinterop over `doltlite.h`;
   conformance + Room suites green on linuxX64; iOS klibs compile.
 - **Skills:** `red-green-testing`,
@@ -467,10 +523,13 @@ Done — see Step Log.
 
 ### [ ] Step 10 — CI hardening + verification matrix
 - **Goal:** One workflow covering everything Linux-verifiable: build,
-  jvmTest, linuxX64Test, testAndroidHostTest, iOS klib compile, wasm
-  compile; caching for the amalgamation download + Konan;
-  `docs/deferred-verification.md` checklist for Mac (iOS link+test,
-  XCFramework packaging) and Android device tests.
+  jvmTest, linuxX64Test, testAndroidHostTest, wasm compile — NOT iOS:
+  since Step 6's cinterop, Apple targets cannot compile on a Linux
+  host (their tasks SKIP; see the Step 6 log); caching for the
+  amalgamation download + Konan; EXTEND `docs/deferred-verification.md`
+  (created in Step 6 with the iOS compile/link/test and Android
+  device-test entries) with XCFramework packaging and whatever else
+  accumulates.
 - **Skills:** none new; reread `kmp-native-interop` publishing notes.
 - **Red-green:** N/A (infra). Verify: green pipeline on a no-op change;
   freeze the canonical command list into Current State.
@@ -813,3 +872,69 @@ Done — see Step Log.
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue
   unchanged. Device/emulator runs remain deferred (Step 10's
   deferred-verification checklist).
+
+### Step 6 — Native targets: linuxX64 (full) + iOS (deferred) (2026-07-18, branch `claude/step-6-plan-5c003b`)
+
+- **Red-green, one large increment (as the card framed it), one
+  commit:** red = the four linuxX64Test concretes (both suites × both
+  engines) — 66 tests discovered, the 33 DoltLite legs failing
+  `NotImplementedError` on the nativeMain TODO stubs while all 33
+  Bundled oracle legs passed, validating the harness on the native
+  rung before any driver code existed. Green = the `doltlite.def`
+  cinterop + `compileDoltliteStaticLinuxX64` + real nativeMain
+  actuals (a literal port of the jvmAndroid semantics). Final: 66/66
+  linuxX64, 78 jvm, 33 androidHost, `./gradlew build` green; the last
+  `failOnNoDiscoveredTests` carve-out removed.
+- **Zero driver-semantics changes were needed** — every conformance
+  case, Room case, and documented divergence behaves identically
+  through cinterop. Exception messages are observable on native, so
+  the message-content assertions run there (unlike androidHostTest).
+- **Three build-level fights, all resolved and folded into the
+  kmp-native-interop skill (cinterop gotchas section):**
+  (1) glibc skew — Konan links linuxX64 against its bundled
+  glibc-2.19 sysroot, so the host-gcc archive's references to
+  `fcntl64` (glibc 2.28, via the amalgamation's own
+  `_FILE_OFFSET_BITS=64`) and `__isoc23_strtol` (glibc 2.38 C23
+  redirect, forced by `_GNU_SOURCE` regardless of `-std`) broke
+  `ld.lld`; fixed with `-DSQLITE_DISABLE_LFS` (no-op on x86_64) +
+  `objcopy --redefine-sym __isoc23_strto*` → classic symbols.
+  (2) A first attempt compiled the amalgamation INSIDE cinterop
+  (SQLDelight-style `---` + `#include "doltlite.c"`): cinterop then
+  PARSED the amalgamation, fully defining `struct sqlite3` on linux
+  only and breaking shared nativeMain (opaque `cnames.structs` vs
+  package class across targets). Bindings must stay headers-only;
+  reverted to the embedded static archive.
+  (3) cinterop does not track the `-staticLibrary` archive as an
+  input — a rebuilt archive left a stale copy in the klib until
+  declared via `inputs.files`.
+- **Card divergence — iOS:** the card assumed "iOS compiles on Linux,
+  link+test deferred". Reality: KGP 2.3.10 disables Apple-target
+  compilation on non-Mac hosts the moment the target carries a
+  cinterop (tasks SKIPPED, build exit 0). So iOS compile+link+test
+  ALL defer to a Mac. `docs/deferred-verification.md` created with
+  the ordered Mac checklist (cinterop → compile → per-slice
+  amalgamation archives → simulator tests) and the Step 5 Android
+  device-test entry; Step 10's card updated in place (no iOS in CI).
+- **Decision recorded:** ARCHITECTURE.md D9 — every platform builds
+  `libdoltlite` from the one pinned amalgamation; upstream prebuilt
+  artifacts (JNA AAR — D8, doltlite-swift XCFramework at 0.11.17 vs
+  our 0.11.33 pin, prebuilt lib zips) are not consumed. §3.2/§3.3
+  updated (commonized cinterop, nativeMain no longer stubs), codemap
+  gained `docs/deferred-verification.md`; D1–D8 range references
+  bumped to D1–D9 across AGENTS.md/PLAN.md/architecture-docs/
+  skill-maintenance (frontmatter of architecture-docs hand-checked;
+  skills-ref still not in-env).
+- **Native driver mechanics worth remembering:** opaque handles
+  import from `cnames.structs` (no package typealias when typedef
+  name == struct tag); `SQLITE_TRANSIENT` = `(-1L).toCPointer()`
+  (SQLiter pattern); `String.utf16` + `length * 2` for UTF-16
+  prepare/bind; length-based text reads via `column_bytes16`;
+  `kotlinx.cinterop.value` must be imported explicitly for
+  `allocPointerTo(...).value`.
+- **CI updated (unverified until pushed):** adds
+  `:library:linuxX64Test` (ubuntu ships the `libcrypt.so.1` the test
+  binary links).
+- **Environment delta:** recreated `local.properties` (fresh
+  worktree). No new packages.
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  unchanged.
