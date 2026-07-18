@@ -71,13 +71,18 @@ val downloadDoltliteAmalgamation by tasks.registering {
     outputs.file(zipFile)
     doLast {
         val target = zipFile.get().asFile
+        fun fileSha256() = MessageDigest.getInstance("SHA-256")
+            .digest(target.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        // A pre-seeded zip that already matches the pin (CI restores it from
+        // actions/cache, where Gradle task history doesn't survive the runner)
+        // is accepted without a network round-trip.
+        if (target.exists() && fileSha256() == sha256) return@doLast
         target.parentFile.mkdirs()
         URI(url).toURL().openStream().use { input ->
             target.outputStream().use { input.copyTo(it) }
         }
-        val actual = MessageDigest.getInstance("SHA-256")
-            .digest(target.readBytes())
-            .joinToString("") { "%02x".format(it) }
+        val actual = fileSha256()
         if (actual != sha256) {
             target.delete()
             error("SHA-256 mismatch for $url: expected $sha256, got $actual")
@@ -501,13 +506,18 @@ val downloadDoltliteTools by tasks.registering {
     outputs.file(zipFile)
     doLast {
         val target = zipFile.get().asFile
+        fun fileSha256() = MessageDigest.getInstance("SHA-256")
+            .digest(target.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        // Same pre-seeded-zip acceptance as downloadDoltliteAmalgamation
+        // (kept inline: a shared script-level helper would capture the script
+        // object in the task action, breaking the configuration cache).
+        if (target.exists() && fileSha256() == sha256) return@doLast
         target.parentFile.mkdirs()
         URI(url).toURL().openStream().use { input ->
             target.outputStream().use { input.copyTo(it) }
         }
-        val actual = MessageDigest.getInstance("SHA-256")
-            .digest(target.readBytes())
-            .joinToString("") { "%02x".format(it) }
+        val actual = fileSha256()
         if (actual != sha256) {
             target.delete()
             error("SHA-256 mismatch for $url: expected $sha256, got $actual")
