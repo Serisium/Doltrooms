@@ -30,9 +30,9 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 3 (full statement API + differential
-  conformance harness on JVM).
-- **Branch:** `claude/step-3-continuation-5b6dba` (carries the Step 0–2
+- **Last completed step:** Step 4 (Room3 integration on JVM,
+  differential).
+- **Branch:** `claude/step-4-continuation-c1b6c8` (carries the Step 0–3
   commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
@@ -51,22 +51,46 @@ Each step below is executed in one fresh agent session:
   `natives/<os>-<arch>/`, override `-Ddev.seri.doltrooms.lib.path`)
   and `androidMain` (`System.loadLibrary`, no packaged `.so` until
   Step 5). `nativeMain` holds TODO-stub actuals until Step 6.
-- **Test map (66 jvm tests, all green):** `commonTest
-  …/AbstractDriverConformanceTest.kt` — the differential conformance
-  suite (27 cases; its header carries the coverage checklist: type
-  roundtrips incl. empty blob + NULL + unbound params, all five
-  column types, column metadata before stepping, multi-row step,
-  reset/rebind/clearBindings, RANGE/no-row/closed-statement error
-  contract, invalid-SQL prepare, idempotent closes, BEGIN/COMMIT/
-  ROLLBACK + inTransaction, user_version round-trip across reopen,
-  4-reader+1-writer file visibility, not-thread-affine sequential
-  use via runTest+Dispatchers.Default). jvmTest concretes:
-  `DoltLiteDriverConformanceTest` + `BundledSQLiteDriverConformanceTest`
-  (the oracle — a test failing there is a bad test, not a divergence),
-  `KnownDivergenceTest` (5 probes asserting BOTH engines' observed
-  behavior so upstream changes surface as failures),
-  `DoltLiteDriverTest` (6), `NativeLoadTest` (1). androidHostTest and
-  linuxX64Test concrete classes are Step 5/6 work.
+- **Test map (78 jvm tests, all green):** `commonTest
+  …/driver/AbstractDriverConformanceTest.kt` — the differential
+  conformance suite (27 cases; its header carries the coverage
+  checklist: type roundtrips incl. empty blob + NULL + unbound params,
+  all five column types, column metadata before stepping, multi-row
+  step, reset/rebind/clearBindings, RANGE/no-row/closed-statement
+  error contract, invalid-SQL prepare, idempotent closes, BEGIN/
+  COMMIT/ROLLBACK + inTransaction, user_version round-trip across
+  reopen, 4-reader+1-writer file visibility, not-thread-affine
+  sequential use via runTest+Dispatchers.Default). `commonTest
+  …/room/AbstractRoomConformanceTest.kt` — the Step 4 differential
+  Room suite (6 cases; header checklist: suspend @Insert/@Query
+  roundtrip, parameterized list @Query + @Update/@Delete change
+  counts, @Transaction commit/rollback, Flow @Query re-emission via
+  InvalidationTracker, WAL-file-DB 4r+1w concurrent DAO readers
+  during writes, two-instance busy contract SQLITE_BUSY(5) +
+  post-release recovery) over `…/room/RoomConformanceDb.kt` (Person
+  entity INTEGER-autoGenerate PK — deliberately rowid-backed given
+  the WITHOUT ROWID divergence; DAO incl. default-body @Transaction
+  `insertPair`; `@ConstructedBy` expect object, KSP-generated
+  actuals; schema exported to `library/schemas/`). jvmTest concretes:
+  `DoltLiteDriverConformanceTest`/`BundledSQLiteDriverConformanceTest`
+  and `DoltLiteRoomConformanceTest`/`BundledRoomConformanceTest`
+  (Bundled legs are the oracle — a test failing there is a bad test,
+  not a divergence), `KnownDivergenceTest` (5 probes asserting BOTH
+  engines' observed behavior so upstream changes surface as
+  failures), `DoltLiteDriverTest` (6), `NativeLoadTest` (1).
+  androidHostTest and linuxX64Test concrete classes are Step 5/6
+  work.
+- **Step 4 Room-level findings (no new divergences):** DoltLite runs
+  Room's full JVM stack identically to Bundled — InvalidationTracker's
+  temp-table + trigger machinery works, Flow re-emission works, WAL
+  pool serves 4 concurrent readers during writes, and the
+  two-Room-instance busy probe (2026-07-18) showed the identical
+  contract on both engines: Room sets no busy_timeout, a second
+  instance's write during a held immediate transaction throws
+  androidx `SQLiteException` "Error code: 5, … database is locked"
+  promptly and succeeds after release. `useWriterConnection`/
+  `immediateTransaction`/`usePrepared` also exercised through the
+  driver (busy test) — the Step 7 dolt_* path is plumbed.
 - **Driver class map (Steps 2–3):**
   - `commonMain …/driver/DoltLiteDriver.kt` — public expect API; the
     connection now also declares `inTransaction`.
@@ -142,12 +166,22 @@ Each step below is executed in one fresh agent session:
   dependsOn edges disable Kotlin's default hierarchy and orphan
   `nativeMain` without it. `-Xexpect-actual-classes` acknowledges
   expect/actual-class Beta (androidx does the same). Test deps:
-  commonTest adds `kotlinx-coroutines-test` 1.10.2; jvmTest adds
-  `androidx.sqlite:sqlite-bundled` (the oracle). Because commonTest
-  now has sources, `testAndroidHostTest`/`linuxX64Test` produce
-  zero-test runs until their concrete classes land —
-  `failOnNoDiscoveredTests = false` carve-outs in
-  `library/build.gradle.kts` must be REMOVED at Step 5
+  commonTest adds `kotlinx-coroutines-test` 1.10.2 and
+  `room3-runtime` (Room is a TEST-ONLY consumer: the shipped library
+  is a driver Room consumes, D1 — room3-runtime deliberately NOT in
+  commonMain; revisit only when Step 7's typed helpers need Room
+  types in public API); jvmTest adds `androidx.sqlite:sqlite-bundled`
+  (the oracle). Step 4 wired the `ksp` + `androidx.room3` Gradle
+  plugins (root: apply false; library: applied), `room3 {
+  schemaDirectory("$projectDir/schemas") }` (required once the plugin
+  is applied), and `room3-compiler` on every TARGET'S TEST ksp
+  configuration only: `kspJvmTest`, `kspAndroidHostTest`,
+  `kspAndroidDeviceTest`, `kspLinuxX64Test`, `kspIosArm64Test`,
+  `kspIosSimulatorArm64Test` (main compilations get no KSP — no Room
+  code ships). Because commonTest has sources,
+  `testAndroidHostTest`/`linuxX64Test` produce zero-test runs until
+  their concrete classes land — `failOnNoDiscoveredTests = false`
+  carve-outs in `library/build.gradle.kts` must be REMOVED at Step 5
   (androidHostTest) and Step 6 (linuxX64Test).
 - **Native build plumbing** (`library/build.gradle.kts`): tasks
   `downloadDoltliteAmalgamation` (release zip
@@ -165,7 +199,10 @@ Each step below is executed in one fresh agent session:
   room3 `3.0.0`, androidxSqlite `2.7.0`, ksp `2.3.10`, kotlin `2.3.10`,
   agp `9.0.1`, kotlinxCoroutines `1.10.2`. androidx-sqlite (commonMain
   api), sqlite-bundled (jvmTest) and coroutines-test (commonTest) are
-  wired; room3 aliases exist but stay unwired until Step 4.
+  wired; Step 4 wired room3-runtime (commonTest), room3-compiler
+  (test ksp configs), and the ksp + room3 plugin aliases;
+  `room3-testing` stays unwired (nothing uses MigrationTestHelper
+  yet).
 - **Engine version facts:** the 0.11.33 amalgamation carries
   `SQLITE_VERSION "3.54.0"` (what `sqlite3_libversion()` returns); the
   DoltLite release version is only observable via SQL
@@ -173,7 +210,7 @@ Each step below is executed in one fresh agent session:
   `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
   `"doltlite-amalgamation"`).
 - **Build/test commands that pass:** `./gradlew build` (all five
-  targets), `./gradlew :library:jvmTest` (66 tests). CI:
+  targets), `./gradlew :library:jvmTest` (78 tests). CI:
   `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android) — not yet
   observed running on GitHub; note the linuxX64 test binary needs
   `libcrypt.so.1` at runtime (ubuntu ships it; Fedora needed
@@ -259,7 +296,7 @@ Done — see Step Log.
 - **Risks:** genuine DoltLite deviations are documented contract, not
   bugs to fight.
 
-### [ ] Step 4 — Room3 integration (JVM), differential
+### [x] Step 4 — Room3 integration (JVM), differential
 - **Goal:** A real Room3 database (entities, suspend DAOs, @Transaction,
   flow queries) runs green via
   `Room.inMemoryDatabaseBuilder<Db>().setDriver(DoltLiteDriver())` on
@@ -293,7 +330,9 @@ Done — see Step Log.
   AGP KMP `androidLibrary{}`; `androidMain` loader
   (`System.loadLibrary`); host tests reuse the desktop `.so`
   (`:library:testAndroidHostTest`); androidHostTest concrete classes
-  for the Step 3 conformance suite, then REMOVE the
+  for BOTH commonTest suites (Step 3 driver conformance + Step 4 Room
+  — their kspAndroidHostTest/kspAndroidDeviceTest compiler wiring
+  already landed in Step 4), then REMOVE the
   `testAndroidHostTest` zero-test carve-out
   (`failOnNoDiscoveredTests`) from `library/build.gradle.kts`;
   `withDeviceTestBuilder` configured, device runs deferred; record
@@ -610,3 +649,63 @@ Done — see Step Log.
   non-divergence; fold the stmt-busy/no-row and finalize-SIGABRT
   notes into `sqlite-c-api` watchlist as confirmed-preserved vs
   confirmed-diverged entries.
+
+### Step 4 — Room3 integration (JVM), differential (2026-07-18, branch `claude/step-4-continuation-c1b6c8`)
+
+- **Red-green, six increments, one commit each:** (1) bootstrap —
+  commonTest `RoomConformanceDb` (Person entity, suspend DAO,
+  `@ConstructedBy` expect object) + `AbstractRoomConformanceTest`
+  with insert/query roundtrip, jvmTest concretes for both drivers;
+  red was `Unresolved reference 'room3'`, green was the full build
+  wiring (ksp + androidx.room3 plugins, room3-runtime in commonTest,
+  room3-compiler on all six test ksp configs, schemaDirectory);
+  (2) parameterized list @Query + @Update/@Delete change counts;
+  (3) default-body @Transaction commit/rollback; (4) Flow @Query
+  re-emits after write; (5) WAL file DB, 4 concurrent DAO readers
+  during writer @Transactions; (6) two-instance busy contract.
+  Final: 78 jvm tests green (27 driver-conformance ×2 + 6 Room ×2 +
+  12 others); `./gradlew build` green on all five targets.
+- **No new divergences at the Room level.** Every Room feature on the
+  card ran identically on DoltLite and Bundled with zero driver
+  changes — Step 3's statement surface was already sufficient.
+  Notable conforming machinery: InvalidationTracker (temp table +
+  per-table triggers + Flow re-emission), Room's 4r+1w WAL pool,
+  changes-count reads backing @Update/@Delete return values.
+- **Busy probe (throwaway `ScratchBusyProbeTest`, deleted per Step 3
+  precedent):** with a second Room instance writing while the first
+  held an immediate transaction, BOTH engines threw androidx
+  `SQLiteException` "Error code: 5, … database is locked" promptly
+  (Room sets no busy_timeout) and recovered after release — encoded
+  as `secondInstanceWriteDuringHeldTransactionThrowsBusy`. The busy
+  test also exercises `useWriterConnection`/`immediateTransaction`/
+  `usePrepared` through our driver, pre-validating Step 7's path.
+- **Settled decision (recorded in build-script comments + Current
+  State): Room is test-only.** room3-runtime lives in commonTest, the
+  compiler only on test ksp configurations — the shipped artifact is
+  a driver Room consumes (D1), so the library must not drag Room into
+  consumers' dependency graphs. Revisit only if Step 7's typed
+  helpers need Room types in their public surface.
+- **Card divergences:** (a) the card's `add("kspJvm", …)` sketch names
+  MAIN configurations; the real test-compilation configs are
+  `kspJvmTest`/`kspAndroidHostTest`/`kspAndroidDeviceTest`/
+  `kspLinuxX64Test`/`kspIos*Test` (discovered via
+  `:library:dependencies`); (b) the predicted driver gaps (busy
+  handling, changes counting, statement reuse) produced no reds —
+  increments 4–6 are acceptance-style differential checks whose
+  oracle leg validates them (red-green skill caveat, as in Step 3);
+  (c) `@SkipQueryVerification` was NOT exercised — no dolt_* SQL goes
+  through @Query in this step; it stays on Step 7's card.
+- **Skill maintenance:** folded the KSP version-scheme correction
+  into `room3/references/kmp-setup-and-builder.md` (plain `2.3.x`
+  scheme verified on Maven Central + in-repo build; kotlinlang
+  quickstart still shows the old compound scheme) plus the
+  test-configuration names above — closes the Step 0 follow-up.
+  skills-ref still not installed in-env; frontmatter untouched,
+  hand-checked.
+- **Card updates in place:** Step 5's key tasks now say concrete
+  classes for BOTH commonTest suites and note the already-landed
+  kspAndroidHostTest/kspAndroidDeviceTest wiring.
+- **Environment delta:** recreated gitignored `local.properties`
+  (fresh worktree). No new packages needed.
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  otherwise unchanged.

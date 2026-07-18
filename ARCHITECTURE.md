@@ -1,6 +1,6 @@
 # doltlite-room-bridge — Architecture
 
-**Status:** Target architecture as of 2026-07-17. Implementation phase
+**Status:** Target architecture as of 2026-07-18. Implementation phase
 (§4); driver work is sequenced by `PLAN.md`.
 
 This document specifies the project's intended end state — the
@@ -138,9 +138,12 @@ The repo keeps the `multiplatform-library-template` build shape:
   androidx.sqlite `2.7.0`, KSP `2.3.10`. Catalog aliases exist ahead
   of use; build scripts wire them in only when the owning PLAN.md step
   opens.
-- Root `build.gradle.kts` — declares the three plugins `apply false`
+- Root `build.gradle.kts` — declares the build's plugins `apply false`
   (Kotlin Multiplatform, `com.android.kotlin.multiplatform.library`,
-  vanniktech maven-publish); `library/build.gradle.kts` applies them.
+  vanniktech maven-publish, KSP, `androidx.room3`);
+  `library/build.gradle.kts` applies them. Room and KSP serve the
+  test suites only — the shipped artifact depends on androidx.sqlite,
+  never on Room (D1).
 - `gradle.properties` — configuration cache and build cache on;
   `kotlin.mpp.enableCInteropCommonization=true` is already set, which
   matters once the iOS driver rung adds cinterop (D4).
