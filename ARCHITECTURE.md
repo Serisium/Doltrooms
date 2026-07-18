@@ -119,7 +119,7 @@ cycle, the three laws, the test list, differential green against
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
-| `library/` | The one KMP library module (D5) — `library/src/` is empty until PLAN.md's driver steps repopulate it. |
+| `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
 
 ### 3.2 Gradle wiring
@@ -170,13 +170,16 @@ Targets declared in `library/build.gradle.kts`: `jvm()`,
 already covers the first three rungs of the D4 ladder; it grows (e.g.
 macOS) only when an iteration needs it.
 
-`library/src/` is currently empty: the template's placeholder tree
-(`CustomFibi.kt` + per-platform `fibiprops.*.kt` and tests) was
-deleted when the implementation iteration opened (D5). The driver
-repopulates it step by step (`PLAN.md`), keeping the template's
-source-set shape: `commonMain` with per-platform `*Main` sets below
-it, `commonTest` running on every target with per-platform `*Test`
-sets (`jvmTest`, `iosTest`, `linuxX64Test`, `androidHostTest`).
+`library/src/` holds the driver, populated step by step by `PLAN.md`:
+`commonMain` declares the public `DoltLiteDriver`/`DoltLiteConnection`/
+`DoltLiteStatement` expect classes (D1's three interfaces);
+`jvmAndroidMain` carries the shared JNI binding (`DoltLiteNative` plus
+the C++ glue) with `jvmMain`/`androidMain` library loaders beneath it;
+`nativeMain` holds stub actuals until the cinterop rung (D4). The tree
+keeps the template's source-set shape: `commonMain` with per-platform
+`*Main` sets below it, `commonTest` running on every target with
+per-platform `*Test` sets (`jvmTest`, `iosTest`, `linuxX64Test`,
+`androidHostTest`).
 
 That shape carries the three mechanics the driver relies on:
 
