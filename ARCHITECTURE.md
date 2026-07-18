@@ -135,6 +135,24 @@ Android AAR (D8), the doltlite-swift XCFramework (which lagged the pin,
 lib zips all version independently of each other and would break the
 one-pin rule (AGENTS.md).
 
+### D10 — Typed dolt_* helpers ride Room's raw-connection API; room3-runtime is a commonMain `api` dependency
+
+The version-control helper surface is the `dev.seri.doltrooms.dolt`
+package: `DoltDatabase` (commit/branch/checkout/merge/log/diff/status)
+with typed results (`DoltCommit`, `DoltBranch`, `DoltDiffRow`, …),
+issuing plain `SELECT dolt_*(...)` SQL through
+`RoomDatabase.useWriterConnection` — D1's no-new-engine-API rule is
+upheld. Because `RoomDatabase` appears in that public surface,
+`room3-runtime` is an `api` dependency of `commonMain` (the revisit
+Step 4's test-only placement anticipated); the Room compiler/KSP still
+serves the test suites only, so no Room-generated code ships. Two
+engine facts (probed at the 0.11.33 pin) shape the helpers: dolt_*
+calls are never wrapped in explicit transactions (`dolt_commit`
+self-commits and ends any open transaction), and every helper runs on
+the pool's single writer connection because DoltLite branch state is
+per-connection session state — Room reader connections do not follow a
+checkout.
+
 ## 3. Codemap
 
 ### 3.1 Repository layout
@@ -142,7 +160,7 @@ one-pin rule (AGENTS.md).
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D9. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D10. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
@@ -172,9 +190,11 @@ The repo keeps the `multiplatform-library-template` build shape:
 - Root `build.gradle.kts` — declares the build's plugins `apply false`
   (Kotlin Multiplatform, `com.android.kotlin.multiplatform.library`,
   vanniktech maven-publish, KSP, `androidx.room3`);
-  `library/build.gradle.kts` applies them. Room and KSP serve the
-  test suites only — the shipped artifact depends on androidx.sqlite,
-  never on Room (D1).
+  `library/build.gradle.kts` applies them. The shipped artifact
+  depends on androidx.sqlite and, since the dolt_* helper layer
+  (D10), on `room3-runtime` as a `commonMain` `api` dependency; the
+  Room *compiler*/KSP serves the test suites only — no Room-generated
+  code ships (D1: Room is consumed unmodified, never forked).
 - `gradle.properties` — configuration cache and build cache on;
   `kotlin.mpp.enableCInteropCommonization=true` commonizes the shared
   `doltlite` cinterop bindings across the native targets, so the one
@@ -207,7 +227,8 @@ macOS) only when an iteration needs it.
 
 `library/src/` holds the driver, populated step by step by `PLAN.md`:
 `commonMain` declares the public `DoltLiteDriver`/`DoltLiteConnection`/
-`DoltLiteStatement` expect classes (D1's three interfaces);
+`DoltLiteStatement` expect classes (D1's three interfaces) plus the
+`dev.seri.doltrooms.dolt` helper package (`DoltDatabase`, D10);
 `jvmAndroidMain` carries the shared JNI binding (`DoltLiteNative` plus
 the C++ glue) with `jvmMain`/`androidMain` library loaders beneath it;
 `nativeMain` carries the Kotlin/Native actuals over the cinterop

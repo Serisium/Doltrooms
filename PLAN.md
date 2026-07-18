@@ -9,7 +9,7 @@
 Each step below is executed in one fresh agent session:
 
 1. Read this file top to bottom. Then read `ARCHITECTURE.md` (decisions
-   D1–D9) and `AGENTS.md` (working rules, skills index).
+   D1–D10) and `AGENTS.md` (working rules, skills index).
 2. Read the skill references listed on your step's card — never answer
    from memory about Room 3, DoltLite, androidx.sqlite, or KSP. Any step
    that writes net-new production code loads
@@ -30,19 +30,22 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 6 (native targets: linuxX64 full
-  conformance via cinterop; iOS deferred to a Mac entirely — see
-  findings).
-- **Branch:** `claude/step-6-plan-5c003b` (carries the Step 0–5
+- **Last completed step:** Step 7 (typed dolt_* helpers —
+  `DoltDatabase` — green on jvm + linuxX64 + androidHost).
+- **Branch:** `claude/plan-step-7-14b1ed` (carries the Step 0–6
   commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
   `dev.seri.doltrooms:doltrooms`. Targets: `jvm()`, `androidLibrary{}`,
   `iosArm64`, `iosSimulatorArm64`, `linuxX64`.
-- **Source-set map:** `commonMain` (androidx.sqlite as `api` dep;
-  public expect classes `DoltLiteDriver`/`DoltLiteConnection`/
-  `DoltLiteStatement` in `dev.seri.doltrooms.driver`, declaring the
+- **Source-set map:** `commonMain` (androidx.sqlite AND room3-runtime
+  as `api` deps — the latter since Step 7, D10; public expect classes
+  `DoltLiteDriver`/`DoltLiteConnection`/
+  `DoltLiteStatement` in `dev.seri.doltrooms.driver`, plus the Step 7
+  `dev.seri.doltrooms.dolt` package — plain-Kotlin `DoltDatabase`
+  helpers + `DoltCommit`/`DoltBranch`/`DoltStatusEntry`/`DoltDiffRow`
+  result types over `RoomDatabase.useWriterConnection` — declaring the
   full nonWeb member surface — every target is nonWeb, so commonMain
   resolves androidx.sqlite's nonWeb interfaces and commonTest can call
   `open`/`prepare`/`step` directly, which Step 3's conformance suite
@@ -58,7 +61,7 @@ Each step below is executed in one fresh agent session:
   commonized cinterop bindings from
   `src/nativeInterop/cinterop/doltlite.def` (headers-only bindings —
   see the class map; engine archives per D9).
-- **Test map (78 jvm + 33 androidHost + 66 linuxX64 tests, all
+- **Test map (102 jvm + 45 androidHost + 78 linuxX64 tests, all
   green):** `commonTest
   …/driver/AbstractDriverConformanceTest.kt` — the differential
   conformance suite (27 cases; its header carries the coverage
@@ -79,14 +82,32 @@ Each step below is executed in one fresh agent session:
   entity INTEGER-autoGenerate PK — deliberately rowid-backed given
   the WITHOUT ROWID divergence; DAO incl. default-body @Transaction
   `insertPair`; `@ConstructedBy` expect object, KSP-generated
-  actuals; schema exported to `library/schemas/`). jvmTest concretes:
+  actuals; schema exported to `library/schemas/`; Step 7 added
+  `@SkipQueryVerification @Query("SELECT dolt_version()")
+  doltVersion()` — the living validation that dolt_* SQL compiles in
+  DAOs when verification is skipped). `commonTest
+  …/dolt/AbstractDoltDatabaseTest.kt` — the Step 7 dolt-helper suite
+  (12 cases; NOT differential — no dolt oracle exists; its
+  `engineSupportsDolt` capability flag keeps the versioning tests
+  DoltLite-only, and the one flag=false concrete runs only the guard
+  test that a dolt-less engine throws clean SQLiteExceptions; header
+  checklist: commit/log round-trip incl. the repo-init commit, status
+  staging lifecycle + nothing-to-commit error, branch/checkout/
+  branches/deleteBranch round-trip + no-such-branch error,
+  readers-don't-follow-checkout contract, ff merge returns merged
+  head, clean 3-way merge creates merge commit, conflicted merge
+  throws + rolls back, typed diff rows incl. WORKING pseudo-ref,
+  @SkipQueryVerification dolt_version through the DAO). jvmTest concretes:
   `DoltLiteDriverConformanceTest`/`BundledSQLiteDriverConformanceTest`
   and `DoltLiteRoomConformanceTest`/`BundledRoomConformanceTest`
   (Bundled legs are the oracle — a test failing there is a bad test,
-  not a divergence), `KnownDivergenceTest` (5 probes asserting BOTH
+  not a divergence), `DoltLiteDoltDatabaseTest`/
+  `BundledDoltDatabaseTest` (the latter flag=false, guard only),
+  `KnownDivergenceTest` (5 probes asserting BOTH
   engines' observed behavior so upstream changes surface as
   failures), `DoltLiteDriverTest` (6), `NativeLoadTest` (1).
-  androidHostTest concretes (Step 5): DoltLite legs of both suites
+  androidHostTest concretes (Step 5, dolt suite added Step 7):
+  DoltLite legs of the three suites
   run on the host JVM against the desktop `.so`; NO Bundled oracle
   there — the android variant of sqlite-bundled ships only device-ABI
   jniLibs, and forcing `sqlite-bundled-jvm` would NoClassDefFound on
@@ -97,8 +118,9 @@ Each step below is executed in one fresh agent session:
   are unobservable in android host tests — types/behavior still
   assert; message content is covered by jvm/native legs and
   on-device. linuxX64Test concretes (Step 6): BOTH legs of BOTH
-  suites (sqlite-bundled is KMP, so the Bundled oracle runs natively
-  — unlike androidHostTest) plus `NativeTempDbPath.kt`
+  conformance suites (sqlite-bundled is KMP, so the Bundled oracle
+  runs natively — unlike androidHostTest) plus the DoltLite dolt
+  suite (Step 7) and `NativeTempDbPath.kt`
   (`kotlin.random`-suffixed /tmp paths standing in for
   `File.createTempFile`); exception messages observable, no
   overrides.
@@ -135,6 +157,27 @@ Each step below is executed in one fresh agent session:
   ordered checklist, incl. building per-slice iOS archives of the
   amalgamation to keep the 0.11.33 pin (now decision D9; the
   upstream XCFramework lags at 0.11.17).
+- **Step 7 dolt_* findings (all probed at 0.11.33, 2026-07-18; the
+  full fact sheet lives in the doltlite skill's version-control-sql
+  "Probed facts" section):** branch state is PER-CONNECTION session
+  state — a checkout switches only the issuing connection, new
+  connections open on `main`, and nothing persists across reopen (no
+  default-branch knob; dolt_config knows only user.name/user.email).
+  Hence `DoltDatabase` runs every helper on Room's single writer
+  connection, and Room reader connections do NOT follow a checkout —
+  DAO reads keep seeing `main` (pinned by
+  `readerConnectionsDoNotFollowCheckout`). `dolt_commit` inside an
+  open `BEGIN` commits and ENDS that transaction (the wrapper's
+  `COMMIT` then fails), so helpers use plain `usePrepared`, never
+  `withTransaction` — the card's "inside immediateTransaction" was
+  wrong. Conflicted merges: autocommit → throw + rollback; explicit
+  txn → throw but leave the txn open with dolt_conflicts populated
+  for resolution (recipe in DoltDatabase's KDoc). `dolt_diff()`
+  takes no args in DoltLite — row diffs go through the per-table
+  `dolt_diff_<table>` TVF (quotable name, bindable ref args, WORKING
+  pseudo-ref). dolt works fully on `:memory:`. AUTOINCREMENT's
+  `sqlite_sequence` shows up in dolt_status/diffs alongside user
+  tables.
 - **Driver class map (Steps 2–3):**
   - `commonMain …/driver/DoltLiteDriver.kt` — public expect API; the
     connection now also declares `inTransaction`.
@@ -226,12 +269,12 @@ Each step below is executed in one fresh agent session:
   `library/build.gradle.kts` must stay — the custom `jvmAndroidMain`
   dependsOn edges disable Kotlin's default hierarchy and orphan
   `nativeMain` without it. `-Xexpect-actual-classes` acknowledges
-  expect/actual-class Beta (androidx does the same). Test deps:
-  commonTest adds `kotlinx-coroutines-test` 1.10.2 and
-  `room3-runtime` (Room is a TEST-ONLY consumer: the shipped library
-  is a driver Room consumes, D1 — room3-runtime deliberately NOT in
-  commonMain; revisit only when Step 7's typed helpers need Room
-  types in public API); jvmTest adds `androidx.sqlite:sqlite-bundled`
+  expect/actual-class Beta (androidx does the same). Room runtime:
+  `room3-runtime` moved commonTest→commonMain `api` in Step 7 (D10 —
+  `DoltDatabase`'s public surface takes a `RoomDatabase`); the Room
+  COMPILER stays test-only. Test deps:
+  commonTest adds `kotlinx-coroutines-test` 1.10.2;
+  jvmTest adds `androidx.sqlite:sqlite-bundled`
   (the oracle). Step 4 wired the `ksp` + `androidx.room3` Gradle
   plugins (root: apply false; library: applied), `room3 {
   schemaDirectory("$projectDir/schemas") }` (required once the plugin
@@ -299,9 +342,9 @@ Each step below is executed in one fresh agent session:
   `"doltlite-amalgamation"`).
 - **Build/test commands that pass:** `./gradlew build` (all targets;
   the two iOS targets are SKIPPED on a Linux host now that they carry
-  a cinterop — exit stays 0), `./gradlew :library:jvmTest` (78),
-  `./gradlew :library:testAndroidHostTest` (33), `./gradlew
-  :library:linuxX64Test` (66 = both suites × both engines),
+  a cinterop — exit stays 0), `./gradlew :library:jvmTest` (102),
+  `./gradlew :library:testAndroidHostTest` (45), `./gradlew
+  :library:linuxX64Test` (78),
   `./gradlew :library:bundleAndroidMainAar
   :library:assembleAndroidDeviceTest` (AAR + device-test APK both
   carry `lib/<abi>/libdoltroomsjni.so`). CI:
@@ -462,7 +505,7 @@ Done — see Step Log.
 - **Risks:** doltlite-swift XCFramework lags (0.11.17) → compile the
   amalgamation for iOS to keep the 0.11.33 pin (record as decision).
 
-### [ ] Step 7 — dolt_* versioning API
+### [x] Step 7 — dolt_* versioning API
 - **Goal:** Typed commonMain helpers — `DoltDatabase`
   commit/branch/checkout/merge/log/diff/status with result types
   (`DoltCommit`, `DoltBranch`, `DoltDiffRow`, …) — over
@@ -491,7 +534,9 @@ Done — see Step Log.
   round-trip proven by test; https path best-effort.
 - **Skills:** `red-green-testing`,
   `doltlite/references/remotes-and-sync.md`.
-- **Key tasks:** extend the dolt package with remote helpers; file://
+- **Key tasks:** extend the dolt package (`DoltDatabase`, Step 7) with
+  remote helpers — same shape: plain `usePrepared` on the writer
+  connection, NO transaction wrapper (Step 7 findings); file://
   round-trip test (two DB instances: push from A, pull into B, assert
   rows + dolt_log equality); https test against a spawned
   `doltlite-remotesrv` fixture if the binary is obtainable in-env, else
@@ -934,6 +979,76 @@ Done — see Step Log.
 - **CI updated (unverified until pushed):** adds
   `:library:linuxX64Test` (ubuntu ships the `libcrypt.so.1` the test
   binary links).
+- **Environment delta:** recreated `local.properties` (fresh
+  worktree). No new packages.
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  unchanged.
+
+### Step 7 — dolt_* versioning API (2026-07-18, branch `claude/plan-step-7-14b1ed`)
+
+- **Probe first (Step 3/4 precedent):** a throwaway
+  `ScratchDoltProbeTest` (two rounds, deleted) established every
+  version-sensitive fact against the pinned 0.11.33 before any test
+  was written — return shapes (`dolt_commit`/`dolt_merge` → hash,
+  `dolt_add`/`dolt_branch`/`dolt_checkout` → 0), the
+  `dolt_log`/`dolt_status`/`dolt_branches`/`dolt_diff_<table>` column
+  schemas, per-connection branch state, transaction interactions,
+  conflict behavior, `:memory:` support, quoted-TVF/bindable-ref diff
+  mechanics. All folded into the doltlite skill's version-control-sql
+  reference ("Probed facts" section) per skill-maintenance.
+- **Red-green, six increments, one commit each:** (1) suite bootstrap —
+  commonTest `AbstractDoltDatabaseTest` with `engineSupportsDolt`
+  capability flag, jvm concretes for DoltLite AND Bundled (flag=false
+  → guard test only), commit/log green after moving `room3-runtime`
+  commonTest→commonMain `api` and writing `DoltDatabase.commit/log`
+  (red was `Unresolved reference 'DoltDatabase'`); (2) status +
+  nothing-to-commit error contract; (3) branch/checkout/currentBranch/
+  branches/deleteBranch + the readers-don't-follow-checkout contract
+  test; (4) merge — ff head, clean 3-way merge commit, conflicted
+  merge throws + rolls back; (5) diff — typed rows via the per-table
+  TVF incl. WORKING pseudo-ref; (6) `@SkipQueryVerification
+  doltVersion()` on PersonDao, compile- and runtime-validated. Then
+  linuxX64 + androidHost concretes (no new driver or helper changes
+  needed). Final: 102 jvm + 45 androidHost + 78 linuxX64, `./gradlew
+  build` green.
+- **Card divergences:** (a) the card said helpers issue dolt_* SQL
+  "inside `immediateTransaction`" — WRONG at the engine level:
+  `dolt_commit` inside an open `BEGIN` commits and ends that
+  transaction, so the wrapper's closing `COMMIT` throws "cannot
+  commit - no transaction is active"; helpers use plain `usePrepared`
+  on the writer connection with no transaction wrapper (KDoc + the
+  room3 raw-connections reference updated). (b) DoltLite's `dolt_diff()`
+  function takes no arguments ("too many arguments on dolt_diff() -
+  max 0") — row-level diff goes through the generated
+  `dolt_diff_<table>` TVF instead. (c) The "capability flag" landed as
+  `engineSupportsDolt` on the abstract suite: versioning tests
+  early-return when false, and the guard test (clean SQLiteException
+  from a dolt-less engine, DB still usable after) runs only when
+  false — the Bundled jvm concrete is that one guard leg.
+- **Engine finding with API consequences — branch state is
+  per-connection:** a checkout affects only the issuing connection;
+  fresh connections open on `main`; nothing persists across reopen;
+  no default-branch config exists. So `DoltDatabase` routes ALL
+  helpers (reads included) through `useWriterConnection` for a
+  consistent view, and Room reader connections do not follow a
+  checkout — DAO reads keep seeing `main`. Pinned as the
+  `readerConnectionsDoNotFollowCheckout` test and documented
+  prominently in the class KDoc; branch-and-read workflows must stay
+  on the writer connection (or accept main-branch reads).
+- **Decision recorded:** ARCHITECTURE.md D10 — typed dolt_* helpers
+  ride Room's raw-connection API; `room3-runtime` becomes a
+  commonMain `api` dependency (the revisit Step 4 anticipated), while
+  the Room compiler stays test-only. §3.2/§3.3 updated; D1–D9 range
+  references bumped to D1–D10 across AGENTS.md/PLAN.md/
+  architecture-docs/skill-maintenance (frontmatter hand-checked;
+  skills-ref still not in-env).
+- **Skill maintenance:** doltlite version-control-sql gained the
+  probed-facts section; room3 raw-connections' "verify whether
+  dolt_commit may run inside an explicit transaction" question is
+  answered (it consumes the transaction — never wrap); room3
+  query-verification's @SkipQueryVerification grammar-tolerance
+  caveat is now empirically validated (PersonDao.doltVersion is the
+  living compile test).
 - **Environment delta:** recreated `local.properties` (fresh
   worktree). No new packages.
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue

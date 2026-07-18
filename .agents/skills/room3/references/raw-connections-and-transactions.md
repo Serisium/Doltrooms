@@ -67,10 +67,16 @@ db.useWriterConnection { transactor ->
 }
 ```
 
-Whether `dolt_commit` may run *inside* an explicit transaction is a
-DoltLite question, not a Room question — verify against the
-`doltlite` skill / upstream before assuming; plain `usePrepared`
-without the transaction wrapper is the conservative form.
+**Do NOT wrap `dolt_commit` in `immediateTransaction`** (settled
+empirically at DoltLite 0.11.33, PLAN.md Step 7): `dolt_commit` inside
+an open `BEGIN` commits and *ends* that transaction, so the wrapper's
+closing `COMMIT` fails with "cannot commit - no transaction is
+active", breaking `Transactor.withTransaction` bookkeeping. The plain
+`usePrepared` form (no transaction wrapper) is the settled shape —
+this repo's `DoltDatabase` helpers use it for every dolt_* call. Also
+remember DoltLite branch state is per-connection: only the writer
+connection follows a `dolt_checkout`; Room reader connections stay on
+the default branch (`doltlite` skill, probed facts).
 
 ## @RawQuery — reads only
 
