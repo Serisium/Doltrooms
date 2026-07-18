@@ -10,11 +10,14 @@ import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.SQLiteException
 import androidx.sqlite.execSQL
 import kotlin.test.Test
-import kotlin.test.assertFailsWith
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 
 // Step 3 differential conformance suite: the identical tests run against
 // DoltLiteDriver AND BundledSQLiteDriver (the oracle) via per-platform
@@ -43,12 +46,16 @@ import kotlin.test.assertTrue
 // - [ ] inTransaction false/true across BEGIN/COMMIT/ROLLBACK
 // - [ ] ROLLBACK discards writes; COMMIT persists them
 // - [ ] inTransaction on a closed connection throws
-// - [ ] multi-connection file db: 4 readers + 1 writer (WAL shape)
+// - [ ] multi-connection file db: 4 readers + 1 writer (WAL shape) see
+//       committed writes; uncommitted writes stay invisible
 // - [ ] connection is not thread-affine (sequential use across threads)
 abstract class AbstractDriverConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
     abstract fun driver(): SQLiteDriver
+
+    /** A fresh, non-existing file path for a temporary on-disk database. */
+    abstract fun tempDbPath(): String
 
     private inline fun withConnection(block: (SQLiteConnection) -> Unit) {
         driver().open(":memory:").use(block)
@@ -410,6 +417,68 @@ abstract class AbstractDriverConformanceTest {
             "connection is closed" in (e.message ?: ""),
             "unexpected message: ${e.message}",
         )
+    }
+
+    @Test
+    fun fourReadersAndOneWriterOnOneFile() {
+        // Room's default pool shape: 1 writer + 4 readers on the same file
+        // (WAL shape). Readers must see committed writes and must not see
+        // uncommitted ones.
+        val path = tempDbPath()
+        val writer = driver().open(path)
+        try {
+            writer.execSQL("PRAGMA journal_mode=WAL")
+            writer.execSQL("CREATE TABLE t (v INTEGER)")
+            writer.execSQL("INSERT INTO t (v) VALUES (1), (2)")
+            val readers = List(4) { driver().open(path) }
+            try {
+                for (reader in readers) {
+                    reader.prepare("SELECT COUNT(*) FROM t").use { query ->
+                        assertTrue(query.step())
+                        assertEquals(2L, query.getLong(0))
+                    }
+                }
+                writer.execSQL("BEGIN")
+                writer.execSQL("INSERT INTO t (v) VALUES (3)")
+                for (reader in readers) {
+                    reader.prepare("SELECT COUNT(*) FROM t").use { query ->
+                        assertTrue(query.step())
+                        assertEquals(2L, query.getLong(0), "uncommitted write visible to reader")
+                    }
+                }
+                writer.execSQL("COMMIT")
+                for (reader in readers) {
+                    reader.prepare("SELECT COUNT(*) FROM t").use { query ->
+                        assertTrue(query.step())
+                        assertEquals(3L, query.getLong(0))
+                    }
+                }
+            } finally {
+                readers.forEach { it.close() }
+            }
+        } finally {
+            writer.close()
+        }
+    }
+
+    @Test
+    fun connectionIsNotThreadAffine() = runTest {
+        // SQLITE_THREADSAFE=2: a connection may move between threads as long
+        // as use is never concurrent (sqlite-c-api skill, threading modes).
+        driver().open(":memory:").use { connection ->
+            withContext(Dispatchers.Default) {
+                connection.execSQL("CREATE TABLE t (v INTEGER)")
+            }
+            withContext(Dispatchers.Default) {
+                connection.execSQL("INSERT INTO t (v) VALUES (7)")
+            }
+            withContext(Dispatchers.Default) {
+                connection.prepare("SELECT v FROM t").use { query ->
+                    assertTrue(query.step())
+                    assertEquals(7L, query.getLong(0))
+                }
+            }
+        }
     }
 
     @Test
