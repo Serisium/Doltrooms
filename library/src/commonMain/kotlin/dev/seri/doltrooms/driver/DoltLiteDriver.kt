@@ -14,17 +14,57 @@ import androidx.sqlite.SQLiteStatement
  * so connections are NOT thread-safe and confinement is the job of a higher
  * abstraction such as Room's connection pool.
  */
-public expect class DoltLiteDriver() : SQLiteDriver
+public expect class DoltLiteDriver() : SQLiteDriver {
+    override fun open(fileName: String): SQLiteConnection
+}
 
 /**
  * A [SQLiteConnection] over a native DoltLite database handle
  * (`sqlite3*`). Created by [DoltLiteDriver]; not thread-safe.
  */
-public expect class DoltLiteConnection : SQLiteConnection
+public expect class DoltLiteConnection : SQLiteConnection {
+    override fun prepare(sql: String): SQLiteStatement
+
+    override fun close()
+}
 
 /**
  * A [SQLiteStatement] over a native DoltLite prepared statement
  * (`sqlite3_stmt*`). Created by [DoltLiteConnection.prepare]; not
  * thread-safe.
  */
-public expect class DoltLiteStatement : SQLiteStatement
+public expect class DoltLiteStatement : SQLiteStatement {
+    override fun bindBlob(index: Int, value: ByteArray)
+
+    override fun bindDouble(index: Int, value: Double)
+
+    override fun bindLong(index: Int, value: Long)
+
+    override fun bindText(index: Int, value: String)
+
+    override fun bindNull(index: Int)
+
+    override fun getBlob(index: Int): ByteArray
+
+    override fun getDouble(index: Int): Double
+
+    override fun getLong(index: Int): Long
+
+    override fun getText(index: Int): String
+
+    override fun isNull(index: Int): Boolean
+
+    override fun getColumnCount(): Int
+
+    override fun getColumnName(index: Int): String
+
+    override fun getColumnType(index: Int): Int
+
+    override fun step(): Boolean
+
+    override fun reset()
+
+    override fun clearBindings()
+
+    override fun close()
+}

@@ -18,7 +18,7 @@ private const val SQLITE_DONE = 101
 
 public actual class DoltLiteDriver actual constructor() : SQLiteDriver {
 
-    override fun open(fileName: String): SQLiteConnection {
+    actual override fun open(fileName: String): SQLiteConnection {
         val rcOut = IntArray(1)
         val dbPointer = DoltLiteNative.nativeOpen(
             fileName,
@@ -45,7 +45,7 @@ public actual class DoltLiteConnection internal constructor(
     @Volatile
     private var isClosed = false
 
-    override fun prepare(sql: String): SQLiteStatement {
+    actual override fun prepare(sql: String): SQLiteStatement {
         throwIfClosed()
         val stmtOut = LongArray(1)
         val rc = DoltLiteNative.nativePrepare(dbPointer, sql, stmtOut)
@@ -55,7 +55,7 @@ public actual class DoltLiteConnection internal constructor(
         return DoltLiteStatement(dbPointer, stmtOut[0])
     }
 
-    override fun close() {
+    actual override fun close() {
         if (!isClosed) {
             isClosed = true
             DoltLiteNative.nativeClose(dbPointer)
@@ -74,7 +74,7 @@ public actual class DoltLiteStatement internal constructor(
     private val stmtPointer: Long,
 ) : SQLiteStatement {
 
-    override fun step(): Boolean {
+    actual override fun step(): Boolean {
         return when (val rc = DoltLiteNative.nativeStep(stmtPointer)) {
             SQLITE_ROW -> true
             SQLITE_DONE -> false
@@ -82,43 +82,43 @@ public actual class DoltLiteStatement internal constructor(
         }
     }
 
-    override fun close() {
+    actual override fun close() {
         DoltLiteNative.nativeFinalize(stmtPointer)
     }
 
     // The full bind*/get*/reset surface is PLAN.md Step 3.
-    override fun bindBlob(index: Int, value: ByteArray): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindBlob(index: Int, value: ByteArray): Unit = TODO("PLAN.md Step 3")
 
-    override fun bindDouble(index: Int, value: Double): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindDouble(index: Int, value: Double): Unit = TODO("PLAN.md Step 3")
 
-    override fun bindLong(index: Int, value: Long): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindLong(index: Int, value: Long): Unit = TODO("PLAN.md Step 3")
 
-    override fun bindText(index: Int, value: String): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindText(index: Int, value: String): Unit = TODO("PLAN.md Step 3")
 
-    override fun bindNull(index: Int): Unit = TODO("PLAN.md Step 3")
+    actual override fun bindNull(index: Int): Unit = TODO("PLAN.md Step 3")
 
-    override fun getBlob(index: Int): ByteArray = TODO("PLAN.md Step 3")
+    actual override fun getBlob(index: Int): ByteArray = TODO("PLAN.md Step 3")
 
-    override fun getDouble(index: Int): Double = TODO("PLAN.md Step 3")
+    actual override fun getDouble(index: Int): Double = TODO("PLAN.md Step 3")
 
-    override fun getLong(index: Int): Long = TODO("PLAN.md Step 3")
+    actual override fun getLong(index: Int): Long = TODO("PLAN.md Step 3")
 
-    override fun getText(index: Int): String {
+    actual override fun getText(index: Int): String {
         // Minimal read path; the no-row/column-range/NOMEM pre-check trio
         // lands with the full surface in PLAN.md Step 3.
         return DoltLiteNative.nativeColumnText(stmtPointer, index)
             ?: throwSQLiteException(SQLITE_MISUSE, "no text value at column $index")
     }
 
-    override fun isNull(index: Int): Boolean = TODO("PLAN.md Step 3")
+    actual override fun isNull(index: Int): Boolean = TODO("PLAN.md Step 3")
 
-    override fun getColumnCount(): Int = TODO("PLAN.md Step 3")
+    actual override fun getColumnCount(): Int = TODO("PLAN.md Step 3")
 
-    override fun getColumnName(index: Int): String = TODO("PLAN.md Step 3")
+    actual override fun getColumnName(index: Int): String = TODO("PLAN.md Step 3")
 
-    override fun getColumnType(index: Int): Int = TODO("PLAN.md Step 3")
+    actual override fun getColumnType(index: Int): Int = TODO("PLAN.md Step 3")
 
-    override fun reset(): Unit = TODO("PLAN.md Step 3")
+    actual override fun reset(): Unit = TODO("PLAN.md Step 3")
 
-    override fun clearBindings(): Unit = TODO("PLAN.md Step 3")
+    actual override fun clearBindings(): Unit = TODO("PLAN.md Step 3")
 }
