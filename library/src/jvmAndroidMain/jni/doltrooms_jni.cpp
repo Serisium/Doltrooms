@@ -65,6 +65,65 @@ jint NativeBindLong(JNIEnv*, jobject, jlong stmt_pointer, jint index, jlong valu
     return sqlite3_bind_int64(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index, value);
 }
 
+jint NativeBindDouble(JNIEnv*, jobject, jlong stmt_pointer, jint index, jdouble value) {
+    return sqlite3_bind_double(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index, value);
+}
+
+jint NativeBindText(JNIEnv* env, jobject, jlong stmt_pointer, jint index, jstring value) {
+    const jchar* chars = env->GetStringChars(value, nullptr);
+    const jsize bytes = env->GetStringLength(value) * 2;
+    // SQLITE_TRANSIENT: SQLite copies before returning, so releasing the
+    // JNI chars right after is safe (https://www.sqlite.org/c3ref/bind_blob.html).
+    jint rc = sqlite3_bind_text16(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index, chars,
+                                  bytes, SQLITE_TRANSIENT);
+    env->ReleaseStringChars(value, chars);
+    return rc;
+}
+
+jint NativeBindBlob(JNIEnv* env, jobject, jlong stmt_pointer, jint index, jbyteArray value) {
+    const jsize length = env->GetArrayLength(value);
+    jbyte* bytes = env->GetByteArrayElements(value, nullptr);
+    // A NULL data pointer would bind SQL NULL, so an empty array binds a
+    // zero-length blob explicitly.
+    jint rc;
+    if (bytes == nullptr || length == 0) {
+        rc = sqlite3_bind_zeroblob(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index, 0);
+    } else {
+        rc = sqlite3_bind_blob(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index, bytes,
+                               length, SQLITE_TRANSIENT);
+    }
+    if (bytes != nullptr) {
+        env->ReleaseByteArrayElements(value, bytes, JNI_ABORT);
+    }
+    return rc;
+}
+
+jint NativeBindNull(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
+    return sqlite3_bind_null(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
+}
+
+jdouble NativeColumnDouble(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
+    return sqlite3_column_double(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
+}
+
+jbyteArray NativeColumnBlob(JNIEnv* env, jobject, jlong stmt_pointer, jint index) {
+    sqlite3_stmt* stmt = reinterpret_cast<sqlite3_stmt*>(stmt_pointer);
+    // Call column_blob before column_bytes (https://www.sqlite.org/c3ref/column_blob.html).
+    // NULL values and zero-length blobs both yield a NULL pointer; the
+    // Kotlin side distinguishes them via getColumnType.
+    const void* blob = sqlite3_column_blob(stmt, index);
+    const jsize length = blob == nullptr ? 0 : sqlite3_column_bytes(stmt, index);
+    jbyteArray result = env->NewByteArray(length);
+    if (result != nullptr && length > 0) {
+        env->SetByteArrayRegion(result, 0, length, static_cast<const jbyte*>(blob));
+    }
+    return result;
+}
+
+jint NativeColumnType(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
+    return sqlite3_column_type(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
+}
+
 jlong NativeColumnLong(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
     return sqlite3_column_int64(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
 }
@@ -98,6 +157,20 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeErrmsg)},
     {const_cast<char*>("nativeBindLong"), const_cast<char*>("(JIJ)I"),
      reinterpret_cast<void*>(NativeBindLong)},
+    {const_cast<char*>("nativeBindDouble"), const_cast<char*>("(JID)I"),
+     reinterpret_cast<void*>(NativeBindDouble)},
+    {const_cast<char*>("nativeBindText"), const_cast<char*>("(JILjava/lang/String;)I"),
+     reinterpret_cast<void*>(NativeBindText)},
+    {const_cast<char*>("nativeBindBlob"), const_cast<char*>("(JI[B)I"),
+     reinterpret_cast<void*>(NativeBindBlob)},
+    {const_cast<char*>("nativeBindNull"), const_cast<char*>("(JI)I"),
+     reinterpret_cast<void*>(NativeBindNull)},
+    {const_cast<char*>("nativeColumnDouble"), const_cast<char*>("(JI)D"),
+     reinterpret_cast<void*>(NativeColumnDouble)},
+    {const_cast<char*>("nativeColumnBlob"), const_cast<char*>("(JI)[B"),
+     reinterpret_cast<void*>(NativeColumnBlob)},
+    {const_cast<char*>("nativeColumnType"), const_cast<char*>("(JI)I"),
+     reinterpret_cast<void*>(NativeColumnType)},
     {const_cast<char*>("nativeColumnLong"), const_cast<char*>("(JI)J"),
      reinterpret_cast<void*>(NativeColumnLong)},
     {const_cast<char*>("nativeColumnText"), const_cast<char*>("(JI)Ljava/lang/String;"),
