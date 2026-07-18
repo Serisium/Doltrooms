@@ -1466,4 +1466,9 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   archive-order-roulette entry. BUILDOUT_PLAN.md deliberately NOT
   updated (frozen snapshot).
 - **Verification:** full canonical matrix green post-fix
-  (118 + 52 + 52); CI on PR #2 re-observed after push.
+  (118 + 52 + 52); CI on PR #2 re-observed after push: GREEN in
+  ~5 min, and a re-run HIT both caches with the download tasks
+  passing through sub-second on the restored zips — the
+  first-observed-CI-run checklist is fully closed
+  (deferred-verification entry updated; note actions/cache saves
+  only on job success, so a failed first run populates nothing).
