@@ -107,6 +107,19 @@ slated for deletion, not retrofitted with tests. The mechanics — the
 cycle, the three laws, the test list, differential green against
 `BundledSQLiteDriver` — live in the `red-green-testing` skill.
 
+### D8 — Android ships our own NDK-compiled `.so`, not the doltlite-android AAR
+
+The Android artifact packages `libdoltroomsjni.so` per device ABI
+(arm64-v8a, x86_64) in the AAR's jniLibs, cross-compiled by this build
+from the same pinned DoltLite amalgamation and compile-flag set as
+every other platform. The JNA-based `com.dolthub:doltlite-android` AAR
+is not used: it would introduce a second, independently versioned copy
+of `libdoltlite` (breaking the one-pin rule in AGENTS.md), JNA's
+per-call overhead on the `step()` hot path, and a loader model that
+bypasses the shared `DoltLiteNative` JNI binding. Android host tests
+run the same suites on the host JVM against the desktop `.so`; device
+ABIs are exercised by the (deferred) device test run.
+
 ## 3. Codemap
 
 ### 3.1 Repository layout
@@ -114,7 +127,7 @@ cycle, the three laws, the test list, differential green against
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D7. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D8. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
@@ -135,7 +148,9 @@ The repo keeps the `multiplatform-library-template` build shape:
   compileSdk `36`, vanniktech maven-publish `0.36.0`, and the pinned
   implementation versions: DoltLite `0.11.33` (one version across all
   platform artifacts), Room 3 `3.0.0` (`androidx.room3`),
-  androidx.sqlite `2.7.0`, KSP `2.3.10`. Catalog aliases exist ahead
+  androidx.sqlite `2.7.0`, KSP `2.3.10`, Android NDK
+  `28.2.13676358` (cross-compiles the D8 device ABIs). Catalog
+  aliases exist ahead
   of use; build scripts wire them in only when the owning PLAN.md step
   opens.
 - Root `build.gradle.kts` — declares the build's plugins `apply false`

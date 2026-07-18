@@ -15,7 +15,7 @@ doing anything else.
   becomes out of date, suggest edits or additions to the human instead
   of making them yourself.
 - **`ARCHITECTURE.md` holds this project's architectural decisions**
-  (D1–D7). It may be agent-written and may contain historical detail.
+  (D1–D8). It may be agent-written and may contain historical detail.
   Read it before any non-trivial change. You are not permitted to make
   changes elsewhere in the project that violate a decision in
   `ARCHITECTURE.md` unless explicitly told to. When such a decision is
@@ -53,7 +53,7 @@ doing anything else.
   platform artifacts, and claims in skills should record the version
   they were verified against.
 - **After editing any `.md` file, re-check cross-references.** Update
-  decision ids (D1–D7), section numbers (§1–§4), file names, and
+  decision ids (D1–D8), section numbers (§1–§4), file names, and
   links in the other docs (`AGENTS.md`, `ARCHITECTURE.md`,
   `.agents/skills/`) that point at what you changed. A dangling `§`
   or renamed file reference is a bug.

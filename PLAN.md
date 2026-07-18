@@ -9,7 +9,7 @@
 Each step below is executed in one fresh agent session:
 
 1. Read this file top to bottom. Then read `ARCHITECTURE.md` (decisions
-   D1–D7) and `AGENTS.md` (working rules, skills index).
+   D1–D8) and `AGENTS.md` (working rules, skills index).
 2. Read the skill references listed on your step's card — never answer
    from memory about Room 3, DoltLite, androidx.sqlite, or KSP. Any step
    that writes net-new production code loads
@@ -30,9 +30,9 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 4 (Room3 integration on JVM,
-  differential).
-- **Branch:** `claude/step-4-continuation-c1b6c8` (carries the Step 0–3
+- **Last completed step:** Step 5 (Android target: NDK-built jniLibs +
+  androidHostTest).
+- **Branch:** `claude/plan-step-5-a532ac` (carries the Step 0–4
   commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
@@ -49,9 +49,12 @@ Each step below is executed in one fresh agent session:
   + C++ glue `jni/doltrooms_jni.cpp`, `JNI_OnLoad`+`RegisterNatives`)
   → `jvmMain` (`NativeLibraryLoader`: JAR-resource extraction from
   `natives/<os>-<arch>/`, override `-Ddev.seri.doltrooms.lib.path`)
-  and `androidMain` (`System.loadLibrary`, no packaged `.so` until
-  Step 5). `nativeMain` holds TODO-stub actuals until Step 6.
-- **Test map (78 jvm tests, all green):** `commonTest
+  and `androidMain` (`System.loadLibrary("doltroomsjni")` — resolved
+  on device from the AAR's jniLibs, which Step 5 packages per ABI
+  (arm64-v8a, x86_64) from our own NDK build (D8), and on host tests
+  from `java.library.path` pointing at the desktop `.so`).
+  `nativeMain` holds TODO-stub actuals until Step 6.
+- **Test map (78 jvm + 33 androidHost tests, all green):** `commonTest
   …/driver/AbstractDriverConformanceTest.kt` — the differential
   conformance suite (27 cases; its header carries the coverage
   checklist: type roundtrips incl. empty blob + NULL + unbound params,
@@ -78,8 +81,17 @@ Each step below is executed in one fresh agent session:
   not a divergence), `KnownDivergenceTest` (5 probes asserting BOTH
   engines' observed behavior so upstream changes surface as
   failures), `DoltLiteDriverTest` (6), `NativeLoadTest` (1).
-  androidHostTest and linuxX64Test concrete classes are Step 5/6
-  work.
+  androidHostTest concretes (Step 5): DoltLite legs of both suites
+  run on the host JVM against the desktop `.so`; NO Bundled oracle
+  there — the android variant of sqlite-bundled ships only device-ABI
+  jniLibs, and forcing `sqlite-bundled-jvm` would NoClassDefFound on
+  the android `SQLiteException` typealias. Both abstract suites carry
+  `exceptionMessagesObservable` (default true; android host concretes
+  false): AGP's mockable android.jar stubs the
+  `android.database.SQLException` constructor, so exception MESSAGES
+  are unobservable in android host tests — types/behavior still
+  assert; message content is covered by jvm/native legs and
+  on-device. linuxX64Test concrete classes are Step 6 work.
 - **Step 4 Room-level findings (no new divergences):** DoltLite runs
   Room's full JVM stack identically to Bundled — InvalidationTracker's
   temp-table + trigger machinery works, Flow re-emission works, WAL
@@ -91,6 +103,14 @@ Each step below is executed in one fresh agent session:
   promptly and succeeds after release. `useWriterConnection`/
   `immediateTransaction`/`usePrepared` also exercised through the
   driver (busy test) — the Step 7 dolt_* path is plumbed.
+- **Step 5 Android findings:** the driver + Room suites pass on the
+  android target's host tests with ZERO driver changes — the only
+  platform delta is test-infrastructure (mockable android.jar erases
+  exception messages; see the test map). Device-ABI validation is
+  packaging-level only so far (ELF/alignment/NEEDED checks on the
+  AAR + device-test APK); actual on-device runs stay deferred
+  (`withDeviceTestBuilder` configured, `connectedAndroidDeviceTest`
+  exists but needs a device/emulator).
 - **Driver class map (Steps 2–3):**
   - `commonMain …/driver/DoltLiteDriver.kt` — public expect API; the
     connection now also declares `inTransaction`.
@@ -178,11 +198,13 @@ Each step below is executed in one fresh agent session:
   configuration only: `kspJvmTest`, `kspAndroidHostTest`,
   `kspAndroidDeviceTest`, `kspLinuxX64Test`, `kspIosArm64Test`,
   `kspIosSimulatorArm64Test` (main compilations get no KSP — no Room
-  code ships). Because commonTest has sources,
-  `testAndroidHostTest`/`linuxX64Test` produce zero-test runs until
-  their concrete classes land — `failOnNoDiscoveredTests = false`
-  carve-outs in `library/build.gradle.kts` must be REMOVED at Step 5
-  (androidHostTest) and Step 6 (linuxX64Test).
+  code ships). Only ONE `failOnNoDiscoveredTests = false` carve-out
+  remains (`linuxX64Test`) — REMOVE it at Step 6. Step 5 wired
+  `testAndroidHostTest` to depend on `compileDoltliteJni` and prepend
+  its output dir to the forked JVM's `java.library.path` (AGP already
+  sets that property, ending with the unused
+  `src/androidHostTest/jniLibs` convention dir — prepend, don't
+  replace).
 - **Native build plumbing** (`library/build.gradle.kts`): tasks
   `downloadDoltliteAmalgamation` (release zip
   `doltlite-amalgamation-0.11.33.zip`, SHA-256
@@ -191,13 +213,25 @@ Each step below is executed in one fresh agent session:
   (flattens to `build/doltlite/src/{doltlite.c,doltlite.h,doltliteext.h}`)
   → `compileDoltliteJni` (gcc/g++ host build →
   `build/nativeLibs/jvm/natives/linux-x64/libdoltroomsjni.so`, wired
-  into jvmMain resources). **Settled compile flags:** androidx
+  into jvmMain resources) and `compileDoltliteAndroidJni` (Step 5:
+  NDK clang per ABI — `aarch64-linux-android24-clang` /
+  `x86_64-linux-android24-clang(++)` from the pinned NDK, same flag
+  set, `-static-libstdc++`, no `-lpthread` on bionic →
+  `build/nativeLibs/android/<abi>/libdoltroomsjni.so`, wired into the
+  AAR via `androidComponents.onVariants { variant.sources.jniLibs
+  ?.addGeneratedSourceDirectory(...) }` — the KMP android components
+  extension extends plain `AndroidComponentsExtension`, so it's
+  `onVariants`, not `onVariant`; verified in the artifact: correct
+  ELF machines, 16 KB LOAD alignment, NEEDED = libc/libm/libdl only;
+  NDK dir resolved from `local.properties` sdk.dir or `ANDROID_HOME`
+  + the catalog's ndk pin). **Settled compile flags:** androidx
   sqlite-bundled's set MINUS `SQLITE_OMIT_SHARED_CACHE` and
   `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` (both break DoltLite's fork — see
   Step 1 log), PLUS `-DDOLTLITE_VERSION="0.11.33"`.
 - **Pinned versions** (`gradle/libs.versions.toml`): doltlite `0.11.33`,
   room3 `3.0.0`, androidxSqlite `2.7.0`, ksp `2.3.10`, kotlin `2.3.10`,
-  agp `9.0.1`, kotlinxCoroutines `1.10.2`. androidx-sqlite (commonMain
+  agp `9.0.1`, kotlinxCoroutines `1.10.2`, android-ndk
+  `28.2.13676358` (Step 5; r28+ defaults to 16 KB page alignment). androidx-sqlite (commonMain
   api), sqlite-bundled (jvmTest) and coroutines-test (commonTest) are
   wired; Step 4 wired room3-runtime (commonTest), room3-compiler
   (test ksp configs), and the ksp + room3 plugin aliases;
@@ -210,16 +244,23 @@ Each step below is executed in one fresh agent session:
   `-DDOLTLITE_VERSION="0.11.33"` (amalgamation fallback define is
   `"doltlite-amalgamation"`).
 - **Build/test commands that pass:** `./gradlew build` (all five
-  targets), `./gradlew :library:jvmTest` (78 tests). CI:
-  `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android) — not yet
-  observed running on GitHub; note the linuxX64 test binary needs
-  `libcrypt.so.1` at runtime (ubuntu ships it; Fedora needed
-  libxcrypt-compat).
+  targets, now incl. NDK jniLibs in the AAR), `./gradlew
+  :library:jvmTest` (78 tests), `./gradlew
+  :library:testAndroidHostTest` (33 tests), `./gradlew
+  :library:bundleAndroidMainAar :library:assembleAndroidDeviceTest`
+  (AAR + device-test APK both carry `lib/<abi>/libdoltroomsjni.so`).
+  CI: `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android,
+  `sdkmanager "ndk;28.2.13676358"`, runs build + jvmTest +
+  testAndroidHostTest) — not yet observed running on GitHub; note the
+  linuxX64 test binary needs `libcrypt.so.1` at runtime (ubuntu ships
+  it; Fedora needed libxcrypt-compat).
 - **Environment (re-check before building):** JDK 21 (dnf), gcc/g++ 15
   (dnf), Android SDK platform 36 + build-tools 36 at `/opt/android-sdk`
   (`local.properties`, gitignored — recreate it in fresh worktrees),
-  sqlite-devel 3.50.2 (dnf; for differential C probes against stock),
-  libxcrypt-compat (dnf; linuxX64 test.kexe links libcrypt.so.1).
+  NDK 28.2.13676358 at `/opt/android-sdk/ndk/` (installed Step 5 via
+  sdkmanager), sqlite-devel 3.50.2 (dnf; for differential C probes
+  against stock), libxcrypt-compat (dnf; linuxX64 test.kexe links
+  libcrypt.so.1).
 - **Open problems handed to next session:** none.
 
 ## Step Backlog
@@ -318,7 +359,7 @@ Done — see Step Log.
   note is stale; fold the correction into the skill per
   skill-maintenance).
 
-### [ ] Step 5 — Android target
+### [x] Step 5 — Android target
 - **Goal:** Android artifact ships our own NDK-compiled `.so` per ABI
   (arm64-v8a, x86_64; NOT the JNA-based `com.dolthub:doltlite-android`
   AAR); full conformance + Room suites green as `androidHostTest` on
@@ -709,3 +750,66 @@ Done — see Step Log.
   (fresh worktree). No new packages needed.
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue
   otherwise unchanged.
+
+### Step 5 — Android target (2026-07-18, branch `claude/plan-step-5-a532ac`)
+
+- **Red-green, two increments, one commit each:** (1) androidHostTest
+  concrete classes for BOTH commonTest suites — red was
+  `UnsatisfiedLinkError: no doltroomsjni in java.library.path` (33/33
+  failing, exactly the card's prediction); green wired
+  `testAndroidHostTest` to depend on `compileDoltliteJni` and prepend
+  its output to `java.library.path`, and removed the
+  `testAndroidHostTest` zero-test carve-out. (2) NDK cross-compile —
+  infra increment verified in the artifact rather than by unit test
+  (Step 1 CI precedent): `compileDoltliteAndroidJni` builds
+  arm64-v8a + x86_64 with the pinned NDK's API-24 clang, wired into
+  the AAR via the variant API's generated jniLibs dir; checked ELF
+  machines, 16 KB LOAD alignment (r28 default), NEEDED =
+  libc/libm/libdl only, and `lib/<abi>/` present in both the AAR and
+  the assembled device-test APK. Final: jvmTest 78 + androidHostTest
+  33 green, `./gradlew build` green on all targets.
+- **Discovery: the mockable android.jar erases exception messages.**
+  After the loader green, 7 tests still failed — every
+  message-content assertion. On android host tests
+  `androidx.sqlite.SQLiteException` is the typealias to
+  `android.database.SQLException`, and AGP's mockable android.jar
+  stubs its constructor (type intact, message dropped). Both abstract
+  suites gained `exceptionMessagesObservable` (android host concretes
+  override to false): types/behavior assert everywhere; message
+  content asserts on jvm (and native/device later). NOT a DoltLite
+  divergence — it would hit the Bundled oracle identically.
+- **No Bundled oracle leg on androidHostTest (recorded scope):** the
+  android variant of sqlite-bundled ships only device-ABI jniLibs
+  (nothing loadable on a host JVM), and forcing
+  `sqlite-bundled-jvm` can't work either — its classes reference
+  `androidx.sqlite.SQLiteException` as a CLASS, which doesn't exist
+  in the android variant of androidx.sqlite (typealias). The
+  differential oracle stays on jvmTest; androidHostTest runs the
+  DoltLite legs as the D4 acceptance gate for the android rung.
+- **Card divergences:** (a) the AGP KMP components extension has no
+  `onVariant` — it extends plain `AndroidComponentsExtension`, so
+  it's `onVariants { }`; (b) `java.util.Properties` must be imported
+  in the build script (`java.` collides with the Kotlin-DSL `java`
+  extension accessor); (c) the jni-and-packaging skill's three-ABI
+  recipe (incl. armeabi-v7a) was narrowed to the card's two ABIs;
+  (d) Android link line drops `-lpthread` (bionic has no separate
+  libpthread) and adds `-static-libstdc++` (glue uses no STL — NEEDED
+  stays libc/libm/libdl).
+- **Decision recorded:** ARCHITECTURE.md D8 — ship our own
+  NDK-compiled `.so` per ABI, not the JNA-based
+  `com.dolthub:doltlite-android` AAR (one DoltLite pin, no JNA
+  per-call overhead, one shared `DoltLiteNative` binding).
+  Cross-reference sweep: D1–D7 ranges bumped to D1–D8 in
+  ARCHITECTURE.md/AGENTS.md/PLAN.md + architecture-docs skill
+  (frontmatter hand-checked; skills-ref still not in-env) +
+  skill-maintenance reference; the kmp-native-interop
+  jni-and-packaging note that suggested the JNA AAR as "the zero-NDK
+  v1 path" now records D8's rejection instead.
+- **CI updated (unverified until pushed):** installs
+  `ndk;28.2.13676358` via sdkmanager and runs
+  `./gradlew build :library:jvmTest :library:testAndroidHostTest`.
+- **Environment delta:** recreated `local.properties`; installed NDK
+  28.2.13676358 via sdkmanager into `/opt/android-sdk/ndk/`.
+- **Follow-ups:** none new; Step 0–3 skill-maintenance queue
+  unchanged. Device/emulator runs remain deferred (Step 10's
+  deferred-verification checklist).
