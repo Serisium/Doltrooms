@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+# A superseded run of the same branch/PR proves nothing — cancel it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Full cold matrix (Konan provisioning included) is well under this;
+    # a hung native test binary should not burn the 6h default.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK (pinned in gradle/libs.versions.toml)
+        run: sdkmanager "ndk;28.2.13676358"
+      - uses: gradle/actions/setup-gradle@v4
+      # setup-gradle caches ~/.gradle but neither the project build dir nor
+      # ~/.konan. The download tasks accept a pre-seeded zip whose SHA-256
+      # matches the pin (library/build.gradle.kts), so caching just the zips
+      # skips both GitHub-release round-trips; keys hash the version catalog
+      # because every relevant pin (doltlite, kotlin) lives there.
+      - name: Cache DoltLite release downloads (amalgamation + tools zips)
+        uses: actions/cache@v4
+        with:
+          path: library/build/doltlite/*.zip
+          key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Cache Konan (Kotlin/Native compiler + linuxX64 sysroot)
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      # The complete Linux-verifiable matrix (PLAN.md Step 10): iOS tasks SKIP
+      # on Linux hosts (cinterop targets can't cross-compile — see
+      # docs/deferred-verification.md) and no wasm target exists (D4).
+      - name: Build and run JVM + Android host + linuxX64 tests
+        # linuxX64 test binaries link libcrypt.so.1 via Konan's sysroot;
+        # ubuntu ships it (Fedora needs libxcrypt-compat).
+        run: ./gradlew build :library:jvmTest :library:testAndroidHostTest :library:linuxX64Test
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: library/build/reports/tests/

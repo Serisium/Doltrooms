@@ -25,9 +25,13 @@ room3 { schemaDirectory("$projectDir/schemas") }
 - `schemaDirectory` is **required** when using the Room Gradle
   plugin; schemas export into flavored folders
   (`schemas/<variant>/<pkg>.MyDatabase/1.json`).
-- KSP plugin id `com.google.devtools.ksp`; version scheme
-  `<kotlinVersion>-<kspVersion>`, must match the project's Kotlin
-  version (https://kotlinlang.org/docs/ksp-quickstart.html).
+- KSP plugin id `com.google.devtools.ksp`; since KSP 2.3.0 the version
+  scheme is plain `2.3.x` (e.g. `2.3.10`, released 2026-07-09; verified
+  on Maven Central 2026-07-17), no longer the older
+  `<kotlinVersion>-<kspVersion>` compound that
+  https://kotlinlang.org/docs/ksp-quickstart.html still shows. Kotlin
+  2.3.10 + KSP 2.3.10 + room3-compiler 3.0.0 build green together
+  (verified in-repo 2026-07-18, PLAN.md Step 4).
 - KMP compiler wiring is per-target:
 
 ```kotlin
@@ -41,6 +45,16 @@ dependencies {
 
 with `commonMain.dependencies { implementation(room3-runtime);
 implementation(<driver artifact>) }`.
+
+- Test-only Room (entities/DAOs in `commonTest`, as in this repo's
+  differential suite) uses the per-target TEST configurations instead:
+  `kspJvmTest`, `kspLinuxX64Test`, `kspIosArm64Test`,
+  `kspIosSimulatorArm64Test`, and — under the AGP KMP library plugin —
+  `kspAndroidHostTest` / `kspAndroidDeviceTest` (names verified
+  in-repo 2026-07-18 via `gradle :library:dependencies`; PLAN.md
+  Step 4). An `expect object` `RoomDatabaseConstructor` referenced
+  from `@ConstructedBy` in commonTest then gets its KSP-generated
+  `actual` in every target's test compilation.
 
 Sibling artifacts confirmed in androidx-main: `room3-common`,
 `room3-compiler`, `room3-runtime`, `room3-testing`,

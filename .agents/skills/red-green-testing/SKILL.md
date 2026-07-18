@@ -29,9 +29,10 @@ retrofitting tests onto code that already works.
   suite passing against both `BundledSQLiteDriver` and the DoltLite driver
   — the `room3` skill's `references/testing.md`) is itself a red→green
   target at the conformance level.
-- **§4 scope.** The current iteration is research; no driver code exists
-  yet, so D7 binds the first implementation iteration onward. Do not
-  scaffold test infrastructure ahead of that (AGENTS.md working rules).
+- **§4 scope.** The current iteration is implementation (ARCHITECTURE.md
+  §4), sequenced by `PLAN.md` — D7 binds every step that authors new
+  code. Do not scaffold test infrastructure ahead of the current
+  unchecked `PLAN.md` step (AGENTS.md working rules).
 
 ## The cycle
 
@@ -92,9 +93,9 @@ salient design points is the actual skill.
 
 ## How this maps to this repo's KMP layout
 
-- **Where the red test goes.** Put the failing test in `commonTest`
-  (`FibiTest.kt` today) — it "runs on every target" (ARCHITECTURE.md
-  §3.3), so one red test drives JVM, iOS-simulator, and linuxX64 at once.
+- **Where the red test goes.** Put the failing test in `commonTest` —
+  it "runs on every target" (ARCHITECTURE.md §3.3), so one red test
+  drives JVM, iOS-simulator, and linuxX64 at once.
   Use plain `kotlin.test` + `runTest` for the suspend DAO/driver calls
   (the `room3` skill's `references/testing.md`).
 - **expect/actual seams.** A red test against a `commonMain` API may not
@@ -117,9 +118,6 @@ salient design points is the actual skill.
 Red/green is for **new classes/features written from scratch** (D7's
 scope), not a mandate to:
 
-- Retrofit tests onto the template placeholder code (`CustomFibi`,
-  `fibiprops.*`) — it is slated for deletion at the first driver iteration
-  (ARCHITECTURE.md D5), not test-driven.
 - Test-drive a trivial `expect val`/`actual val` property that carries no
   behavior.
 - Replace D4's existing Room acceptance suites with hand-written red tests

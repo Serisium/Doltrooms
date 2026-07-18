@@ -117,6 +117,34 @@ divergence risk splits cleanly:
 Prefer runtime probes (open a temp DB, try the pragma, check the
 returned string) over trusting version numbers.
 
+### Confirmed at DoltLite 0.11.33 (probed in-repo 2026-07-17/18; each pinned by a test — PLAN.md Current State divergence table)
+
+Confirmed diverged:
+
+- **Deferred open:** `sqlite3_open_v2(READWRITE|CREATE)` on an
+  unopenable path returns OK; `SQLITE_CANTOPEN` (14) surfaces at the
+  first `sqlite3_step` (prepare still OK). Stock fails at open. Eager
+  open failures still exist (READONLY on missing file → 14 at open,
+  invalid flags → 21), so keep the open rc check.
+- **Default `journal_mode` = `wal`** on file databases (stock:
+  `delete`); `PRAGMA journal_mode=WAL` works identically on both.
+- **WITHOUT ROWID storage for non-INTEGER-PK tables:**
+  `last_insert_rowid()` returns 0 and `SELECT rowid` errors ("no such
+  column"); INTEGER-PK tables agree with stock.
+- **Finalized-statement misuse is fatal, not an error:** calling
+  `sqlite3_*` on a finalized stmt SIGABRTed the test JVM — a
+  wrapper-side closed guard is load-bearing (see the finalize doc's
+  "segfaults and heap corruption").
+
+Confirmed preserved: the statement state machine, bind/column index
+bases and pre-check error contract (`sqlite3_stmt_busy` for no-row),
+`SQLITE_TRANSIENT` copying, `user_version` round-trip across reopen,
+`changes()`, `get_autocommit`, BEGIN/COMMIT/ROLLBACK semantics,
+multi-connection 4-reader+1-writer visibility, uncommitted-write
+isolation, cross-thread sequential connection use, and `PRAGMA
+synchronous` = 2 (FULL) after WAL on both engines (the feared
+WAL-synchronous divergence did not materialize).
+
 ## When to load reference files
 
 - Full lifecycle and statement semantics, with verbatim quotes (open

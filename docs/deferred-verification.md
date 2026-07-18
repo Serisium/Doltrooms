@@ -1,0 +1,124 @@
+# Deferred verification checklist
+
+Work that is implemented and believed correct but cannot be *verified*
+in the Linux-only development environment. Each entry lists what to run
+and where. Complete through PLAN.md Step 11 (publishing).
+
+## iOS (needs a macOS host with Xcode) — deferred by Step 6
+
+Kotlin disables Apple-target compilation on non-Mac hosts as soon as
+the target has a cinterop: "cross compilation to target 'iosArm64' has
+been disabled because it contains cinterops: 'doltlite' which cannot be
+processed on host 'linux_x64'" (KGP 2.3.10 warning, observed
+2026-07-18). The iOS tasks are SKIPPED on Linux, so `./gradlew build`
+stays green here, but nothing iOS is actually compiled — compile,
+link, and test are ALL deferred to a Mac, not just link+test as
+PLAN.md Step 6's card originally assumed.
+
+On a Mac, in order:
+
+1. `./gradlew :library:cinteropDoltliteIosArm64
+   :library:cinteropDoltliteIosSimulatorArm64` — the def is
+   headers-only and `doltlite.h` needs nothing beyond compiler-builtin
+   headers (`<stdarg.h>`), so this is expected to work unchanged.
+2. `./gradlew :library:compileKotlinIosArm64
+   :library:compileKotlinIosSimulatorArm64` — the nativeMain actuals
+   compile against the commonized bindings (same sources linuxX64
+   verifies on every build).
+3. Extend `library/build.gradle.kts` with per-KonanTarget static
+   archives of the amalgamation for iOS (Apple clang per target slice,
+   same `doltliteCompileFlags`, embedded via the same
+   `-staticLibrary`/`-libraryPath` extraOpts pattern the linuxX64
+   cinterop uses — see `compileDoltliteStaticLinuxX64`). Keeping the
+   0.11.33 amalgamation pin is settled: the upstream
+   doltlite-swift/XCFramework artifacts lag the pin (0.11.17 at last
+   check), so we compile the amalgamation ourselves like every other
+   platform.
+4. `./gradlew :library:iosSimulatorArm64Test` — runs both commonTest
+   conformance suites (the linuxX64Test concrete classes have iOS
+   equivalents only if added; create `iosTest` concretes mirroring
+   `library/src/linuxX64Test/` first). Do NOT add Bundled-oracle
+   concretes or a `sqlite-bundled` dependency on Apple test
+   compilations: two statically linked engines exporting the same
+   `sqlite3_*` symbols in one binary silently resolve both drivers to
+   one engine (the post-Step-11 linuxX64 lesson — PLAN.md maintenance
+   log entry).
+5. Glibc-style symbol skew does not apply (Apple libSystem), but
+   verify the archive links clean against the device and simulator
+   sysroots.
+
+## remotesrv fixture on non-linux-x64 hosts — deferred by Step 8
+
+The jvm `RemoteServerSyncTest` drives real http sync against a spawned
+`doltlite-remotesrv`. The binary comes from the release's
+`doltlite-tools-linux-x64-<version>.zip`, downloaded and
+checksum-verified by Gradle **on linux-x64 hosts only** — on any other
+host the tests print a SKIP and pass vacuously. When the suite first
+runs on a Mac (e.g. during the iOS verification above), extend
+`downloadDoltliteTools` in `library/build.gradle.kts` with the
+`osx-arm64` asset + its recorded SHA-256 to unskip them. The sync
+logic itself is platform-independent and fully covered by the
+commonTest `file://` remote tests on every target.
+
+## XCFramework packaging (needs a macOS host) — deferred by Step 10
+
+No XCFramework is configured yet — the iOS targets publish klibs only
+(the KMP umbrella publication carries them; see the
+`kmp-native-interop` targets-and-publishing reference). If Apple
+consumers ever need a binary framework, the `XCFramework()` DSL plus
+`assembleXCFramework` are Mac-only, and they depend on the per-slice
+static amalgamation archives from item 3 of the iOS checklist above —
+do the iOS list first, then add the DSL.
+
+## Maven Central publishing (needs a macOS host) — deferred by Step 11
+
+Publishing is fully configured (vanniktech plugin, real POM, Dokka
+javadoc jars, signing from `ORG_GRADLE_PROJECT_signingInMemoryKey*` /
+`mavenCentralUsername`/`-Password` environment) and smoke-verified on
+Linux: `./gradlew :library:publishToMavenLocal` publishes the root
+umbrella + `-jvm` + `-android` + `-linuxx64` publications with real
+Dokka HTML in every `-javadoc` jar, the extracted-resource `.so` in the
+jvm jar, both ABI `.so`s in the AAR, and the cinterop klib alongside
+the linuxX64 klib (signing tasks correctly SKIP with no key in the
+environment). What Linux cannot verify: the iOS publications — KGP
+skips Apple compilation on non-Mac hosts once a target carries a
+cinterop, so a Linux `publish` would upload an umbrella that references
+iOS variants without their artifacts. The real Central release must
+run entirely from a single macOS host ("publish all artifacts from a
+single host"; Central "explicitly forbids duplicate publications" —
+`kmp-native-interop` targets-and-publishing reference). On the Mac,
+after the iOS checklist above: `./gradlew publishToMavenLocal` (now
+including `-iosarm64`/`-iossimulatorarm64`), inspect, then
+`./gradlew publishToMavenCentral` with credentials + key in env.
+
+## First observed CI run — FULLY OBSERVED 2026-07-18 (PR #2), entry kept for the record
+
+`.github/workflows/ci.yml` ran for the first time on PR #2. Observed:
+the workflow executes end-to-end (checkout, JDK, SDK/NDK, caches,
+Gradle) and completed in ~5 min — ample 60-minute headroom; the first
+run failed legitimately in `linuxX64Test` (the two-static-engines
+symbol collision, since fixed — see the PLAN.md maintenance log
+entry), which also proved the on-failure test-report upload works
+(the report artifact diagnosed the failure). It also exposed two
+unmaintained template workflows from the initial commit: `gradle.yml`
+(deleted — duplicated ci.yml, and its macos `iosSimulatorArm64Test`
+job cannot pass before the iOS checklist above lands) and
+`publish.yml` (kept — release-triggered, dormant; review its secrets
+and env names against the finalized signing setup before the first
+release). Subsequently observed, closing the checklist: after the
+collision fix, the run is GREEN end-to-end (~5 min); on a re-run both
+`actions/cache` steps HIT and restored (DoltLite zips, `~/.konan` —
+note: actions/cache saves only on job success, so the failed first
+run populated nothing), and the download tasks passed through in
+sub-second time on the restored zips — the pre-seeded-zip acceptance
+worked with no network fetch. Nothing about CI remains deferred.
+
+## Android on-device (needs a device/emulator) — deferred by Step 5
+
+`connectedAndroidDeviceTest` exists (`withDeviceTestBuilder` is
+configured) and the device-test APK assembles with
+`lib/<abi>/libdoltroomsjni.so` present, but no device/emulator is
+available in-env. On a machine with one: `./gradlew
+:library:connectedAndroidDeviceTest` — runs both conformance suites
+on-device per ABI (arm64-v8a, x86_64), including the exception-message
+assertions the mockable android.jar erases in host tests.

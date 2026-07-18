@@ -1,0 +1,21 @@
+# Kotlin/Native cinterop over the DoltLite amalgamation header — mirrors
+# androidx sqlite-bundled's androidXBundledSqlite.def (kmp-native-interop
+# skill, cinterop reference). Bindings come from doltlite.h ONLY, so every
+# native target sees the same opaque cnames.structs.sqlite3/sqlite3_stmt
+# handle types (parsing doltlite.c here would fully define struct sqlite3 on
+# one target and break the shared nativeMain source set). The include dir
+# and, on linuxX64, the static libdoltlite.a are supplied by
+# library/build.gradle.kts (includeDirs + -staticLibrary/-libraryPath
+# extraOpts) because both live under build/.
+package = dev.seri.doltrooms.doltlite.c
+headers = doltlite.h
+headerFilter = doltlite*.h
+# noStringConversion on the UTF-8 prepare functions per the androidx and
+# SQLiter templates: prepare needs explicit byte lengths, not auto-converted
+# Kotlin Strings. (The driver itself uses sqlite3_prepare16_v2, whose
+# const void* parameter is never auto-converted.)
+noStringConversion = sqlite3_prepare_v2 sqlite3_prepare_v3
+# The amalgamation is compiled with SQLITE_THREADSAFE=2 and uses pthread;
+# glibc 2.34+ folds pthread/dl into libc, but the explicit opts stay for
+# older loaders (androidx's def does the same).
+linkerOpts.linux_x64 = -lpthread -ldl -lm

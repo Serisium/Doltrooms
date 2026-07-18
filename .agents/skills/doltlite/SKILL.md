@@ -71,6 +71,10 @@ until upstream documents it.
   mbedTLS plus bearer-JWT auth (release 0.11.28). The README's "run
   only on trusted networks" warning predates this. **Require ≥0.11.28
   for any network sync**; compression is still pending (issue #1584).
+  **But: prebuilt artifacts only** — the amalgamation excludes the
+  whole TLS/credential stack, so engines built from it (all of this
+  repo's, D9) sync over `file://` + plain `http://` regardless of
+  version (probed 0.11.33; `references/remotes-and-sync.md`).
 
 ## Gotchas for the Room driver
 
