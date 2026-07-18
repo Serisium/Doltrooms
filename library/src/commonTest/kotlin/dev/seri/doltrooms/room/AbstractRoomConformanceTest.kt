@@ -5,7 +5,12 @@ import androidx.sqlite.SQLiteDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 // Step 4 differential Room suite: a real Room 3 database built with
 // Room.inMemoryDatabaseBuilder().setDriver(...) runs the identical tests
@@ -16,7 +21,9 @@ import kotlinx.coroutines.test.runTest
 // Test list (red-green; add cases as they occur):
 // - [x] suspend @Insert + @Query roundtrip through a generated DAO
 // - [x] parameterized list @Query; @Update and @Delete return change counts
-// - [ ] @Transaction DAO method commits on success, rolls back on exception
+// - [x] @Transaction DAO method commits on success, rolls back on exception
+// - [ ] Flow @Query emits initially and re-emits after a write
+//       (InvalidationTracker: temp table + triggers through the driver)
 abstract class AbstractRoomConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
@@ -67,6 +74,35 @@ abstract class AbstractRoomConformanceTest {
             assertEquals(2, dao.olderThan(0).size)
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    fun flowQueryEmitsInitiallyAndAfterWrite() = runTest {
+        // Real dispatchers throughout: the Flow collector must run in real
+        // time, and runTest's virtual clock would otherwise fast-forward the
+        // withTimeout guards while the collector is still working.
+        withContext(Dispatchers.Default) {
+            val db = inMemoryDb()
+            try {
+                val dao = db.personDao()
+                val emissions = Channel<List<Person>>(Channel.UNLIMITED)
+                val collector = launch { dao.observeAll().collect { emissions.send(it) } }
+                assertEquals(emptyList(), withTimeout(10_000) { emissions.receive() })
+
+                val id = dao.insert(Person(name = "Ada", age = 36))
+                // Invalidation may deliver intermediate emissions; wait for
+                // the one that contains the write.
+                val seen = withTimeout(10_000) {
+                    var latest = emissions.receive()
+                    while (latest.isEmpty()) latest = emissions.receive()
+                    latest
+                }
+                assertEquals(listOf(Person(id = id, name = "Ada", age = 36)), seen)
+                collector.cancel()
+            } finally {
+                db.close()
+            }
         }
     }
 

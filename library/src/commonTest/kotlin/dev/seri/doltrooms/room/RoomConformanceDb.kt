@@ -12,6 +12,7 @@ import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 import androidx.room3.Transaction
 import androidx.room3.Update
+import kotlinx.coroutines.flow.Flow
 
 // The Step 4 fixture database: a real Room 3 schema exercised identically
 // against DoltLiteDriver and BundledSQLiteDriver (room3 skill, testing
@@ -36,6 +37,9 @@ interface PersonDao {
 
     @Query("SELECT * FROM Person WHERE age > :age ORDER BY id")
     suspend fun olderThan(age: Int): List<Person>
+
+    @Query("SELECT * FROM Person ORDER BY id")
+    fun observeAll(): Flow<List<Person>>
 
     @Update
     suspend fun update(person: Person): Int
