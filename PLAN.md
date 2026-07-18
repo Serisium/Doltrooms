@@ -4,6 +4,18 @@
      sessions. Read it fully, then follow the Session Protocol, BEFORE
      doing anything else. -->
 
+## MAINTENANCE MODE (since Step 11, 2026-07-18)
+
+The step backlog is complete — there is no "next unchecked step". The
+implementation iteration ended at Step 11; `ARCHITECTURE.md` §4 bounds
+what a session may now do: bug fixes, keeping docs/skills truthful,
+and burning down `docs/deferred-verification.md` as hardware becomes
+available (macOS host, Android device, GitHub push). New feature work
+opens only by human decision, as a new iteration appending new step
+cards below — the Session Protocol then applies to them unchanged.
+Maintenance sessions still read this file first, keep "Current State"
+truthful, and append a dated Step Log entry for anything they change.
+
 ## Session Protocol
 
 Each step below is executed in one fresh agent session:
@@ -30,22 +42,28 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 10 — CI hardening + verification
-  matrix. Infra-only (no production code; D7 red-green N/A per the
-  card). `.github/workflows/ci.yml` hardened: actions/cache for the
-  two DoltLite release zips and `~/.konan` (keys hash
-  `gradle/libs.versions.toml`), concurrency cancel-in-progress per
-  ref, `timeout-minutes: 60`, test-report artifact upload on failure.
-  The enabling build-script change: both download tasks accept a
-  pre-seeded zip whose SHA-256 matches the pin without a network
-  fetch (a CI cache restore carries no Gradle task history, so
-  up-to-date checks alone can never skip the download; both branches
-  verified locally). `docs/deferred-verification.md` extended
-  (XCFramework packaging, first-observed-CI-run checklist). The
-  pipeline itself is still unobserved on GitHub — in-env sessions
-  don't push (AGENTS.md), so first observation lands with this
-  branch's PR (deferred-verification entry).
-- **Branch:** `claude/step-10-b20930` (carries the Step 0–9 commits).
+- **Last completed step:** Step 11 — Publishing + docs + closeout.
+  THE BACKLOG IS COMPLETE; this file is in maintenance mode (see the
+  section above the Session Protocol). Infra/docs-only (D7 N/A).
+  Publishing finalized: real POM (Apache-2.0 matching `LICENSE`,
+  developer `Serisium`/Seri Greenwood, scm from the origin remote),
+  Dokka 2.2.0 wired as the Maven Central `-javadoc` jar via the
+  vanniktech `KotlinMultiplatform` configure
+  (`JavadocJar.Dokka("dokkaGeneratePublicationHtml")` — the Dokka 2.x
+  task name; sources jar on), signing/credentials via
+  `ORG_GRADLE_PROJECT_*` env (sign tasks SKIP without a key, so
+  `publishToMavenLocal` works unsigned). Smoke-verified on Linux:
+  root umbrella + `-jvm` (natives inside) + `-android` (both ABI
+  `.so`s) + `-linuxx64` (klib + cinterop klib) publications, real
+  Dokka HTML in every javadoc jar. iOS publications and the actual
+  Central release need a single macOS host —
+  `docs/deferred-verification.md` has the dedicated entry.
+  `docs/USAGE.md` written (setup, per-platform delivery, dolt_* tour,
+  sync, divergence table). ARCHITECTURE.md §4 flipped to Maintenance;
+  the Step 0–3 skill-maintenance follow-up queue was drained (last
+  item: sqlite-c-api watchlist gained the confirmed-at-0.11.33
+  section).
+- **Branch:** `claude/step-11-e75870` (carries the Step 0–10 commits).
 - **Repo shape:** single `:library` module (D5); group
   `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
   `dev.seri.doltrooms`, publish coordinates
@@ -385,7 +403,9 @@ Each step below is executed in one fresh agent session:
 - **Pinned versions** (`gradle/libs.versions.toml`): doltlite `0.11.33`,
   room3 `3.0.0`, androidxSqlite `2.7.0`, ksp `2.3.10`, kotlin `2.3.10`,
   agp `9.0.1`, kotlinxCoroutines `1.10.2`, android-ndk
-  `28.2.13676358` (Step 5; r28+ defaults to 16 KB page alignment). androidx-sqlite (commonMain
+  `28.2.13676358` (Step 5; r28+ defaults to 16 KB page alignment),
+  dokka `2.2.0` (Step 11; V2 mode is the default, plugin applied in
+  the library, `apply false` at the root). androidx-sqlite (commonMain
   api), sqlite-bundled (jvmTest) and coroutines-test (commonTest) are
   wired; Step 4 wired room3-runtime (commonTest), room3-compiler
   (test ksp configs), and the ksp + room3 plugin aliases;
@@ -404,7 +424,9 @@ Each step below is executed in one fresh agent session:
   are SKIPPED on a Linux host since they carry a cinterop — exit
   stays 0; no wasm target exists, D4). Also passing: `./gradlew
   :library:bundleAndroidMainAar :library:assembleAndroidDeviceTest`
-  (AAR + device-test APK both carry `lib/<abi>/libdoltroomsjni.so`).
+  (AAR + device-test APK both carry `lib/<abi>/libdoltroomsjni.so`)
+  and `./gradlew :library:publishToMavenLocal` (Step 11 smoke — four
+  publications, unsigned without env keys).
   CI: `.github/workflows/ci.yml` (ubuntu, JDK 21, setup-android,
   `sdkmanager "ndk;28.2.13676358"`, setup-gradle, actions/cache for
   DoltLite zips + `~/.konan`, the canonical line, test-report upload
@@ -420,7 +442,11 @@ Each step below is executed in one fresh agent session:
   sdkmanager), sqlite-devel 3.50.2 (dnf; for differential C probes
   against stock), libxcrypt-compat (dnf; linuxX64 test.kexe links
   libcrypt.so.1).
-- **Open problems handed to next session:** none.
+- **Open problems handed to next session:** none — the backlog is
+  complete. Remaining work is hardware-gated and enumerated in
+  `docs/deferred-verification.md` (macOS: iOS + XCFramework + Central
+  publishing; device: Android on-device; GitHub: first observed CI
+  run).
 
 ## Step Backlog
 
@@ -627,7 +653,7 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
 - **Red-green:** N/A (infra). Verify: green pipeline on a no-op change;
   freeze the canonical command list into Current State.
 
-### [ ] Step 11 — Publishing + docs + closeout
+### [x] Step 11 — Publishing + docs + closeout
 - **Goal:** vanniktech publishing for `dev.seri.doltrooms:doltrooms`
   (POM real, signing via env), `publishToMavenLocal` smoke; Dokka;
   `docs/USAGE.md` (per-platform setup, setDriver usage, dolt_* tour,
@@ -1298,3 +1324,83 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   worktree). No new packages.
 - **Follow-ups:** none new; Step 0–3 skill-maintenance queue
   unchanged.
+
+### Step 11 — Publishing + docs + closeout (2026-07-18, branch `claude/step-11-e75870`)
+
+- Infra/docs step; D7 red-green N/A (no production code). Executed as
+  three commits (publishing, USAGE.md, docs/skills sync) plus this
+  closeout commit.
+- **Publishing finalized** (`library/build.gradle.kts`): POM
+  license/developer/scm placeholders replaced with reality —
+  Apache-2.0 (matches the repo `LICENSE`), developer `Serisium` (Seri
+  Greenwood), scm URLs derived from the `origin` remote
+  (`github.com/Serisium/Doltrooms`). Dokka `2.2.0` added (catalog pin
+  + root `apply false` + applied in the library) and wired as the
+  Central-required `-javadoc` jar via `mavenPublishing {
+  configure(KotlinMultiplatform(javadocJar = JavadocJar.Dokka(...),
+  sourcesJar = SourcesJar.Sources())) }`; no
+  `androidVariantsToPublish` parameter with the AGP KMP library
+  plugin (vanniktech 0.36.0 docs). Signing/credentials arrive via
+  `ORG_GRADLE_PROJECT_mavenCentralUsername`/`-Password` +
+  `signingInMemoryKey`/`-KeyId`/`-KeyPassword`.
+- **Verified facts (not from memory):** Dokka's latest stable is
+  2.2.0 (Maven Central metadata, 2026-03); at 2.2.0 V2 mode is the
+  default (no `pluginMode` property, no V1 warning); the real
+  generation task is `dokkaGeneratePublicationHtml` — the vanniktech
+  docs' `"dokkaHtml"` example is the Dokka 1.x task name and
+  `dokkaGenerateHtml` is just a lifecycle wrapper (probed via
+  `help --task`); with `signAllPublications()` and no key in env the
+  sign tasks are SKIPPED, so `publishToMavenLocal` works unsigned.
+  All folded into the kmp-native-interop targets-and-publishing
+  reference (new vanniktech-specifics section) per skill-maintenance.
+- **publishToMavenLocal smoke (card):** green on Linux; inspected
+  `~/.m2` — root umbrella (jar + module metadata +
+  kotlin-tooling-metadata + real POM), `-jvm` jar with
+  `natives/linux-x64/libdoltroomsjni.so`, `-android` AAR with both
+  ABI `.so`s, `-linuxx64` klib with the `-cinterop-doltlite.klib`
+  alongside, real Dokka HTML in every `-javadoc` jar. iOS
+  publications are absent on a Linux host (KGP skips Apple targets
+  carrying cinterops) — hence the new dedicated
+  `docs/deferred-verification.md` entry: the actual Central release
+  runs entirely from a single macOS host (checklist included), which
+  the card pre-announced.
+- **docs/USAGE.md written (card):** dependency + context-free
+  `Room.databaseBuilder().setDriver(DoltLiteDriver())` setup,
+  per-platform engine-delivery table (JAR-resource extraction +
+  `-Ddev.seri.doltrooms.lib.path` override, AAR jniLibs, embedded
+  static archive + libcrypt note, iOS deferral), the dolt_* tour with
+  the load-bearing semantics (per-connection branch state /
+  readers-don't-follow-checkout, never wrap helpers in transactions,
+  conflict behavior), remotes/sync (file://+http-only, clone-before-
+  Room bootstrap, refs-after-first-fetch, AUTOINCREMENT collision
+  warning), `@SkipQueryVerification` example, and the divergence
+  table (the compile-flag row reworded as the non-divergence it is).
+- **Docs/architecture sync:** ARCHITECTURE.md — codemap gained the
+  USAGE.md row, deferred-verification row now names Maven Central,
+  §3.2's publishing bullet describes the finalized setup, §4 flipped
+  Implementation → Maintenance (iteration completed at this step),
+  Status line updated; AGENTS.md phase references synced. No
+  decisions added or renumbered — D1–D10 unchanged.
+- **Closeout extras:** the Step 0–3 skill-maintenance queue is now
+  fully drained — audit found everything already folded by Steps
+  4/7/9 except the sqlite-c-api watchlist, which now carries the
+  confirmed-at-0.11.33 section (deferred open, wal default, WITHOUT
+  ROWID, finalize-SIGABRT; confirmed-preserved list). PLAN.md gained
+  the MAINTENANCE MODE preamble (the card's "flip to maintenance
+  mode").
+- **README suggestions for the human (never agent-edited, D6):**
+  (1) point readers at `docs/USAGE.md`; (2) a "Status" refresh — the
+  driver + dolt_* + sync are implemented with 118/52/85 green tests
+  across jvm/androidHost/linuxX64; (3) note the platform matrix (JVM,
+  Android, linuxX64 verified; iOS built-but-Mac-deferred; web
+  dropped); (4) Maven coordinates `dev.seri.doltrooms:doltrooms` once
+  the first Central release lands.
+- **Verification:** `./gradlew :library:publishToMavenLocal build
+  :library:jvmTest :library:testAndroidHostTest :library:linuxX64Test`
+  all green on this tree (118 + 52 + 85; iOS tasks skipped as always
+  on Linux). CI remains unobserved on GitHub (no-push rule) — first
+  PR observation checklist unchanged in deferred-verification.
+- **Environment delta:** recreated `local.properties` (fresh
+  worktree). No new packages (Dokka arrives via Gradle).
+- **Follow-ups:** none — see the maintenance-mode preamble for what
+  future sessions may do.
