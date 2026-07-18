@@ -51,9 +51,9 @@ import kotlinx.coroutines.test.runTest
 //       card's push-from-A/pull-into-B round-trip)
 // - [x] fetch makes origin/<branch> mergeable (and it is NOT mergeable
 //       before the first fetch — fetch's observable effect)
-// - [ ] non-fast-forward push is rejected; --force push succeeds
-// - [ ] conflicted pull throws and rolls back (autocommit, like merge)
-// - [ ] clone requires a fresh database (a Room-opened db is already
+// - [x] non-fast-forward push is rejected; --force push succeeds
+// - [x] conflicted pull throws and rolls back (autocommit, like merge)
+// - [x] clone requires a fresh database (a Room-opened db is already
 //       dirty — clone is a pre-Room bootstrap); missing remote fails
 //       cleanly
 abstract class AbstractDoltDatabaseTest {
@@ -443,6 +443,128 @@ abstract class AbstractDoltDatabaseTest {
         } finally {
             cloned.close()
         }
+    }
+
+    @Test
+    fun nonFastForwardPushRejectedUnlessForced() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("c1")
+        val remoteUrl = "file://" + tempDbPath()
+        dolt.addRemote("origin", remoteUrl)
+        dolt.push("origin", "main")
+        val clonePath = tempDbPath()
+        DoltDatabase.clone(driver(), remoteUrl, clonePath)
+        val cloned = fileDb(clonePath)
+        try {
+            val clonedDolt = DoltDatabase(cloned)
+            // A and the clone diverge; A pushes first. The clone's row gets
+            // an EXPLICIT id: concurrent auto-generated ids collide across
+            // replicas (both sides would mint id 2), and a shared PK with
+            // different values is a merge conflict on pull (probed at
+            // 0.11.33 — sqlite_sequence itself merges cleanly, but the
+            // colliding user rows do not). Apps that sync need
+            // collision-free keys.
+            db.personDao().insert(Person(name = "Bob", age = 17))
+            dolt.commit("c2")
+            dolt.push("origin", "main")
+            cloned.personDao().insert(Person(id = 100, name = "Eve", age = 63))
+            clonedDolt.commit("b1")
+
+            val rejected = assertFailsWith<SQLiteException> { clonedDolt.push("origin", "main") }
+            if (exceptionMessagesObservable) {
+                assertContains(rejected.message ?: "", "not a fast-forward")
+            }
+            // --force overwrites the remote branch (dropping A's c2 there).
+            clonedDolt.push("origin", "main", force = true)
+
+            // Observable proof: A's next pull sees the rewritten remote —
+            // diverged but conflict-free histories auto-merge into a merge
+            // commit (probed at 0.11.33).
+            dolt.pull("origin", "main")
+            assertEquals(
+                listOf("Ada", "Bob", "Eve"),
+                db.personDao().olderThan(-1).map { it.name }.sorted(),
+            )
+            assertContains(dolt.log().first().message, "Merge branch")
+        } finally {
+            cloned.close()
+        }
+    }
+
+    @Test
+    fun conflictedPullThrowsAndRollsBack() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        val id = db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("c1")
+        val remoteUrl = "file://" + tempDbPath()
+        dolt.addRemote("origin", remoteUrl)
+        dolt.push("origin", "main")
+        val clonePath = tempDbPath()
+        DoltDatabase.clone(driver(), remoteUrl, clonePath)
+        val cloned = fileDb(clonePath)
+        try {
+            val clonedDolt = DoltDatabase(cloned)
+            // Same row edited on both sides -> the pull's merge conflicts.
+            db.personDao().update(Person(id = id, name = "Ada", age = 50))
+            dolt.commit("a-edit")
+            dolt.push("origin", "main")
+            cloned.personDao().update(Person(id = id, name = "Ada", age = 40))
+            val localHead = clonedDolt.commit("b-edit")
+
+            // Autocommit: like a conflicted merge, the pull throws and
+            // rolls back, leaving the local branch untouched.
+            val e = assertFailsWith<SQLiteException> { clonedDolt.pull("origin", "main") }
+            if (exceptionMessagesObservable) assertContains(e.message ?: "", "conflict")
+            assertEquals("main", clonedDolt.currentBranch())
+            assertEquals(localHead, clonedDolt.log().first().hash)
+            assertEquals(emptyList(), clonedDolt.status())
+            assertEquals(
+                40L,
+                cloned.useWriterConnection { t ->
+                    t.usePrepared("SELECT age FROM Person") {
+                        it.step()
+                        it.getLong(0)
+                    }
+                },
+            )
+        } finally {
+            cloned.close()
+        }
+    }
+
+    @Test
+    fun cloneRequiresFreshDatabaseAndMissingRemoteFailsCleanly() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("c1")
+        val remoteUrl = "file://" + tempDbPath()
+        dolt.addRemote("origin", remoteUrl)
+        dolt.push("origin", "main")
+
+        // Cloning into a Room-opened database's file is refused — opening
+        // Room runs schema DDL, so the file is never fresh. This is why
+        // clone is a pre-Room bootstrap.
+        val roomDirtiedPath = tempDbPath()
+        val other = fileDb(roomDirtiedPath)
+        try {
+            // Force the lazy open so the schema DDL has actually run.
+            other.personDao().olderThan(-1)
+            val notFresh = assertFailsWith<SQLiteException> {
+                DoltDatabase.clone(driver(), remoteUrl, roomDirtiedPath)
+            }
+            if (exceptionMessagesObservable) {
+                assertContains(notFresh.message ?: "", "clone into a fresh database")
+            }
+        } finally {
+            other.close()
+        }
+
+        // A missing remote fails cleanly.
+        val missing = assertFailsWith<SQLiteException> {
+            DoltDatabase.clone(driver(), "file://" + tempDbPath(), tempDbPath())
+        }
+        if (exceptionMessagesObservable) assertContains(missing.message ?: "", "clone failed")
     }
 
     private suspend fun writerPersonCount(db: RoomConformanceDb): Long =
