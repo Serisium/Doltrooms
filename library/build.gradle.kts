@@ -196,6 +196,9 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // runTest + Dispatchers.Default for the not-thread-affine
+            // conformance case (room3 skill, testing reference).
+            implementation(libs.kotlinx.coroutines.test)
         }
 
         jvmTest.dependencies {

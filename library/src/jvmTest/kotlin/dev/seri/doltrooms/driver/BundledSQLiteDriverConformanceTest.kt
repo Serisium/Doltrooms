@@ -2,6 +2,7 @@ package dev.seri.doltrooms.driver
 
 import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import java.io.File
 
 /**
  * The Step 3 conformance suite against stock SQLite via
@@ -10,4 +11,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
  */
 class BundledSQLiteDriverConformanceTest : AbstractDriverConformanceTest() {
     override fun driver(): SQLiteDriver = BundledSQLiteDriver()
+
+    override fun tempDbPath(): String =
+        File.createTempFile("doltrooms-conformance", ".db").also { it.delete() }.absolutePath
 }
