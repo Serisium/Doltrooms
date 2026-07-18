@@ -52,6 +52,9 @@ internal object DoltLiteNative {
     /** `sqlite3_errmsg16` for the connection's most recent failure, or null. */
     external fun nativeErrmsg(dbPointer: Long): String?
 
+    /** `sqlite3_get_autocommit` — zero while a transaction is open. */
+    external fun nativeGetAutocommit(dbPointer: Long): Int
+
     /** `sqlite3_bind_int64`. Returns the result code. */
     external fun nativeBindLong(stmtPointer: Long, index: Int, value: Long): Int
 

@@ -34,14 +34,15 @@ import kotlin.test.assertTrue
 // - [x] reset retains bindings; re-execution after reset
 // - [x] rebind after reset replaces the old value
 // - [x] clearBindings makes parameters NULL
-// - [ ] get* out of column range throws (SQLITE_RANGE), incl. negative index
-// - [ ] get* with no row available throws (SQLITE_MISUSE "no row")
-// - [ ] get* after DONE throws ("no row")
-// - [ ] bind out of parameter range throws (SQLITE_RANGE)
-// - [ ] preparing invalid SQL throws with the offending token in the message
-// - [ ] statement close is idempotent; use after close throws
+// - [x] get* out of column range throws (SQLITE_RANGE), incl. negative index
+// - [x] get* with no row available throws (SQLITE_MISUSE "no row")
+// - [x] get* after DONE throws ("no row")
+// - [x] bind out of parameter range throws (SQLITE_RANGE)
+// - [x] preparing invalid SQL throws with the offending token in the message
+// - [x] statement close is idempotent; use after close throws
 // - [ ] inTransaction false/true across BEGIN/COMMIT/ROLLBACK
 // - [ ] ROLLBACK discards writes; COMMIT persists them
+// - [ ] inTransaction on a closed connection throws
 // - [ ] multi-connection file db: 4 readers + 1 writer (WAL shape)
 // - [ ] connection is not thread-affine (sequential use across threads)
 abstract class AbstractDriverConformanceTest {
@@ -363,6 +364,52 @@ abstract class AbstractDriverConformanceTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun inTransactionTracksBeginCommit() {
+        withConnection { connection ->
+            // "Autocommit mode is on by default … disabled by a BEGIN …
+            // re-enabled by a COMMIT or ROLLBACK."
+            // (https://www.sqlite.org/c3ref/get_autocommit.html)
+            assertFalse(connection.inTransaction())
+            connection.execSQL("BEGIN")
+            assertTrue(connection.inTransaction())
+            connection.execSQL("COMMIT")
+            assertFalse(connection.inTransaction())
+            connection.execSQL("BEGIN")
+            connection.execSQL("ROLLBACK")
+            assertFalse(connection.inTransaction())
+        }
+    }
+
+    @Test
+    fun commitPersistsAndRollbackDiscards() {
+        withConnection { connection ->
+            connection.execSQL("CREATE TABLE t (v INTEGER)")
+            connection.execSQL("BEGIN")
+            connection.execSQL("INSERT INTO t (v) VALUES (1)")
+            connection.execSQL("COMMIT")
+            connection.execSQL("BEGIN")
+            connection.execSQL("INSERT INTO t (v) VALUES (2)")
+            connection.execSQL("ROLLBACK")
+            connection.prepare("SELECT COUNT(*), MAX(v) FROM t").use { query ->
+                assertTrue(query.step())
+                assertEquals(1L, query.getLong(0))
+                assertEquals(1L, query.getLong(1))
+            }
+        }
+    }
+
+    @Test
+    fun inTransactionOnClosedConnectionThrows() {
+        val connection = driver().open(":memory:")
+        connection.close()
+        val e = assertFailsWith<SQLiteException> { connection.inTransaction() }
+        assertTrue(
+            "connection is closed" in (e.message ?: ""),
+            "unexpected message: ${e.message}",
+        )
     }
 
     @Test

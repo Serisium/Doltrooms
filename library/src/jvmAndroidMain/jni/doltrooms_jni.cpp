@@ -151,6 +151,10 @@ jlong NativeColumnLong(JNIEnv*, jobject, jlong stmt_pointer, jint index) {
     return sqlite3_column_int64(reinterpret_cast<sqlite3_stmt*>(stmt_pointer), index);
 }
 
+jint NativeGetAutocommit(JNIEnv*, jobject, jlong db_pointer) {
+    return sqlite3_get_autocommit(reinterpret_cast<sqlite3*>(db_pointer));
+}
+
 jstring NativeColumnText(JNIEnv* env, jobject, jlong stmt_pointer, jint index) {
     sqlite3_stmt* stmt = reinterpret_cast<sqlite3_stmt*>(stmt_pointer);
     // Call column_text16 before column_bytes16 (https://www.sqlite.org/c3ref/column_blob.html).
@@ -184,6 +188,8 @@ const JNINativeMethod kMethods[] = {
      reinterpret_cast<void*>(NativeClearBindings)},
     {const_cast<char*>("nativeErrmsg"), const_cast<char*>("(J)Ljava/lang/String;"),
      reinterpret_cast<void*>(NativeErrmsg)},
+    {const_cast<char*>("nativeGetAutocommit"), const_cast<char*>("(J)I"),
+     reinterpret_cast<void*>(NativeGetAutocommit)},
     {const_cast<char*>("nativeBindLong"), const_cast<char*>("(JIJ)I"),
      reinterpret_cast<void*>(NativeBindLong)},
     {const_cast<char*>("nativeBindDouble"), const_cast<char*>("(JID)I"),
