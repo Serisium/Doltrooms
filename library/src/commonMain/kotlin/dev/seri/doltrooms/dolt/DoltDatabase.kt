@@ -3,6 +3,11 @@ package dev.seri.doltrooms.dolt
 import androidx.room3.RoomDatabase
 import androidx.room3.Transactor
 import androidx.room3.useWriterConnection
+import androidx.sqlite.SQLITE_DATA_BLOB
+import androidx.sqlite.SQLITE_DATA_FLOAT
+import androidx.sqlite.SQLITE_DATA_INTEGER
+import androidx.sqlite.SQLITE_DATA_TEXT
+import androidx.sqlite.SQLiteStatement
 
 /**
  * Typed helpers over DoltLite's version-control SQL surface for a Room
@@ -226,6 +231,72 @@ public class DoltDatabase(private val db: RoomDatabase) {
             }
         }
 
+    /**
+     * Row-level differences in [table] between two refs (commit hashes,
+     * branch names, `HEAD~1`, or the pseudo-refs `WORKING`/`STAGED`),
+     * via the generated `dolt_diff_<table>` table-valued function.
+     *
+     * Each row's [DoltDiffRow.from]/[DoltDiffRow.to] map the table's own
+     * columns to values typed by SQLite storage class (INTEGER → [Long],
+     * FLOAT → [Double], TEXT → [String], BLOB → [ByteArray], NULL →
+     * null); the absent side of an added/removed row is all-null.
+     */
+    public suspend fun diff(table: String, from: String, to: String): List<DoltDiffRow> =
+        writer { conn ->
+            // The table name is part of the TVF's NAME, so it cannot be a
+            // bound parameter — quote it as an identifier; refs bind normally.
+            val tvf = "\"dolt_diff_" + table.replace("\"", "\"\"") + "\""
+            conn.usePrepared("SELECT * FROM $tvf(?, ?)") { stmt ->
+                stmt.bindText(1, from)
+                stmt.bindText(2, to)
+                val names = List(stmt.getColumnCount()) { stmt.getColumnName(it) }
+                buildList {
+                    while (stmt.step()) {
+                        var diffType = ""
+                        var fromCommit = ""
+                        var fromCommitDate = ""
+                        var toCommit = ""
+                        var toCommitDate = ""
+                        val fromValues = mutableMapOf<String, Any?>()
+                        val toValues = mutableMapOf<String, Any?>()
+                        names.forEachIndexed { i, name ->
+                            when {
+                                name == "diff_type" -> diffType = stmt.getText(i)
+                                name == "from_commit" -> fromCommit = stmt.getText(i)
+                                name == "from_commit_date" -> fromCommitDate = stmt.getText(i)
+                                name == "to_commit" -> toCommit = stmt.getText(i)
+                                name == "to_commit_date" -> toCommitDate = stmt.getText(i)
+                                name.startsWith("from_") ->
+                                    fromValues[name.removePrefix("from_")] = stmt.typedValue(i)
+                                name.startsWith("to_") ->
+                                    toValues[name.removePrefix("to_")] = stmt.typedValue(i)
+                            }
+                        }
+                        add(
+                            DoltDiffRow(
+                                diffType = diffType,
+                                fromCommit = fromCommit,
+                                fromCommitDate = fromCommitDate,
+                                toCommit = toCommit,
+                                toCommitDate = toCommitDate,
+                                from = fromValues,
+                                to = toValues,
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+    private fun SQLiteStatement.typedValue(index: Int): Any? =
+        when (getColumnType(index)) {
+            SQLITE_DATA_INTEGER -> getLong(index)
+            SQLITE_DATA_FLOAT -> getDouble(index)
+            SQLITE_DATA_TEXT -> getText(index)
+            SQLITE_DATA_BLOB -> getBlob(index)
+            else -> null // SQLITE_DATA_NULL
+        }
+
     private suspend fun <R> writer(block: suspend (Transactor) -> R): R =
         db.useWriterConnection(block)
 }
@@ -267,4 +338,21 @@ public data class DoltBranch(
     val remote: String,
     val remoteBranch: String,
     val dirty: Boolean,
+)
+
+/**
+ * One row-level difference from `dolt_diff_<table>`. [diffType] is
+ * "added", "modified", or "removed"; [from]/[to] hold the table's own
+ * column values on each side (see [DoltDatabase.diff] for the value
+ * typing; BLOB values compare by reference, so prefer per-key asserts
+ * over whole-row equality when blobs are involved).
+ */
+public data class DoltDiffRow(
+    val diffType: String,
+    val fromCommit: String,
+    val fromCommitDate: String,
+    val toCommit: String,
+    val toCommitDate: String,
+    val from: Map<String, Any?>,
+    val to: Map<String, Any?>,
 )

@@ -251,6 +251,55 @@ abstract class AbstractDoltDatabaseTest {
         )
     }
 
+    @Test
+    fun diffBetweenCommitsTypesRows() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        val dao = db.personDao()
+        val adaId = dao.insert(Person(name = "Ada", age = 36))
+        val bobId = dao.insert(Person(name = "Bob", age = 17))
+        dolt.commit("c1")
+        dao.update(Person(id = adaId, name = "Ada", age = 37))
+        dao.delete(Person(id = bobId, name = "Bob", age = 17))
+        dao.insert(Person(name = "Eve", age = 63))
+        dolt.commit("c2")
+
+        val rows = dolt.diff("Person", from = "HEAD~1", to = "HEAD")
+        assertEquals(3, rows.size)
+
+        val modified = rows.single { it.diffType == "modified" }
+        // Values are typed by SQLite column type: INTEGER -> Long, TEXT -> String.
+        assertEquals(36L, modified.from["age"])
+        assertEquals(37L, modified.to["age"])
+        assertEquals("Ada", modified.to["name"])
+
+        val removed = rows.single { it.diffType == "removed" }
+        assertEquals("Bob", removed.from["name"])
+        assertEquals(null, removed.to["name"])
+
+        val added = rows.single { it.diffType == "added" }
+        assertEquals("Eve", added.to["name"])
+        assertEquals(null, added.from["name"])
+
+        // Both sides carry the commit refs the diff spans.
+        val log = dolt.log()
+        assertEquals(log[0].hash, added.toCommit)
+        assertEquals(log[1].hash, added.fromCommit)
+    }
+
+    @Test
+    fun diffAgainstWorkingSeesUncommittedChanges() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("base")
+        db.personDao().insert(Person(name = "Bob", age = 17))
+
+        val rows = dolt.diff("Person", from = "HEAD", to = "WORKING")
+        val added = rows.single()
+        assertEquals("added", added.diffType)
+        assertEquals("Bob", added.to["name"])
+        assertEquals("WORKING", added.toCommit)
+    }
+
     private suspend fun writerPersonCount(db: RoomConformanceDb): Long =
         db.useWriterConnection { t ->
             t.usePrepared("SELECT COUNT(*) FROM Person") {
