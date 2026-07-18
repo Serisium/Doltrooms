@@ -474,6 +474,74 @@ tasks.matching { it.name == "cinteropDoltliteLinuxX64" }.configureEach {
     inputs.files(compileDoltliteStaticLinuxX64.map { it.outputs.files })
 }
 
+// --- doltlite-remotesrv test fixture (Step 8) -----------------------------
+// The jvm RemoteServerSyncTest spawns a real doltlite-remotesrv (from the
+// pinned release's doltlite-tools zip) to prove http(s) sync. Wired only on
+// linux-x64 hosts — the only platform whose zip checksum is verified here;
+// elsewhere the test skips (docs/deferred-verification.md).
+val hostIsLinuxX64 =
+    System.getProperty("os.name").lowercase().contains("linux") &&
+        System.getProperty("os.arch") in setOf("amd64", "x86_64")
+
+val doltliteToolsUrl =
+    "https://github.com/dolthub/doltlite/releases/download/v$doltliteVersion/doltlite-tools-linux-x64-$doltliteVersion.zip"
+// SHA-256 of doltlite-tools-linux-x64-0.11.33.zip, recorded 2026-07-18.
+val doltliteToolsSha256 = "6d9b2353f051ce79d3637d57facae293cacb320cfb5b3eebe896c18af1338932"
+
+val downloadDoltliteTools by tasks.registering {
+    // Local copy: an onlyIf referencing the script-level val would capture
+    // the script object, which the configuration cache cannot serialize.
+    val linuxX64Host = hostIsLinuxX64
+    onlyIf { linuxX64Host }
+    val url = doltliteToolsUrl
+    val sha256 = doltliteToolsSha256
+    val zipFile = layout.buildDirectory.file("doltlite/doltlite-tools-linux-x64-$doltliteVersion.zip")
+    inputs.property("url", url)
+    inputs.property("sha256", sha256)
+    outputs.file(zipFile)
+    doLast {
+        val target = zipFile.get().asFile
+        target.parentFile.mkdirs()
+        URI(url).toURL().openStream().use { input ->
+            target.outputStream().use { input.copyTo(it) }
+        }
+        val actual = MessageDigest.getInstance("SHA-256")
+            .digest(target.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        if (actual != sha256) {
+            target.delete()
+            error("SHA-256 mismatch for $url: expected $sha256, got $actual")
+        }
+    }
+}
+
+val unpackDoltliteTools by tasks.registering(Copy::class) {
+    val linuxX64Host = hostIsLinuxX64
+    onlyIf { linuxX64Host }
+    from(zipTree(downloadDoltliteTools.map { it.outputs.files.singleFile })) {
+        // Flatten doltlite-tools-linux-x64-<v>/doltlite-remotesrv -> doltlite-remotesrv
+        eachFile { path = name }
+        includeEmptyDirs = false
+    }
+    into(layout.buildDirectory.dir("doltlite/tools"))
+    doLast {
+        destinationDir.listFiles()?.forEach { it.setExecutable(true) }
+    }
+}
+
+tasks.withType<Test>()
+    .matching { it.name == "jvmTest" }
+    .configureEach {
+        if (hostIsLinuxX64) {
+            dependsOn(unpackDoltliteTools)
+            systemProperty(
+                "dev.seri.doltrooms.remotesrv",
+                layout.buildDirectory.file("doltlite/tools/doltlite-remotesrv")
+                    .get().asFile.absolutePath,
+            )
+        }
+    }
+
 // Android host tests run on the host JVM, where androidMain's
 // System.loadLibrary("doltroomsjni") searches java.library.path — reuse the
 // desktop .so from compileDoltliteJni instead of packaging a host lib into
