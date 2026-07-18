@@ -36,7 +36,15 @@ make doltlite-remotesrv                   # the remote server
 
 - **Amalgamation:** attached to every release — the natural input for
   NDK builds and Kotlin/Native cinterop, exactly as sqlite3.c is used
-  by `androidx.sqlite:sqlite-bundled`.
+  by `androidx.sqlite:sqlite-bundled`. **It excludes the
+  TLS/credential (mbedTLS/ed25519) stack** — doltlite.c 0.11.33:
+  "excluded only from the single-file amalgamation, which links
+  neither library" — so amalgamation builds have `file://` + plain
+  `http://` remotes only, no https, no bearer auth (see
+  `remotes-and-sync.md` "Probed facts"). The prebuilt
+  `doltlite-lib-*`/`doltlite-tools-*` release artifacts carry the
+  full stack; `doltlite-tools-<os>-<arch>-<v>.zip` contains the
+  `doltlite` CLI + `doltlite-remotesrv`.
 - WASM: `./configure && make sqlite3.c sqlite3.h`, then
   `make -C ext/wasm`.
 - Windows: MSYS2/MINGW64.

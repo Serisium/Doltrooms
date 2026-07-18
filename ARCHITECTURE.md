@@ -59,7 +59,12 @@ remotes is assumed anywhere in the design; if upstream ships it, that
 is a new decision. Network sync requires DoltLite ≥ 0.11.28, the
 release that added TLS 1.3 and bearer-token auth to the remote
 protocol (see the `doltlite` skill); older versions have neither and
-may only sync behind a trusted proxy.
+may only sync behind a trusted proxy. Amendment (Step 8): the TLS +
+auth stack is excluded from the DoltLite amalgamation, and D9 builds
+every platform from the amalgamation — so *this library's* engines
+sync over `file://` and plain `http://` only, and network sync is
+trusted-networks-only at any version. If upstream ships TLS in the
+amalgamation, revisit.
 
 ### D4 — Platform ladder: JVM first, then Android, then iOS; web is speculative
 
@@ -138,11 +143,16 @@ one-pin rule (AGENTS.md).
 ### D10 — Typed dolt_* helpers ride Room's raw-connection API; room3-runtime is a commonMain `api` dependency
 
 The version-control helper surface is the `dev.seri.doltrooms.dolt`
-package: `DoltDatabase` (commit/branch/checkout/merge/log/diff/status)
-with typed results (`DoltCommit`, `DoltBranch`, `DoltDiffRow`, …),
-issuing plain `SELECT dolt_*(...)` SQL through
-`RoomDatabase.useWriterConnection` — D1's no-new-engine-API rule is
-upheld. Because `RoomDatabase` appears in that public surface,
+package: `DoltDatabase` (commit/branch/checkout/merge/log/diff/status,
+plus the Step 8 remote surface addRemote/remotes/removeRemote/push/
+pull/fetch) with typed results (`DoltCommit`, `DoltBranch`,
+`DoltDiffRow`, `DoltRemote`, …), issuing plain `SELECT dolt_*(...)`
+SQL through `RoomDatabase.useWriterConnection` — D1's
+no-new-engine-API rule is upheld. One deliberate exception to the
+ride-Room rule: `DoltDatabase.clone` is a companion function on a raw
+`SQLiteDriver` connection, because the engine only clones into a
+fresh database and a `RoomDatabase` is never fresh (Room's schema DDL
+dirties it at open) — clone bootstraps the file, then Room opens it. Because `RoomDatabase` appears in that public surface,
 `room3-runtime` is an `api` dependency of `commonMain` (the revisit
 Step 4's test-only placement anticipated); the Room compiler/KSP still
 serves the test suites only, so no Room-generated code ships. Two
