@@ -44,6 +44,14 @@ abstract class AbstractRoomConformanceTest {
     /** A fresh, non-existing file path for a temporary on-disk database. */
     abstract fun tempDbPath(): String
 
+    /**
+     * Whether a thrown SQLiteException carries its message on this platform.
+     * False on Android HOST tests, where AGP's mockable android.jar stubs
+     * the `android.database.SQLException` constructor and drops the message
+     * (see AbstractDriverConformanceTest for the full story).
+     */
+    protected open val exceptionMessagesObservable: Boolean = true
+
     private fun inMemoryDb(): RoomConformanceDb =
         Room.inMemoryDatabaseBuilder<RoomConformanceDb>()
             .setDriver(driver())
@@ -175,7 +183,7 @@ abstract class AbstractRoomConformanceTest {
                 val e = assertFailsWith<SQLiteException> {
                     withTimeout(10_000) { dbB.personDao().insert(Person(name = "blocked", age = 2)) }
                 }
-                assertContains(e.message ?: "", "Error code: 5")
+                if (exceptionMessagesObservable) assertContains(e.message ?: "", "Error code: 5")
                 release.complete(Unit)
                 holder.join()
                 // Once the writer commits, the second instance can write.
