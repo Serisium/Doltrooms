@@ -91,6 +91,35 @@ abstract class AbstractDoltDatabaseTest {
     }
 
     @Test
+    fun statusReflectsStagingLifecycle() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        // Room's schema setup leaves uncommitted new tables in the working set.
+        val fresh = dolt.status()
+        val person = fresh.single { it.tableName == "Person" }
+        assertEquals(false, person.staged)
+        assertEquals("new table", person.status)
+
+        dolt.commit("schema")
+        assertEquals(emptyList(), dolt.status())
+
+        // The insert also touches sqlite_sequence (AUTOINCREMENT bookkeeping),
+        // so assert on the Person entry rather than the whole set.
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        val afterWrite = dolt.status().single { it.tableName == "Person" }
+        assertEquals(false, afterWrite.staged)
+        assertEquals("modified", afterWrite.status)
+    }
+
+    @Test
+    fun commitOnCleanWorkingTreeThrows() = doltTest { db ->
+        val dolt = DoltDatabase(db)
+        db.personDao().insert(Person(name = "Ada", age = 36))
+        dolt.commit("first commit")
+        val e = assertFailsWith<SQLiteException> { dolt.commit("nothing here") }
+        if (exceptionMessagesObservable) assertContains(e.message ?: "", "nothing to commit")
+    }
+
+    @Test
     fun engineWithoutDoltSupportFailsCleanly() = runTest {
         if (engineSupportsDolt) return@runTest
         val db = fileDb()
