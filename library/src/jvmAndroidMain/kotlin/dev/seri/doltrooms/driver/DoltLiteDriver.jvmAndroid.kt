@@ -14,6 +14,7 @@ private const val SQLITE_OPEN_CREATE = 0x04
 // sqlite3 result codes the driver branches on (https://www.sqlite.org/rescode.html).
 private const val SQLITE_OK = 0
 private const val SQLITE_MISUSE = 21
+private const val SQLITE_RANGE = 25
 private const val SQLITE_ROW = 100
 private const val SQLITE_DONE = 101
 
@@ -75,7 +76,11 @@ public actual class DoltLiteStatement internal constructor(
     private val stmtPointer: Long,
 ) : SQLiteStatement {
 
+    @Volatile
+    private var isClosed = false
+
     actual override fun step(): Boolean {
+        throwIfClosed()
         return when (val rc = DoltLiteNative.nativeStep(stmtPointer)) {
             SQLITE_ROW -> true
             SQLITE_DONE -> false
@@ -84,44 +89,66 @@ public actual class DoltLiteStatement internal constructor(
     }
 
     actual override fun close() {
-        DoltLiteNative.nativeFinalize(stmtPointer)
+        // "Any use of a prepared statement after it has been finalized can
+        // result in undefined and undesirable behavior such as segfaults"
+        // (https://www.sqlite.org/c3ref/finalize.html) — the guard below is
+        // load-bearing, not cosmetic.
+        if (!isClosed) {
+            isClosed = true
+            DoltLiteNative.nativeFinalize(stmtPointer)
+        }
     }
 
     actual override fun bindBlob(index: Int, value: ByteArray) {
+        throwIfClosed()
         checkBindResult(DoltLiteNative.nativeBindBlob(stmtPointer, index, value))
     }
 
     actual override fun bindDouble(index: Int, value: Double) {
+        throwIfClosed()
         checkBindResult(DoltLiteNative.nativeBindDouble(stmtPointer, index, value))
     }
 
     actual override fun bindLong(index: Int, value: Long) {
+        throwIfClosed()
         checkBindResult(DoltLiteNative.nativeBindLong(stmtPointer, index, value))
     }
 
     actual override fun bindText(index: Int, value: String) {
+        throwIfClosed()
         checkBindResult(DoltLiteNative.nativeBindText(stmtPointer, index, value))
     }
 
     actual override fun bindNull(index: Int) {
+        throwIfClosed()
         checkBindResult(DoltLiteNative.nativeBindNull(stmtPointer, index))
     }
 
     actual override fun getBlob(index: Int): ByteArray {
+        throwIfClosed()
+        throwIfNoRow()
+        throwIfInvalidColumn(index)
         return DoltLiteNative.nativeColumnBlob(stmtPointer, index)
     }
 
     actual override fun getDouble(index: Int): Double {
+        throwIfClosed()
+        throwIfNoRow()
+        throwIfInvalidColumn(index)
         return DoltLiteNative.nativeColumnDouble(stmtPointer, index)
     }
 
     actual override fun getLong(index: Int): Long {
+        throwIfClosed()
+        throwIfNoRow()
+        throwIfInvalidColumn(index)
         return DoltLiteNative.nativeColumnLong(stmtPointer, index)
     }
 
     actual override fun getText(index: Int): String {
-        // Minimal read path; the no-row/column-range/NOMEM pre-check trio
-        // lands with the full surface in PLAN.md Step 3.
+        throwIfClosed()
+        throwIfNoRow()
+        throwIfInvalidColumn(index)
         return DoltLiteNative.nativeColumnText(stmtPointer, index)
             ?: throwSQLiteException(SQLITE_MISUSE, "no text value at column $index")
     }
@@ -131,19 +158,26 @@ public actual class DoltLiteStatement internal constructor(
     }
 
     actual override fun getColumnCount(): Int {
+        throwIfClosed()
         return DoltLiteNative.nativeColumnCount(stmtPointer)
     }
 
     actual override fun getColumnName(index: Int): String {
+        throwIfClosed()
+        throwIfInvalidColumn(index)
         // Null column name means allocation failure (bundled-driver template).
         return DoltLiteNative.nativeColumnName(stmtPointer, index) ?: throw OutOfMemoryError()
     }
 
     actual override fun getColumnType(index: Int): Int {
+        throwIfClosed()
+        throwIfNoRow()
+        throwIfInvalidColumn(index)
         return DoltLiteNative.nativeColumnType(stmtPointer, index)
     }
 
     actual override fun reset() {
+        throwIfClosed()
         val rc = DoltLiteNative.nativeReset(stmtPointer)
         if (rc != SQLITE_OK) {
             throwSQLiteException(rc, DoltLiteNative.nativeErrmsg(dbPointer))
@@ -151,9 +185,30 @@ public actual class DoltLiteStatement internal constructor(
     }
 
     actual override fun clearBindings() {
+        throwIfClosed()
         val rc = DoltLiteNative.nativeClearBindings(stmtPointer)
         if (rc != SQLITE_OK) {
             throwSQLiteException(rc, DoltLiteNative.nativeErrmsg(dbPointer))
+        }
+    }
+
+    private fun throwIfClosed() {
+        if (isClosed) {
+            throwSQLiteException(SQLITE_MISUSE, "statement is closed")
+        }
+    }
+
+    // Value getters are only valid while positioned on a row (bundled-driver
+    // template's throwIfNoRow via sqlite3_stmt_busy).
+    private fun throwIfNoRow() {
+        if (DoltLiteNative.nativeStmtBusy(stmtPointer) == 0) {
+            throwSQLiteException(SQLITE_MISUSE, "no row")
+        }
+    }
+
+    private fun throwIfInvalidColumn(index: Int) {
+        if (index < 0 || index >= DoltLiteNative.nativeColumnCount(stmtPointer)) {
+            throwSQLiteException(SQLITE_RANGE, "column index out of range")
         }
     }
 
