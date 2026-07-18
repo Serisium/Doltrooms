@@ -10,6 +10,7 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.SkipQueryVerification
 import androidx.room3.Transaction
 import androidx.room3.Update
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +56,14 @@ interface PersonDao {
         check(second.age >= 0) { "invalid second person" }
         insert(second)
     }
+
+    // Room verifies @Query against stock SQLite at compile time, which has
+    // no dolt_* functions — @SkipQueryVerification is the documented escape
+    // for read-shaped dolt_* SQL in DAOs (Step 7; only meaningful on the
+    // DoltLite legs, but it must COMPILE for every driver's test classes).
+    @SkipQueryVerification
+    @Query("SELECT dolt_version()")
+    suspend fun doltVersion(): String
 }
 
 @Database(entities = [Person::class], version = 1, exportSchema = true)
