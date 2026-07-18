@@ -8,6 +8,10 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.vanniktech.mavenPublish)
+    // Room 3 is a TEST-ONLY consumer here: the library ships only the
+    // androidx.sqlite driver (D1); the Step 4 Room suite lives in commonTest.
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room3)
 }
 
 group = "dev.seri.doltrooms"
@@ -199,6 +203,10 @@ kotlin {
             // runTest + Dispatchers.Default for the not-thread-affine
             // conformance case (room3 skill, testing reference).
             implementation(libs.kotlinx.coroutines.test)
+            // Room 3 stays OUT of commonMain: this library is a driver Room
+            // consumes (D1), not a Room extension — the runtime is only a
+            // dependency of the Step 4 differential Room suite.
+            implementation(libs.room3.runtime)
         }
 
         jvmTest.dependencies {
@@ -221,6 +229,27 @@ kotlin {
             dependsOn(jvmAndroidMain)
         }
     }
+}
+
+// The Room fixture database lives in commonTest, so every target's TEST
+// compilation needs the Room compiler to generate the actual
+// RoomConformanceDbConstructor + database impl (room3 skill, kmp-setup
+// reference: per-target ksp configurations). Main compilations get none —
+// the shipped library has no Room code.
+dependencies {
+    add("kspJvmTest", libs.room3.compiler)
+    add("kspAndroidHostTest", libs.room3.compiler)
+    add("kspAndroidDeviceTest", libs.room3.compiler)
+    add("kspLinuxX64Test", libs.room3.compiler)
+    add("kspIosArm64Test", libs.room3.compiler)
+    add("kspIosSimulatorArm64Test", libs.room3.compiler)
+}
+
+room3 {
+    // Required whenever the Room Gradle plugin is applied; exportSchema
+    // output for the commonTest fixture database (room3 skill, kmp-setup
+    // reference).
+    schemaDirectory("$projectDir/schemas")
 }
 
 // commonTest's conformance suite compiles into every target's test task, but
