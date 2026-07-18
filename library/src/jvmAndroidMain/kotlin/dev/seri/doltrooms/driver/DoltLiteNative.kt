@@ -26,6 +26,22 @@ internal object DoltLiteNative {
 
     /** `sqlite3_close_v2`. */
     external fun nativeClose(dbPointer: Long)
+
+    /**
+     * `sqlite3_prepare16_v2` (UTF-16, like BundledSQLiteDriver). Returns
+     * the result code and writes the `sqlite3_stmt*` handle into
+     * `stmtOut[0]` (0 on failure).
+     */
+    external fun nativePrepare(dbPointer: Long, sql: String, stmtOut: LongArray): Int
+
+    /** `sqlite3_step`. Returns the raw result code (SQLITE_ROW/DONE/error). */
+    external fun nativeStep(stmtPointer: Long): Int
+
+    /** `sqlite3_finalize`. Result code deliberately ignored — close is a no-op contract. */
+    external fun nativeFinalize(stmtPointer: Long)
+
+    /** `sqlite3_errmsg16` for the connection's most recent failure, or null. */
+    external fun nativeErrmsg(dbPointer: Long): String?
 }
 
 /**
