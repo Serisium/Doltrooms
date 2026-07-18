@@ -23,3 +23,39 @@ public actual class DoltLiteConnection private constructor() : SQLiteConnection 
         TODO("DoltLite native (cinterop) driver arrives with PLAN.md Step 6")
     }
 }
+
+public actual class DoltLiteStatement private constructor() : SQLiteStatement {
+    override fun bindBlob(index: Int, value: ByteArray): Unit = TODO("PLAN.md Step 6")
+
+    override fun bindDouble(index: Int, value: Double): Unit = TODO("PLAN.md Step 6")
+
+    override fun bindLong(index: Int, value: Long): Unit = TODO("PLAN.md Step 6")
+
+    override fun bindText(index: Int, value: String): Unit = TODO("PLAN.md Step 6")
+
+    override fun bindNull(index: Int): Unit = TODO("PLAN.md Step 6")
+
+    override fun getBlob(index: Int): ByteArray = TODO("PLAN.md Step 6")
+
+    override fun getDouble(index: Int): Double = TODO("PLAN.md Step 6")
+
+    override fun getLong(index: Int): Long = TODO("PLAN.md Step 6")
+
+    override fun getText(index: Int): String = TODO("PLAN.md Step 6")
+
+    override fun isNull(index: Int): Boolean = TODO("PLAN.md Step 6")
+
+    override fun getColumnCount(): Int = TODO("PLAN.md Step 6")
+
+    override fun getColumnName(index: Int): String = TODO("PLAN.md Step 6")
+
+    override fun getColumnType(index: Int): Int = TODO("PLAN.md Step 6")
+
+    override fun step(): Boolean = TODO("PLAN.md Step 6")
+
+    override fun reset(): Unit = TODO("PLAN.md Step 6")
+
+    override fun clearBindings(): Unit = TODO("PLAN.md Step 6")
+
+    override fun close(): Unit = TODO("PLAN.md Step 6")
+}

@@ -2,6 +2,7 @@ package dev.seri.doltrooms.driver
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.SQLiteStatement
 
 /**
  * A [SQLiteDriver] backed by DoltLite, DoltHub's SQLite fork with Git-style
@@ -20,3 +21,10 @@ public expect class DoltLiteDriver() : SQLiteDriver
  * (`sqlite3*`). Created by [DoltLiteDriver]; not thread-safe.
  */
 public expect class DoltLiteConnection : SQLiteConnection
+
+/**
+ * A [SQLiteStatement] over a native DoltLite prepared statement
+ * (`sqlite3_stmt*`). Created by [DoltLiteConnection.prepare]; not
+ * thread-safe.
+ */
+public expect class DoltLiteStatement : SQLiteStatement
