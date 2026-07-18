@@ -91,7 +91,7 @@ after the iOS checklist above: `./gradlew publishToMavenLocal` (now
 including `-iosarm64`/`-iossimulatorarm64`), inspect, then
 `./gradlew publishToMavenCentral` with credentials + key in env.
 
-## First observed CI run — PARTIALLY OBSERVED 2026-07-18 (PR #2)
+## First observed CI run — FULLY OBSERVED 2026-07-18 (PR #2), entry kept for the record
 
 `.github/workflows/ci.yml` ran for the first time on PR #2. Observed:
 the workflow executes end-to-end (checkout, JDK, SDK/NDK, caches,
@@ -105,10 +105,13 @@ unmaintained template workflows from the initial commit: `gradle.yml`
 job cannot pass before the iOS checklist above lands) and
 `publish.yml` (kept — release-triggered, dormant; review its secrets
 and env names against the finalized signing setup before the first
-release). Still to observe on a subsequent run: a green run
-end-to-end, and the `actions/cache` steps hitting (DoltLite zips,
-`~/.konan`) with the download tasks passing through without a network
-fetch (the pre-seeded-zip acceptance in `library/build.gradle.kts`).
+release). Subsequently observed, closing the checklist: after the
+collision fix, the run is GREEN end-to-end (~5 min); on a re-run both
+`actions/cache` steps HIT and restored (DoltLite zips, `~/.konan` —
+note: actions/cache saves only on job success, so the failed first
+run populated nothing), and the download tasks passed through in
+sub-second time on the restored zips — the pre-seeded-zip acceptance
+worked with no network fetch. Nothing about CI remains deferred.
 
 ## Android on-device (needs a device/emulator) — deferred by Step 5
 
