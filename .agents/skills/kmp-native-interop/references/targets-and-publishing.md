@@ -82,6 +82,35 @@ https://kotlinlang.org/docs/multiplatform/multiplatform-publish-lib-setup.html:
   (the old `publishLibraryVariants` dance belongs to
   `com.android.library`).
 
+## vanniktech maven-publish specifics (verified in-repo 2026-07-18, plugin 0.36.0, Dokka 2.2.0)
+
+- Central requires a `-javadoc` jar; for KMP wire it via
+  `mavenPublishing { configure(KotlinMultiplatform(javadocJar =
+  JavadocJar.Dokka("<task>"), sourcesJar = SourcesJar.Sources())) }`.
+  With Dokka 2.x the input task is `dokkaGeneratePublicationHtml`
+  (the docs' `"dokkaHtml"` example is the Dokka 1.x task name;
+  `dokkaGenerateHtml` is only a lifecycle wrapper). When the Android
+  target uses `com.android.kotlin.multiplatform.library`: "leave out
+  the third parameter (`androidVariantsToPublish`)"
+  (https://github.com/vanniktech/gradle-maven-publish-plugin/blob/0.36.0/docs/what.md).
+- Dokka 2.2.0 (latest stable on Maven Central as of 2026-03) runs
+  V2 mode by default — no `pluginMode` property needed; plugin id
+  `org.jetbrains.dokka`.
+- Signing/credentials via environment:
+  `ORG_GRADLE_PROJECT_mavenCentralUsername`/`-Password` (a Central
+  Portal user token, not the login) and
+  `ORG_GRADLE_PROJECT_signingInMemoryKey` (+ optional `-KeyId`,
+  `-KeyPassword`)
+  (https://github.com/vanniktech/gradle-maven-publish-plugin/blob/0.36.0/docs/central.md).
+  With `signAllPublications()` but no key in the environment, the
+  `sign*` tasks are SKIPPED — `publishToMavenLocal` works unsigned
+  (observed in-repo).
+- On a Linux host this repo's `publishToMavenLocal` produces the root
+  umbrella + `-jvm` + `-android` + `-linuxx64` publications (the
+  cinterop klib travels next to the linuxX64 klib as
+  `-cinterop-doltlite.klib`); the iOS publications require the Mac
+  host per the section above.
+
 ## JS/Wasm (dropped, ARCHITECTURE.md D4 amendment — know why)
 
 Kotlin/Wasm and Kotlin/JS interop is "JavaScript-only" via `external`

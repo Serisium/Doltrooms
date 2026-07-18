@@ -2,7 +2,7 @@
 
 Work that is implemented and believed correct but cannot be *verified*
 in the Linux-only development environment. Each entry lists what to run
-and where. PLAN.md Step 11 adds publishing checks.
+and where. Complete through PLAN.md Step 11 (publishing).
 
 ## iOS (needs a macOS host with Xcode) — deferred by Step 6
 
@@ -63,10 +63,28 @@ No XCFramework is configured yet — the iOS targets publish klibs only
 consumers ever need a binary framework, the `XCFramework()` DSL plus
 `assembleXCFramework` are Mac-only, and they depend on the per-slice
 static amalgamation archives from item 3 of the iOS checklist above —
-do the iOS list first, then add the DSL. Related, for Step 11: Maven
-Central publishing of this library must run entirely from a macOS host
-(cinterop artifacts require a Mac, and all artifacts must publish from
-a single host — same reference).
+do the iOS list first, then add the DSL.
+
+## Maven Central publishing (needs a macOS host) — deferred by Step 11
+
+Publishing is fully configured (vanniktech plugin, real POM, Dokka
+javadoc jars, signing from `ORG_GRADLE_PROJECT_signingInMemoryKey*` /
+`mavenCentralUsername`/`-Password` environment) and smoke-verified on
+Linux: `./gradlew :library:publishToMavenLocal` publishes the root
+umbrella + `-jvm` + `-android` + `-linuxx64` publications with real
+Dokka HTML in every `-javadoc` jar, the extracted-resource `.so` in the
+jvm jar, both ABI `.so`s in the AAR, and the cinterop klib alongside
+the linuxX64 klib (signing tasks correctly SKIP with no key in the
+environment). What Linux cannot verify: the iOS publications — KGP
+skips Apple compilation on non-Mac hosts once a target carries a
+cinterop, so a Linux `publish` would upload an umbrella that references
+iOS variants without their artifacts. The real Central release must
+run entirely from a single macOS host ("publish all artifacts from a
+single host"; Central "explicitly forbids duplicate publications" —
+`kmp-native-interop` targets-and-publishing reference). On the Mac,
+after the iOS checklist above: `./gradlew publishToMavenLocal` (now
+including `-iosarm64`/`-iossimulatorarm64`), inspect, then
+`./gradlew publishToMavenCentral` with credentials + key in env.
 
 ## First observed CI run (needs a push/PR on GitHub) — noted by Step 10
 
