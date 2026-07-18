@@ -4,9 +4,10 @@ A bridge between Room 3 (the Kotlin Multiplatform release of
 androidx.room) and DoltLite (DoltHub's SQLite fork with Git-style
 version control), implemented as a custom `androidx.sqlite`
 `SQLiteDriver` that links `libdoltlite` instead of sqlite3. Currently
-in the implementation phase: work proceeds one `PLAN.md` step per
-agent session — read `PLAN.md` and follow its Session Protocol before
-doing anything else.
+in the maintenance phase (`ARCHITECTURE.md` §4): the implementation
+iteration completed at `PLAN.md` Step 11 — still read `PLAN.md` (its
+Current State is the carried context) before doing anything else, but
+new feature work opens only by human decision as a new iteration.
 
 ## Governing documents
 
@@ -40,8 +41,9 @@ doing anything else.
 - **Small and auditable beats fast.** The human is following every
   file. Prefer one well-explained file over three generated ones. Do
   not scaffold ahead of the current iteration's scope
-  (`ARCHITECTURE.md` §4) — currently that means nothing beyond the
-  current unchecked `PLAN.md` step.
+  (`ARCHITECTURE.md` §4) — currently that means maintenance only:
+  bug fixes, doc/skill truthfulness, and deferred-verification
+  burn-down; no new features without a human-opened iteration.
 - **Never answer from memory about Room 3 or DoltLite.** Both shipped
   in March 2026, past most training cutoffs, and DoltLite releases
   near-daily. Load the relevant skill; if the skill doesn't answer

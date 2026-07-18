@@ -1,7 +1,7 @@
 # doltlite-room-bridge — Architecture
 
-**Status:** Target architecture as of 2026-07-18. Implementation phase
-(§4); driver work is sequenced by `PLAN.md`.
+**Status:** Target architecture as of 2026-07-18. Maintenance phase
+(§4); the implementation iteration completed at `PLAN.md` Step 11.
 
 This document specifies the project's intended end state — the
 architecture every iteration builds toward, not a snapshot of what is
@@ -189,7 +189,8 @@ checkout.
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
-| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test and XCFramework packaging (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
+| `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
+| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test, XCFramework packaging, and Maven Central publishing (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
@@ -227,8 +228,14 @@ The repo keeps the `multiplatform-library-template` build shape:
 - Publishing: the vanniktech plugin targets Maven Central with
   signing. Coordinates are decided: group `dev.seri.doltrooms`,
   artifact `doltrooms` (Android namespace `dev.seri.doltrooms`).
-  The POM's license/developer/scm entries remain template
-  placeholders until the publishing step of `PLAN.md`.
+  The POM is real (Apache-2.0, developer `Serisium`, GitHub scm);
+  Dokka (pinned in the catalog) generates the `-javadoc` jars via the
+  plugin's `KotlinMultiplatform` configure; credentials and the GPG
+  key arrive via `ORG_GRADLE_PROJECT_*` environment variables, and
+  signing tasks skip when no key is present, so
+  `publishToMavenLocal` works unsigned in dev environments. The
+  actual Central release runs from a single macOS host — the iOS
+  klibs carry cinterops (`docs/deferred-verification.md`).
 
 ### 3.3 The `:library` module — targets and source sets
 
@@ -289,12 +296,16 @@ packages `dev.seri.doltrooms.*`).
 
 ## 4. Current iteration
 
-**Implementation.** Promoted from research by human decision on
-2026-07-17: build the full library — the DoltLite-backed
-`SQLiteDriver` across the platform ladder (D4; the web rung was
-dropped at `PLAN.md` Step 9), the typed
-`dolt_*` versioning helpers, `doltlite-remotesrv` sync, CI, and
-publishing preparation. The work is sequenced by `PLAN.md`: one step
-per agent session, test-first per D7, each session ending with a
-state summary in `PLAN.md` and a commit. Scope is bounded by the
-current unchecked `PLAN.md` step — do not scaffold ahead of it.
+**Maintenance.** The implementation iteration (opened by human
+decision 2026-07-17, completed 2026-07-18 at `PLAN.md` Step 11) built
+the full library: the DoltLite-backed `SQLiteDriver` across the
+platform ladder (D4; the web rung was dropped at Step 9), the typed
+`dolt_*` versioning helpers (D10), `doltlite-remotesrv` sync (D3),
+CI, and publishing preparation. `PLAN.md` is now in maintenance mode:
+no unchecked steps remain, and new work opens only by human decision
+as a new iteration (with new `PLAN.md` steps or a successor plan).
+Until then the scope gate is: fix bugs, keep docs/skills truthful,
+and burn down `docs/deferred-verification.md` when the needed
+hardware (macOS host, Android device, GitHub push) becomes available
+— do not scaffold new features. Test-first (D7) continues to bind
+any net-new production code.
