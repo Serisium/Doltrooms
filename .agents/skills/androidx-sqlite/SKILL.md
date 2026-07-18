@@ -30,7 +30,17 @@ Our driver is an implementation of these three interfaces over
 subset), `nonWebMain` (synchronous `open`/`prepare`/`step` — Android/
 JVM/native), and `webMain` (same but `suspend`). In androidx's
 `commonMain`, `SQLiteDriver` has no `open`, `SQLiteConnection` no
-`prepare`, `SQLiteStatement` no `step`.
+`prepare`, `SQLiteStatement` no `step`. Which split a consumer's
+`commonMain` sees follows from its own target set: with only nonWeb
+targets declared, `commonMain` resolves the nonWeb actuals (this
+repo's shape); adding any web target flips `commonMain` to the
+suspend web variants and a shared non-suspend `override` stops
+compiling (probed in-repo 2026-07-18; the reason the web rung was
+dropped, ARCHITECTURE.md D4 amendment). `androidx.sqlite:sqlite`
+2.7.0 does publish `js` and `wasmJs` variants (`sqlite-js`,
+`sqlite-wasm-js` — Gradle module metadata,
+https://dl.google.com/android/maven2/androidx/sqlite/sqlite/2.7.0/sqlite-2.7.0.module,
+verified 2026-07-18).
 
 ## The contract in one screen
 

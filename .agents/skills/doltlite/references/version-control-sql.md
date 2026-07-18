@@ -94,6 +94,52 @@ table, or wholesale with
   Correctly Across Version Control",
   https://github.com/dolthub/doltlite/releases).
 
+## Probed facts (0.11.33, 2026-07-18, via this repo's driver)
+
+Observed empirically with throwaway probe programs against the pinned
+amalgamation (PLAN.md Step 7 log) — version-sensitive, re-probe on
+upgrade:
+
+- **Return values:** `dolt_commit(...)` returns the new commit hash
+  (TEXT); `dolt_merge(branch)` returns the resulting head hash (the
+  merged branch's head on fast-forward, a new merge commit after a
+  clean three-way merge); `dolt_add`/`dolt_branch`/`dolt_checkout`/
+  `dolt_conflicts_resolve` return INTEGER `0`. Errors are ordinary
+  SQLite errors (code 1), e.g. "nothing to commit, working tree clean
+  (use dolt_add to stage changes)", "no such branch or table: X".
+- **Column schemas:** `dolt_log` = commit_hash, committer, email,
+  date, message (all TEXT; date `YYYY-MM-DD hh:mm:ss`; a fresh repo
+  carries an "Initialize data repository" root commit).
+  `dolt_status` = table_name, staged (0/1), status ("new table",
+  "modified", …); empty when clean. `dolt_branches` = name, hash,
+  latest_committer, latest_committer_email, latest_commit_date,
+  latest_commit_message, remote, branch, dirty. `dolt_diff_<table>` =
+  to_<col>…, to_commit, to_commit_date, from_<col>…, from_commit,
+  from_commit_date, diff_type ("added"/"modified"/"removed"); accepts
+  refs, `HEAD~1`, and the `WORKING` pseudo-ref; the TVF name may be
+  double-quoted and its ref arguments may be bound parameters.
+- **Branch state is per-connection session state.** A checkout affects
+  only the issuing connection; other open connections and *new*
+  connections stay on / open on `main`, and the checked-out branch
+  does NOT persist across a full close+reopen. There is no
+  default-branch knob: `dolt_config()` accepts only `user.name` /
+  `user.email` ("unknown config key (valid: user.name, user.email)").
+- **Transactions:** `dolt_commit` inside an open `BEGIN` succeeds but
+  commits and ENDS that transaction — a subsequent `COMMIT` fails
+  "cannot commit - no transaction is active". A conflicted
+  `dolt_merge` under autocommit throws and rolls back ("Merge conflict
+  detected, @autocommit transaction rolled back…"), leaving
+  `dolt_conflicts` empty; inside an explicit transaction it throws
+  "Merge has N conflict(s). Resolve and then commit with dolt_commit."
+  but leaves the transaction OPEN with `dolt_conflicts` /
+  `dolt_conflicts_<table>` (base_*/our_*/their_* + our_diff_type/
+  their_diff_type/from_root_ish/dolt_conflict_id) populated for
+  resolution, after which `COMMIT` + `dolt_commit` complete the merge.
+- **`:memory:` databases support the full dolt_* surface** (version
+  control is not file-only).
+- AUTOINCREMENT bookkeeping (`sqlite_sequence`) shows up as a changed
+  table in `dolt_status` and diffs alongside user tables.
+
 ## Implication for Room usage
 
 Because everything is `SELECT`-shaped, version control is reachable

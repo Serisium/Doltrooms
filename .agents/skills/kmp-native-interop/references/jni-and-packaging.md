@@ -70,10 +70,11 @@ https://github.com/java-native-access/jna/blob/master/www/FrequentlyAskedQuestio
 which adds `libjnidispatch.so` per ABI.
 
 Relevance: `com.dolthub:doltlite-android` is already a JNA wrapper
-over `libdoltlite.so` (`doltlite` skill). Reusing it is the zero-NDK
-v1 path for the Android rung; hand-written JNI (androidx-style, with
-`@FastNative` on hot methods) is the optimization path for the
-`step()` loop.
+over `libdoltlite.so` (`doltlite` skill). It was the candidate zero-NDK
+path for the Android rung, but this repo settled against it —
+ARCHITECTURE.md D8 ships our own NDK-compiled per-ABI `.so` of the
+pinned amalgamation (one DoltLite pin, no JNA per-call overhead on the
+`step()` loop, one shared `DoltLiteNative` binding).
 
 ## Recipe summary for the driver
 

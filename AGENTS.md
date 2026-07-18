@@ -1,10 +1,13 @@
-# Project: doltlite-room-bridge
+# Project: doltrooms (doltlite-room-bridge)
 
 A bridge between Room 3 (the Kotlin Multiplatform release of
 androidx.room) and DoltLite (DoltHub's SQLite fork with Git-style
 version control), implemented as a custom `androidx.sqlite`
 `SQLiteDriver` that links `libdoltlite` instead of sqlite3. Currently
-in the research phase — no driver code exists yet.
+in the maintenance phase (`ARCHITECTURE.md` §4): the implementation
+iteration completed at `PLAN.md` Step 11 — still read `PLAN.md` (its
+Current State is the carried context) before doing anything else, but
+new feature work opens only by human decision as a new iteration.
 
 ## Governing documents
 
@@ -13,7 +16,7 @@ in the research phase — no driver code exists yet.
   becomes out of date, suggest edits or additions to the human instead
   of making them yourself.
 - **`ARCHITECTURE.md` holds this project's architectural decisions**
-  (D1–D7). It may be agent-written and may contain historical detail.
+  (D1–D10). It may be agent-written and may contain historical detail.
   Read it before any non-trivial change. You are not permitted to make
   changes elsewhere in the project that violate a decision in
   `ARCHITECTURE.md` unless explicitly told to. When such a decision is
@@ -22,6 +25,10 @@ in the research phase — no driver code exists yet.
   speculative/deferred material to it. Where it and `README.md`
   disagree, the README is the newer decision: update `ARCHITECTURE.md`
   to follow it.
+- **`PLAN.md` is the living implementation plan** — session protocol,
+  current state, step backlog, and append-only step log. It is the
+  only context carried between agent sessions; keeping its "Current
+  State" truthful at the end of every session is part of every step.
 - **`docs/FEASIBILITY.md` holds the founding research** — why the
   bridge is DoltLite-as-driver and why Room-to-Dolt-server is
   infeasible. It is context, not decisions, and it is a snapshot
@@ -34,8 +41,9 @@ in the research phase — no driver code exists yet.
 - **Small and auditable beats fast.** The human is following every
   file. Prefer one well-explained file over three generated ones. Do
   not scaffold ahead of the current iteration's scope
-  (`ARCHITECTURE.md` §4) — currently that means no driver code, no
-  new modules, no added dependencies.
+  (`ARCHITECTURE.md` §4) — currently that means maintenance only:
+  bug fixes, doc/skill truthfulness, and deferred-verification
+  burn-down; no new features without a human-opened iteration.
 - **Never answer from memory about Room 3 or DoltLite.** Both shipped
   in March 2026, past most training cutoffs, and DoltLite releases
   near-daily. Load the relevant skill; if the skill doesn't answer
@@ -47,7 +55,7 @@ in the research phase — no driver code exists yet.
   platform artifacts, and claims in skills should record the version
   they were verified against.
 - **After editing any `.md` file, re-check cross-references.** Update
-  decision ids (D1–D7), section numbers (§1–§4), file names, and
+  decision ids (D1–D10), section numbers (§1–§4), file names, and
   links in the other docs (`AGENTS.md`, `ARCHITECTURE.md`,
   `.agents/skills/`) that point at what you changed. A dangling `§`
   or renamed file reference is a bug.
@@ -55,7 +63,7 @@ in the research phase — no driver code exists yet.
   feature branches; PRs target `main`. Keep commits small and
   single-topic; never commit `build/`, `.gradle/`, `.kotlin/`, or
   `.idea/` content. Do not commit or push without being asked.
-- Build/test loop (template code for now): `./gradlew build`, tests
+- Build/test loop: `./gradlew build`, tests
   via `./gradlew :library:allTests` (JVM/native) — Android host tests
   run under `:library:testAndroidHostTest`.
 
