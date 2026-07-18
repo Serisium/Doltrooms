@@ -2,8 +2,7 @@
 
 Work that is implemented and believed correct but cannot be *verified*
 in the Linux-only development environment. Each entry lists what to run
-and where. PLAN.md Step 10 owns extending this file (Android device
-tests, CI coverage); Step 11 adds publishing checks.
+and where. PLAN.md Step 11 adds publishing checks.
 
 ## iOS (needs a macOS host with Xcode) — deferred by Step 6
 
@@ -55,6 +54,32 @@ runs on a Mac (e.g. during the iOS verification above), extend
 `osx-arm64` asset + its recorded SHA-256 to unskip them. The sync
 logic itself is platform-independent and fully covered by the
 commonTest `file://` remote tests on every target.
+
+## XCFramework packaging (needs a macOS host) — deferred by Step 10
+
+No XCFramework is configured yet — the iOS targets publish klibs only
+(the KMP umbrella publication carries them; see the
+`kmp-native-interop` targets-and-publishing reference). If Apple
+consumers ever need a binary framework, the `XCFramework()` DSL plus
+`assembleXCFramework` are Mac-only, and they depend on the per-slice
+static amalgamation archives from item 3 of the iOS checklist above —
+do the iOS list first, then add the DSL. Related, for Step 11: Maven
+Central publishing of this library must run entirely from a macOS host
+(cinterop artifacts require a Mac, and all artifacts must publish from
+a single host — same reference).
+
+## First observed CI run (needs a push/PR on GitHub) — noted by Step 10
+
+`.github/workflows/ci.yml` has been maintained since Step 1 but never
+observed running: it triggers on pushes to `main`/`develop` and on
+pull requests, and in-env sessions do not push (AGENTS.md working
+rules). Every command it runs is verified green locally each step; the
+workflow file itself is unexercised. On the first PR, check: the run
+is green end-to-end; the two `actions/cache` steps miss then populate
+(DoltLite zips, `~/.konan`), and a re-run hits both (the Gradle log
+should show the download tasks completing without a network fetch —
+the pre-seeded-zip acceptance in `library/build.gradle.kts`); the
+60-minute timeout leaves comfortable headroom.
 
 ## Android on-device (needs a device/emulator) — deferred by Step 5
 
