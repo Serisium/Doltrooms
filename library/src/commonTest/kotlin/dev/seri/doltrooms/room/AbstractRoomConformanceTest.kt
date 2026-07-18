@@ -1,6 +1,7 @@
 package dev.seri.doltrooms.room
 
 import androidx.room3.Room
+import androidx.room3.RoomDatabase
 import androidx.sqlite.SQLiteDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,8 +23,10 @@ import kotlinx.coroutines.withTimeout
 // - [x] suspend @Insert + @Query roundtrip through a generated DAO
 // - [x] parameterized list @Query; @Update and @Delete return change counts
 // - [x] @Transaction DAO method commits on success, rolls back on exception
-// - [ ] Flow @Query emits initially and re-emits after a write
+// - [x] Flow @Query emits initially and re-emits after a write
 //       (InvalidationTracker: temp table + triggers through the driver)
+// - [ ] file DB + WAL journal mode: Room's 4-reader/1-writer pool serves
+//       concurrent DAO readers while a writer transacts
 abstract class AbstractRoomConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
@@ -35,6 +38,14 @@ abstract class AbstractRoomConformanceTest {
     private fun inMemoryDb(): RoomConformanceDb =
         Room.inMemoryDatabaseBuilder<RoomConformanceDb>()
             .setDriver(driver())
+            .build()
+
+    // WRITE_AHEAD_LOGGING is explicit (not left to the default) because it is
+    // what selects Room's 4-reader/1-writer pool over our driver.
+    private fun fileDb(path: String): RoomConformanceDb =
+        Room.databaseBuilder<RoomConformanceDb>(name = path)
+            .setDriver(driver())
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .build()
 
     @Test
@@ -100,6 +111,33 @@ abstract class AbstractRoomConformanceTest {
                 }
                 assertEquals(listOf(Person(id = id, name = "Ada", age = 36)), seen)
                 collector.cancel()
+            } finally {
+                db.close()
+            }
+        }
+    }
+
+    @Test
+    fun walFileDbServesConcurrentReadersWhileWriting() = runTest {
+        withContext(Dispatchers.Default) {
+            val db = fileDb(tempDbPath())
+            try {
+                val dao = db.personDao()
+                dao.insert(Person(name = "seed", age = 1))
+                val writer = launch {
+                    repeat(20) { i ->
+                        dao.insertPair(
+                            Person(name = "a$i", age = i),
+                            Person(name = "b$i", age = i),
+                        )
+                    }
+                }
+                val readers = List(4) {
+                    launch { repeat(50) { dao.olderThan(-1) } }
+                }
+                writer.join()
+                readers.forEach { it.join() }
+                assertEquals(41, dao.olderThan(-1).size)
             } finally {
                 db.close()
             }
