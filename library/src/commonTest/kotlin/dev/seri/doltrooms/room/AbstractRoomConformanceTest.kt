@@ -2,10 +2,15 @@ package dev.seri.doltrooms.room
 
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import androidx.room3.immediateTransaction
+import androidx.room3.useWriterConnection
 import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.SQLiteException
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -25,8 +30,12 @@ import kotlinx.coroutines.withTimeout
 // - [x] @Transaction DAO method commits on success, rolls back on exception
 // - [x] Flow @Query emits initially and re-emits after a write
 //       (InvalidationTracker: temp table + triggers through the driver)
-// - [ ] file DB + WAL journal mode: Room's 4-reader/1-writer pool serves
+// - [x] file DB + WAL journal mode: Room's 4-reader/1-writer pool serves
 //       concurrent DAO readers while a writer transacts
+// - [ ] busy contract: a second Room instance's write while another
+//       instance holds an immediate transaction throws SQLITE_BUSY (5),
+//       and succeeds after release (Room sets no busy_timeout; probed
+//       2026-07-18, identical on both engines)
 abstract class AbstractRoomConformanceTest {
 
     /** The driver under test — DoltLite or the Bundled oracle. */
@@ -140,6 +149,41 @@ abstract class AbstractRoomConformanceTest {
                 assertEquals(41, dao.olderThan(-1).size)
             } finally {
                 db.close()
+            }
+        }
+    }
+
+    @Test
+    fun secondInstanceWriteDuringHeldTransactionThrowsBusy() = runTest {
+        withContext(Dispatchers.Default) {
+            val path = tempDbPath()
+            val dbA = fileDb(path)
+            val dbB = fileDb(path)
+            try {
+                val started = CompletableDeferred<Unit>()
+                val release = CompletableDeferred<Unit>()
+                val holder = launch {
+                    dbA.useWriterConnection { transactor ->
+                        transactor.immediateTransaction {
+                            usePrepared("INSERT INTO Person (name, age) VALUES ('holder', 1)") { it.step() }
+                            started.complete(Unit)
+                            release.await()
+                        }
+                    }
+                }
+                started.await()
+                val e = assertFailsWith<SQLiteException> {
+                    withTimeout(10_000) { dbB.personDao().insert(Person(name = "blocked", age = 2)) }
+                }
+                assertContains(e.message ?: "", "Error code: 5")
+                release.complete(Unit)
+                holder.join()
+                // Once the writer commits, the second instance can write.
+                dbB.personDao().insert(Person(name = "unblocked", age = 3))
+                assertEquals(2, dbB.personDao().olderThan(0).size)
+            } finally {
+                dbA.close()
+                dbB.close()
             }
         }
     }
