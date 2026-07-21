@@ -1,0 +1,90 @@
+# Copyright 2024 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Toolchain versions follow the doltrooms library build (../../gradle/
+# libs.versions.toml): the sample consumes the library's Kotlin 2.3.10
+# klibs via an included build, so its own Kotlin/KSP/AGP must match, and
+# the codelab's Room 2 becomes Room 3 (androidx.room3) — the Room
+# generation doltrooms is built against. SKIE is gone from the codelab's
+# original catalog: no SKIE release supports Kotlin 2.3.x yet, so the
+# iOS Flow interop is a manual bridge (see shared/src/iosMain FlowWatch).
+
+[versions]
+min-sdk = "26"
+target-sdk = "35"
+compile-sdk = "36"
+agp = "9.0.1"
+androidx-activityCompose = "1.10.1"
+androidx-room3 = "3.0.0"
+androidx-lifecycle = "2.9.2"
+kotlin = "2.3.10"
+kotlinx-coroutines = "1.10.2"
+ksp = "2.3.10"
+ktorVersion = "3.2.3"
+composeBom = "2025.07.00"
+hilt = "2.60.1"
+androidx-testCore = "1.7.0"
+androidx-testRunner = "1.7.0"
+androidx-junit = "1.3.0"
+turbine = "1.2.1"
+core = "1.7.0"
+doltrooms = "0.1.0-SNAPSHOT"
+
+[libraries]
+doltrooms = { module = "dev.seri.doltrooms:doltrooms", version.ref = "doltrooms" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+
+## Compose BOM Start ##
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+## Compose BOM End ##
+
+androidx-room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "androidx-room3" }
+androidx-room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "androidx-room3" }
+androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorVersion" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktorVersion" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktorVersion" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
+
+## Testing Start ##
+
+androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-junit" }
+androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "androidx-testCore" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-testRunner" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
+
+## Testing End ##
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlinCompose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room3 = { id = "androidx.room3", version.ref = "androidx-room3" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

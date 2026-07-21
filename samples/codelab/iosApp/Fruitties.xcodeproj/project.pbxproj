@@ -1,0 +1,710 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
+		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
+		1800B0E02CBFFD6B0035D9C5 /* AsyncStreamNSFetchRequestResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1800B0DA2CBFFD6B0035D9C5 /* AsyncStreamNSFetchRequestResultTests.swift */; };
+		1800B0E12CBFFD6B0035D9C5 /* DefaultCartRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1800B0DB2CBFFD6B0035D9C5 /* DefaultCartRepositoryTests.swift */; };
+		1800B0E22CBFFD6B0035D9C5 /* NSManagedObjectContext+contextForTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1800B0DE2CBFFD6B0035D9C5 /* NSManagedObjectContext+contextForTests.swift */; };
+		1800B0E32CBFFD6B0035D9C5 /* DefaultFruittieRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1800B0DC2CBFFD6B0035D9C5 /* DefaultFruittieRepositoryTests.swift */; };
+		1800B0E42CBFFD6B0035D9C5 /* MockFruittieApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1800B0DD2CBFFD6B0035D9C5 /* MockFruittieApi.swift */; };
+		183004742CAC5744001DF9CA /* FruittieApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183004732CAC5740001DF9CA /* FruittieApi.swift */; };
+		183004762CACE153001DF9CA /* AsyncStream+NSFetchRequestResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183004752CACE14F001DF9CA /* AsyncStream+NSFetchRequestResult.swift */; };
+		1830047A2CACE244001DF9CA /* FruittieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183004792CACE244001DF9CA /* FruittieView.swift */; };
+		1830047C2CACE2B0001DF9CA /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1830047B2CACE2AF001DF9CA /* AppContainer.swift */; };
+		1830047E2CACE2C7001DF9CA /* FruittieRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1830047D2CACE2C6001DF9CA /* FruittieRepository.swift */; };
+		183004802CACE2FD001DF9CA /* DataController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1830047F2CACE2FC001DF9CA /* DataController.swift */; };
+		183004822CACE30F001DF9CA /* ContentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183004812CACE30F001DF9CA /* ContentViewModel.swift */; };
+		183004922CB700CA001DF9CA /* CartRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183004912CB700C9001DF9CA /* CartRepository.swift */; };
+		186680822CBEB6240047633B /* ConcurrencyExtras in Frameworks */ = {isa = PBXBuildFile; productRef = 186680812CBEB6240047633B /* ConcurrencyExtras */; };
+		187640EF2CAB2915002A80F7 /* Fruitties.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 187640ED2CAB2915002A80F7 /* Fruitties.xcdatamodeld */; };
+		1885088B2CB99134003F8D5E /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1885088A2CB99117003F8D5E /* main.swift */; };
+		18C09F492CC1585800B22F47 /* MockFruittieRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C09F482CC1585800B22F47 /* MockFruittieRepository.swift */; };
+		18C09F4D2CC1591500B22F47 /* FakeCartRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C09F4C2CC1590F00B22F47 /* FakeCartRepository.swift */; };
+		2DCC1BDB2D3E90BD0017AC11 /* FruittiesResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCC1BDA2D3E90BD0017AC11 /* FruittiesResponse.swift */; };
+		2E8773602BC85C2400BF7C40 /* CartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E87735F2BC85C2400BF7C40 /* CartView.swift */; };
+		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
+		A41A39FB2CF793B600685993 /* ConcurrencyExtras in Frameworks */ = {isa = PBXBuildFile; productRef = A41A39FA2CF793B600685993 /* ConcurrencyExtras */; };
+		D00226C22D9644DB004722DC /* Fruittie.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00226C12D9644DB004722DC /* Fruittie.swift */; };
+		D00226C42D964519004722DC /* CartItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00226C32D964519004722DC /* CartItem.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1885087D2CB71FC8003F8D5E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7555FF73242A565900829871 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7555FF7A242A565900829871;
+			remoteInfo = Fruitties;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7555FFB4242A642300829871 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		1800B0DA2CBFFD6B0035D9C5 /* AsyncStreamNSFetchRequestResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncStreamNSFetchRequestResultTests.swift; sourceTree = "<group>"; };
+		1800B0DB2CBFFD6B0035D9C5 /* DefaultCartRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultCartRepositoryTests.swift; sourceTree = "<group>"; };
+		1800B0DC2CBFFD6B0035D9C5 /* DefaultFruittieRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultFruittieRepositoryTests.swift; sourceTree = "<group>"; };
+		1800B0DD2CBFFD6B0035D9C5 /* MockFruittieApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockFruittieApi.swift; sourceTree = "<group>"; };
+		1800B0DE2CBFFD6B0035D9C5 /* NSManagedObjectContext+contextForTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSManagedObjectContext+contextForTests.swift"; sourceTree = "<group>"; };
+		183004732CAC5740001DF9CA /* FruittieApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FruittieApi.swift; sourceTree = "<group>"; };
+		183004752CACE14F001DF9CA /* AsyncStream+NSFetchRequestResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AsyncStream+NSFetchRequestResult.swift"; sourceTree = "<group>"; };
+		183004792CACE244001DF9CA /* FruittieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FruittieView.swift; sourceTree = "<group>"; };
+		1830047B2CACE2AF001DF9CA /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
+		1830047D2CACE2C6001DF9CA /* FruittieRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FruittieRepository.swift; sourceTree = "<group>"; };
+		1830047F2CACE2FC001DF9CA /* DataController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataController.swift; sourceTree = "<group>"; };
+		183004812CACE30F001DF9CA /* ContentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewModel.swift; sourceTree = "<group>"; };
+		183004912CB700C9001DF9CA /* CartRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartRepository.swift; sourceTree = "<group>"; };
+		187640EE2CAB2915002A80F7 /* Fruitties.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Fruitties.xcdatamodel; sourceTree = "<group>"; };
+		188508792CB71FC8003F8D5E /* FruittiesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FruittiesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1885088A2CB99117003F8D5E /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		18C09F482CC1585800B22F47 /* MockFruittieRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockFruittieRepository.swift; sourceTree = "<group>"; };
+		18C09F4C2CC1590F00B22F47 /* FakeCartRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeCartRepository.swift; sourceTree = "<group>"; };
+		2DCC1BDA2D3E90BD0017AC11 /* FruittiesResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FruittiesResponse.swift; sourceTree = "<group>"; };
+		2E87735F2BC85C2400BF7C40 /* CartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartView.swift; sourceTree = "<group>"; };
+		7555FF7B242A565900829871 /* Fruitties.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Fruitties.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D00226C12D9644DB004722DC /* Fruittie.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fruittie.swift; sourceTree = "<group>"; };
+		D00226C32D964519004722DC /* CartItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartItem.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		188508762CB71FC8003F8D5E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				186680822CBEB6240047633B /* ConcurrencyExtras in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7555FF78242A565900829871 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A41A39FB2CF793B600685993 /* ConcurrencyExtras in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		058557D7273AAEEB004C7B11 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		1800B0DF2CBFFD6B0035D9C5 /* FruittiesTests */ = {
+			isa = PBXGroup;
+			children = (
+				18C09F4E2CC1591A00B22F47 /* Fake */,
+				18C09F472CC1584700B22F47 /* Mock */,
+				1800B0DA2CBFFD6B0035D9C5 /* AsyncStreamNSFetchRequestResultTests.swift */,
+				1800B0DB2CBFFD6B0035D9C5 /* DefaultCartRepositoryTests.swift */,
+				1800B0DC2CBFFD6B0035D9C5 /* DefaultFruittieRepositoryTests.swift */,
+				1800B0DE2CBFFD6B0035D9C5 /* NSManagedObjectContext+contextForTests.swift */,
+			);
+			path = FruittiesTests;
+			sourceTree = "<group>";
+		};
+		183004952CB70661001DF9CA /* Repository */ = {
+			isa = PBXGroup;
+			children = (
+				1830047D2CACE2C6001DF9CA /* FruittieRepository.swift */,
+				183004912CB700C9001DF9CA /* CartRepository.swift */,
+				D00226C12D9644DB004722DC /* Fruittie.swift */,
+				D00226C32D964519004722DC /* CartItem.swift */,
+			);
+			path = Repository;
+			sourceTree = "<group>";
+		};
+		183004962CB7066C001DF9CA /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				183004812CACE30F001DF9CA /* ContentViewModel.swift */,
+				7555FF82242A565900829871 /* ContentView.swift */,
+				183004792CACE244001DF9CA /* FruittieView.swift */,
+				2E87735F2BC85C2400BF7C40 /* CartView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		183004972CB70678001DF9CA /* DI */ = {
+			isa = PBXGroup;
+			children = (
+				1830047B2CACE2AF001DF9CA /* AppContainer.swift */,
+			);
+			path = DI;
+			sourceTree = "<group>";
+		};
+		187640EB2CAAF524002A80F7 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				2DCC1BDD2D3E946C0017AC11 /* Utils */,
+				2DCC1BDC2D3E918B0017AC11 /* Database */,
+				183004972CB70678001DF9CA /* DI */,
+				2DCC1BD92D3E90230017AC11 /* Network */,
+				183004952CB70661001DF9CA /* Repository */,
+				183004962CB7066C001DF9CA /* UI */,
+				1885088A2CB99117003F8D5E /* main.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		187640EC2CAAF528002A80F7 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				058557BA273AAA24004C7B11 /* Assets.xcassets */,
+				7555FF8C242A565B00829871 /* Info.plist */,
+				058557D7273AAEEB004C7B11 /* Preview Content */,
+				187640ED2CAB2915002A80F7 /* Fruitties.xcdatamodeld */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		18C09F472CC1584700B22F47 /* Mock */ = {
+			isa = PBXGroup;
+			children = (
+				18C09F482CC1585800B22F47 /* MockFruittieRepository.swift */,
+				1800B0DD2CBFFD6B0035D9C5 /* MockFruittieApi.swift */,
+			);
+			path = Mock;
+			sourceTree = "<group>";
+		};
+		18C09F4E2CC1591A00B22F47 /* Fake */ = {
+			isa = PBXGroup;
+			children = (
+				18C09F4C2CC1590F00B22F47 /* FakeCartRepository.swift */,
+			);
+			path = Fake;
+			sourceTree = "<group>";
+		};
+		2DCC1BD92D3E90230017AC11 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				183004732CAC5740001DF9CA /* FruittieApi.swift */,
+				2DCC1BDA2D3E90BD0017AC11 /* FruittiesResponse.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
+		2DCC1BDC2D3E918B0017AC11 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				1830047F2CACE2FC001DF9CA /* DataController.swift */,
+			);
+			path = Database;
+			sourceTree = "<group>";
+		};
+		2DCC1BDD2D3E946C0017AC11 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				183004752CACE14F001DF9CA /* AsyncStream+NSFetchRequestResult.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		7555FF72242A565900829871 = {
+			isa = PBXGroup;
+			children = (
+				187640EB2CAAF524002A80F7 /* Sources */,
+				187640EC2CAAF528002A80F7 /* Resources */,
+				1800B0DF2CBFFD6B0035D9C5 /* FruittiesTests */,
+				7555FF7C242A565900829871 /* Products */,
+				7555FFB0242A642200829871 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		7555FF7C242A565900829871 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7555FF7B242A565900829871 /* Fruitties.app */,
+				188508792CB71FC8003F8D5E /* FruittiesTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7555FFB0242A642200829871 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		188508782CB71FC8003F8D5E /* FruittiesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1885087F2CB71FC8003F8D5E /* Build configuration list for PBXNativeTarget "FruittiesTests" */;
+			buildPhases = (
+				188508752CB71FC8003F8D5E /* Sources */,
+				188508762CB71FC8003F8D5E /* Frameworks */,
+				188508772CB71FC8003F8D5E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1885087E2CB71FC8003F8D5E /* PBXTargetDependency */,
+			);
+			name = FruittiesTests;
+			packageProductDependencies = (
+				186680812CBEB6240047633B /* ConcurrencyExtras */,
+			);
+			productName = FruittiesTests;
+			productReference = 188508792CB71FC8003F8D5E /* FruittiesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7555FF7A242A565900829871 /* Fruitties */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "Fruitties" */;
+			buildPhases = (
+				2DCC1BD62D3947070017AC11 /* Compile Kotlin Multiplatform */,
+				7555FF77242A565900829871 /* Sources */,
+				7555FF78242A565900829871 /* Frameworks */,
+				7555FF79242A565900829871 /* Resources */,
+				7555FFB4242A642300829871 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Fruitties;
+			packageProductDependencies = (
+				A41A39FA2CF793B600685993 /* ConcurrencyExtras */,
+			);
+			productName = iosApp;
+			productReference = 7555FF7B242A565900829871 /* Fruitties.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		7555FF73242A565900829871 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1130;
+				ORGANIZATIONNAME = orgName;
+				TargetAttributes = {
+					188508782CB71FC8003F8D5E = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					7555FF7A242A565900829871 = {
+						CreatedOnToolsVersion = 11.3.1;
+					};
+				};
+			};
+			buildConfigurationList = 7555FF76242A565900829871 /* Build configuration list for PBXProject "Fruitties" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 7555FF72242A565900829871;
+			packageReferences = (
+				186680802CBEB6240047633B /* XCRemoteSwiftPackageReference "swift-concurrency-extras" */,
+			);
+			productRefGroup = 7555FF7C242A565900829871 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7555FF7A242A565900829871 /* Fruitties */,
+				188508782CB71FC8003F8D5E /* FruittiesTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		188508772CB71FC8003F8D5E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7555FF79242A565900829871 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
+				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		2DCC1BD62D3947070017AC11 /* Compile Kotlin Multiplatform */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Compile Kotlin Multiplatform";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\ncd \"$SRCROOT/..\"\n# This sample lives inside the doltrooms repository and uses the ROOT Gradle wrapper.\n../../gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		188508752CB71FC8003F8D5E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1800B0E02CBFFD6B0035D9C5 /* AsyncStreamNSFetchRequestResultTests.swift in Sources */,
+				1800B0E12CBFFD6B0035D9C5 /* DefaultCartRepositoryTests.swift in Sources */,
+				18C09F492CC1585800B22F47 /* MockFruittieRepository.swift in Sources */,
+				1800B0E22CBFFD6B0035D9C5 /* NSManagedObjectContext+contextForTests.swift in Sources */,
+				18C09F4D2CC1591500B22F47 /* FakeCartRepository.swift in Sources */,
+				1800B0E32CBFFD6B0035D9C5 /* DefaultFruittieRepositoryTests.swift in Sources */,
+				1800B0E42CBFFD6B0035D9C5 /* MockFruittieApi.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7555FF77242A565900829871 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2E8773602BC85C2400BF7C40 /* CartView.swift in Sources */,
+				1830047E2CACE2C7001DF9CA /* FruittieRepository.swift in Sources */,
+				2DCC1BDB2D3E90BD0017AC11 /* FruittiesResponse.swift in Sources */,
+				187640EF2CAB2915002A80F7 /* Fruitties.xcdatamodeld in Sources */,
+				183004822CACE30F001DF9CA /* ContentViewModel.swift in Sources */,
+				183004922CB700CA001DF9CA /* CartRepository.swift in Sources */,
+				1830047C2CACE2B0001DF9CA /* AppContainer.swift in Sources */,
+				D00226C22D9644DB004722DC /* Fruittie.swift in Sources */,
+				183004742CAC5744001DF9CA /* FruittieApi.swift in Sources */,
+				183004802CACE2FD001DF9CA /* DataController.swift in Sources */,
+				1885088B2CB99134003F8D5E /* main.swift in Sources */,
+				183004762CACE153001DF9CA /* AsyncStream+NSFetchRequestResult.swift in Sources */,
+				1830047A2CACE244001DF9CA /* FruittieView.swift in Sources */,
+				D00226C42D964519004722DC /* CartItem.swift in Sources */,
+				7555FF83242A565900829871 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1885087E2CB71FC8003F8D5E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7555FF7A242A565900829871 /* Fruitties */;
+			targetProxy = 1885087D2CB71FC8003F8D5E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		188508802CB71FC8003F8D5E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/Fruitties.app/Fruitties";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fruitties.kmptutorial.ios.FruittiesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+			};
+			name = Debug;
+		};
+		188508812CB71FC8003F8D5E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/Fruitties.app/Fruitties";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fruitties.kmptutorial.ios.FruittiesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+			};
+			name = Release;
+		};
+		7555FFA3242A565B00829871 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		7555FFA4242A565B00829871 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		7555FFA6242A565B00829871 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "\"Resources/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				INFOPLIST_FILE = Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fruitties.kmptutorial.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7555FFA7242A565B00829871 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "\"Resources/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				INFOPLIST_FILE = Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fruitties.kmptutorial.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1885087F2CB71FC8003F8D5E /* Build configuration list for PBXNativeTarget "FruittiesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				188508802CB71FC8003F8D5E /* Debug */,
+				188508812CB71FC8003F8D5E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7555FF76242A565900829871 /* Build configuration list for PBXProject "Fruitties" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7555FFA3242A565B00829871 /* Debug */,
+				7555FFA4242A565B00829871 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "Fruitties" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7555FFA6242A565B00829871 /* Debug */,
+				7555FFA7242A565B00829871 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		186680802CBEB6240047633B /* XCRemoteSwiftPackageReference "swift-concurrency-extras" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-concurrency-extras";
+			requirement = {
+				kind = exactVersion;
+				version = 1.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		186680812CBEB6240047633B /* ConcurrencyExtras */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 186680802CBEB6240047633B /* XCRemoteSwiftPackageReference "swift-concurrency-extras" */;
+			productName = ConcurrencyExtras;
+		};
+		A41A39FA2CF793B600685993 /* ConcurrencyExtras */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 186680802CBEB6240047633B /* XCRemoteSwiftPackageReference "swift-concurrency-extras" */;
+			productName = ConcurrencyExtras;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		187640ED2CAB2915002A80F7 /* Fruitties.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				187640EE2CAB2915002A80F7 /* Fruitties.xcdatamodel */,
+			);
+			currentVersion = 187640EE2CAB2915002A80F7 /* Fruitties.xcdatamodel */;
+			path = Fruitties.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
+	};
+	rootObject = 7555FF73242A565900829871 /* Project object */;
+}
