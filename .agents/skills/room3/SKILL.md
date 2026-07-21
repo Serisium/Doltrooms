@@ -100,6 +100,14 @@ quotes, and the CI temp-dir pitfall:
 - Migration bridge from Room 2: `room3-sqlite-wrapper`'s
   `getSupportWrapper()`; `runInTransaction { }` →
   `withWriteTransaction { }`.
+- `@Relation` renamed Room 2's singular `parentColumn`/`entityColumn`
+  attributes to plural arrays — `String[] parentColumns()`,
+  `String[] entityColumns()` (verified 2026-07-21 via javap against
+  `room3-common-jvm-3.0.0`). The processor also rejects a relation
+  POJO whose constructor lists the `@Relation` property before the
+  `@Embedded` parent ("Entities and data classes must have a usable
+  public constructor" + "Cannot find setter for property"; observed
+  in-repo 2026-07-21, samples/codelab port) — put `@Embedded` first.
 - `InvalidationTracker.Observer` is gone — use
   `invalidationTracker.createFlow("Table")`.
 
