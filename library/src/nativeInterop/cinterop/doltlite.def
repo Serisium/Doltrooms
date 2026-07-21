@@ -4,9 +4,10 @@
 # native target sees the same opaque cnames.structs.sqlite3/sqlite3_stmt
 # handle types (parsing doltlite.c here would fully define struct sqlite3 on
 # one target and break the shared nativeMain source set). The include dir
-# and, on linuxX64, the static libdoltlite.a are supplied by
-# library/build.gradle.kts (includeDirs + -staticLibrary/-libraryPath
-# extraOpts) because both live under build/.
+# and the per-target static libdoltlite.a (linuxX64 always; the iOS
+# slices on macOS hosts) are supplied by library/build.gradle.kts
+# (includeDirs + -staticLibrary/-libraryPath extraOpts) because both
+# live under build/.
 package = dev.seri.doltrooms.doltlite.c
 headers = doltlite.h
 headerFilter = doltlite*.h

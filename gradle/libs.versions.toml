@@ -15,6 +15,10 @@ room3 = "3.0.0"
 androidxSqlite = "2.7.0"
 ksp = "2.3.10"
 kotlinxCoroutines = "1.10.2"
+# Instrumentation runner packaged into the androidDeviceTest APK — without
+# it the on-device instrumentation crashes with ClassNotFoundException
+# (first observed on the first real device run, 2026-07-21).
+androidxTestRunner = "1.7.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -24,6 +28,7 @@ room3-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room3"
 room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room3" }
 room3-testing = { module = "androidx.room3:room3-testing", version.ref = "room3" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 
 [plugins]
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
