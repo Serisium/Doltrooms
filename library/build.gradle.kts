@@ -204,7 +204,12 @@ abstract class CompileDoltliteAndroidJniTask @Inject constructor(
     @TaskAction
     fun compile() {
         val src = amalgamationDir.get().asFile
-        val toolchain = "${ndkDir.get()}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        // The NDK ships host prebuilts under an OS tag; macOS uses
+        // darwin-x86_64 even on Apple Silicon (Rosetta-run toolchain).
+        val hostTag =
+            if (System.getProperty("os.name").lowercase().startsWith("mac")) "darwin-x86_64"
+            else "linux-x86_64"
+        val toolchain = "${ndkDir.get()}/toolchains/llvm/prebuilt/$hostTag/bin"
         val api = minSdk.get()
         val flags = compileFlags.get()
         abiTriples.get().forEach { (abi, triple) ->
@@ -305,6 +310,84 @@ val compileDoltliteStaticLinuxX64 by tasks.registering(CompileDoltliteStaticTask
     outputDir = layout.buildDirectory.dir("nativeLibs/linuxX64")
 }
 
+// --- Apple engine archives (docs/deferred-verification.md, iOS item 3) ---
+// The same pinned amalgamation and compile flags as every other platform,
+// compiled per Apple target slice with the SDK's clang and archived with
+// libtool. Apple libSystem has none of the glibc symbol-skew workarounds
+// the linuxX64 task needs (no LFS define, no objcopy). Deployment targets
+// sit at or below Kotlin/Native's minimums so the archives link into any
+// Konan-produced binary without version warnings.
+abstract class CompileDoltliteAppleStaticTask @Inject constructor(
+    private val execOps: ExecOperations,
+) : DefaultTask() {
+    @get:InputDirectory
+    abstract val amalgamationDir: DirectoryProperty
+
+    @get:Input
+    abstract val compileFlags: ListProperty<String>
+
+    /** Apple SDK name for xcrun (iphoneos, iphonesimulator). */
+    @get:Input
+    abstract val sdkName: Property<String>
+
+    /** clang -target triple, e.g. arm64-apple-ios12.0 */
+    @get:Input
+    abstract val targetTriple: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun compile() {
+        val src = amalgamationDir.get().asFile
+        val out = outputDir.get().asFile
+        out.mkdirs()
+        val obj = temporaryDir.resolve("doltlite.o")
+        execOps.exec {
+            commandLine(
+                listOf(
+                    "xcrun", "--sdk", sdkName.get(), "clang",
+                    "-c", "-O3", "-target", targetTriple.get(),
+                ) + compileFlags.get() +
+                    listOf("-I$src", "-o", obj.absolutePath, "$src/doltlite.c")
+            )
+        }
+        val archive = out.resolve("libdoltlite.a")
+        archive.delete()
+        execOps.exec {
+            commandLine(
+                "xcrun", "--sdk", sdkName.get(), "libtool", "-static",
+                "-o", archive.absolutePath, obj.absolutePath,
+            )
+        }
+    }
+}
+
+// Registered on macOS hosts only: on Linux KGP disables Apple compilations
+// that carry cinterops (docs/deferred-verification.md), and the xcrun tasks
+// must not be reachable from the CI task graph.
+val hostIsMac = System.getProperty("os.name").lowercase().startsWith("mac")
+
+if (hostIsMac) {
+    tasks.register<CompileDoltliteAppleStaticTask>("compileDoltliteStaticIosArm64") {
+        dependsOn(unpackDoltliteAmalgamation)
+        amalgamationDir = layout.buildDirectory.dir("doltlite/src")
+        compileFlags = doltliteCompileFlags
+        sdkName = "iphoneos"
+        targetTriple = "arm64-apple-ios12.0"
+        outputDir = layout.buildDirectory.dir("nativeLibs/iosArm64")
+    }
+    tasks.register<CompileDoltliteAppleStaticTask>("compileDoltliteStaticIosSimulatorArm64") {
+        dependsOn(unpackDoltliteAmalgamation)
+        amalgamationDir = layout.buildDirectory.dir("doltlite/src")
+        compileFlags = doltliteCompileFlags
+        sdkName = "iphonesimulator"
+        // arm64 simulator slices exist from iOS 14 onward.
+        targetTriple = "arm64-apple-ios14.0-simulator"
+        outputDir = layout.buildDirectory.dir("nativeLibs/iosSimulatorArm64")
+    }
+}
+
 // Resolved the same way AGP finds the SDK: local.properties sdk.dir, then
 // the ANDROID_HOME environment (CI).
 val localPropertiesFile = rootProject.file("local.properties")
@@ -365,27 +448,29 @@ kotlin {
     }
     // All native targets share one cinterop over doltlite.h; with
     // kotlin.mpp.enableCInteropCommonization=true (gradle.properties) the
-    // bindings commonize into nativeMain, where the actuals live. linuxX64
-    // additionally embeds the static archive so binaries link
-    // self-contained; iOS is headers-only on a Linux host (see the static
-    // task's comment).
-    val doltliteCinterop: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCompilation.(embedStaticLib: Boolean) -> Unit =
-        { embedStaticLib ->
+    // bindings commonize into nativeMain, where the actuals live. Each
+    // target embeds its static engine archive (from nativeLibs/<dir>) so
+    // binaries link self-contained. On a Linux host the iOS archives
+    // cannot be built (no Apple sysroot) and the iOS cinterops stay
+    // headers-only — KGP disables those compilations there anyway
+    // (docs/deferred-verification.md).
+    val doltliteCinterop: org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCompilation.(archiveDir: String?) -> Unit =
+        { archiveDir ->
             cinterops.create("doltlite") {
                 definitionFile.set(project.file("src/nativeInterop/cinterop/doltlite.def"))
                 includeDirs(layout.buildDirectory.dir("doltlite/src"))
-                if (embedStaticLib) {
+                if (archiveDir != null) {
                     extraOpts(
                         "-staticLibrary", "libdoltlite.a",
                         "-libraryPath",
-                        layout.buildDirectory.dir("nativeLibs/linuxX64").get().asFile.absolutePath,
+                        layout.buildDirectory.dir("nativeLibs/$archiveDir").get().asFile.absolutePath,
                     )
                 }
             }
         }
-    iosArm64 { compilations.getByName("main") { doltliteCinterop(false) } }
-    iosSimulatorArm64 { compilations.getByName("main") { doltliteCinterop(false) } }
-    linuxX64 { compilations.getByName("main") { doltliteCinterop(true) } }
+    iosArm64 { compilations.getByName("main") { doltliteCinterop(if (hostIsMac) "iosArm64" else null) } }
+    iosSimulatorArm64 { compilations.getByName("main") { doltliteCinterop(if (hostIsMac) "iosSimulatorArm64" else null) } }
+    linuxX64 { compilations.getByName("main") { doltliteCinterop("linuxX64") } }
 
     sourceSets {
         commonMain.dependencies {
@@ -413,6 +498,14 @@ kotlin {
             // runs against BundledSQLiteDriver and DoltLiteDriver (PLAN.md
             // Step 3; room3 skill, testing reference).
             implementation(libs.androidx.sqlite.bundled)
+        }
+
+        getByName("androidDeviceTest").dependencies {
+            // The AndroidJUnitRunner the instrumentation declares must be
+            // packaged into the device-test APK; without it the run dies at
+            // instrumentation init with ClassNotFoundException (first real
+            // device run, 2026-07-21).
+            implementation(libs.androidx.test.runner)
         }
 
         // linuxX64Test deliberately does NOT get sqlite-bundled: on native
@@ -484,6 +577,17 @@ tasks.matching { it.name == "cinteropDoltliteLinuxX64" }.configureEach {
     // -staticLibrary embeds the archive into the klib, but cinterop does not
     // track it as an input — declare it so archive rebuilds re-run cinterop.
     inputs.files(compileDoltliteStaticLinuxX64.map { it.outputs.files })
+}
+if (hostIsMac) {
+    // Same wiring for the Apple slices; the archive tasks exist only on
+    // macOS hosts (see their registration above).
+    listOf("IosArm64", "IosSimulatorArm64").forEach { slice ->
+        val archiveTask = tasks.named("compileDoltliteStatic$slice")
+        tasks.matching { it.name == "cinteropDoltlite$slice" }.configureEach {
+            dependsOn(archiveTask)
+            inputs.files(archiveTask.map { it.outputs.files })
+        }
+    }
 }
 
 // --- doltlite-remotesrv test fixture (Step 8) -----------------------------
