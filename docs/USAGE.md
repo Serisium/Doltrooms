@@ -51,7 +51,7 @@ KSP generates the actuals).
 | JVM desktop | `libdoltroomsjni.so` is extracted from the JAR (`natives/<os>-<arch>/`) to a temp file and loaded on first use | Override with `-Ddev.seri.doltrooms.lib.path=/abs/path/to/lib`. Currently packaged: `linux-x64`. |
 | Android | The AAR ships `jni/<abi>/libdoltroomsjni.so` for `arm64-v8a` and `x86_64`, NDK-built from the same pinned DoltLite amalgamation | minSdk 24. 16 KB page alignment (NDK r28). |
 | Linux x64 (Kotlin/Native) | The klib embeds a static `libdoltlite.a` — binaries link self-contained | The final executable additionally links `libcrypt.so.1` (ships on most distros; Fedora needs `libxcrypt-compat`). |
-| iOS | Declared targets (`iosArm64`, `iosSimulatorArm64`) | Artifacts must be built and published from a macOS host and are not yet verified — see `deferred-verification.md`. |
+| iOS | The klibs embed a static `libdoltlite.a` per slice (`iosArm64`, `iosSimulatorArm64`), built on a macOS host — binaries link self-contained | Verified 2026-07-21: the library's full test suite is green on the iOS simulator, and `samples/codelab` links the driver into an app framework. Publishing still requires a macOS host. |
 
 Every platform runs the same engine version: one DoltLite pin,
 compiled from the release amalgamation by this build (no upstream

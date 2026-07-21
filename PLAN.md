@@ -42,9 +42,37 @@ Each step below is executed in one fresh agent session:
 
 ## Current State
 
-- **Last completed step:** Step 11 — Publishing + docs + closeout.
-  THE BACKLOG IS COMPLETE; this file is in maintenance mode (see the
-  section above the Session Protocol). Infra/docs-only (D7 N/A).
+- **Last completed step:** Step 12 — samples/codelab (Fruitties on
+  Dolt) + first-macOS-host iOS verification, a one-step human-opened
+  iteration (2026-07-21). The Fruitties app from Google's
+  kmp-migrate-room codelab (post-migration `end` state) lives in
+  `samples/codelab/` as a standalone composite build
+  (`includeBuild("../..")`, explicit substitution of
+  `dev.seri.doltrooms:doltrooms` → `:library`; D5 amendment), ported
+  to Room 3 + `DoltLiteDriver` on Android and iOS — its README
+  records the lineage and every delta (Room 2→3 incl. the
+  `@Relation` plural-attribute rename, AGP 9 built-in Kotlin, Hilt
+  2.60.1, SKIE dropped for a manual `FlowWatch` bridge, `iosX64`
+  dropped). The session also extended `library/build.gradle.kts`
+  with macOS-host-gated `CompileDoltliteAppleStaticTask` per-slice
+  engine archives (embedded into the iOS cinterop klibs exactly like
+  linuxX64) and `library/src/iosTest/` concretes, closing the
+  deferred-verification iOS entry: `:library:iosSimulatorArm64Test`
+  is GREEN — 52/52 on the iOS 18.3 simulator. Same-session
+  addendum (user request "install debug android sample app"): the
+  pinned NDK + cmdline-tools were installed on this Mac, the sample
+  APK built (via the new darwin-x86_64 NDK host-tag fix), installed,
+  and smoke-run on a physical motorola razr 2025 (arm64-v8a, DB
+  writes observed), its `connectedDebugAndroidTest` is 10/10, and
+  `:library:connectedAndroidDeviceTest` is 52/52 — after two
+  first-run fixes: the device-test APK gained the missing
+  `androidx.test:runner` dependency, and
+  `library/src/androidDeviceTest/` concretes were created (there
+  were none; the suite silently ran 0 tests). Still deferred: iOS
+  app run in a booted simulator (host lacks the Xcode 26.5 iOS
+  runtime), x86_64 Android ABI (no emulator).
+- **Previous step (11) summary:** Publishing + docs + closeout.
+  Infra/docs-only (D7 N/A).
   Publishing finalized: real POM (Apache-2.0 matching `LICENSE`,
   developer `Serisium`/Seri Greenwood, scm from the origin remote),
   Dokka 2.2.0 wired as the Maven Central `-javadoc` jar via the
@@ -63,12 +91,16 @@ Each step below is executed in one fresh agent session:
   the Step 0–3 skill-maintenance follow-up queue was drained (last
   item: sqlite-c-api watchlist gained the confirmed-at-0.11.33
   section).
-- **Branch:** `claude/step-11-e75870` (carries the Step 0–10 commits).
-- **Repo shape:** single `:library` module (D5); group
-  `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android namespace
-  `dev.seri.doltrooms`, publish coordinates
+- **Branch:** `claude/kmp-room-codelab-samples-fcce62` (from `main`
+  post-PR-#2).
+- **Repo shape:** single `:library` module in the root build (D5);
+  group `dev.seri.doltrooms`, version `0.1.0-SNAPSHOT`, Android
+  namespace `dev.seri.doltrooms`, publish coordinates
   `dev.seri.doltrooms:doltrooms`. Targets: `jvm()`, `androidLibrary{}`,
-  `iosArm64`, `iosSimulatorArm64`, `linuxX64`.
+  `iosArm64`, `iosSimulatorArm64`, `linuxX64`. Plus `samples/codelab/`,
+  a separate included-build Gradle project (`:shared` KMP +
+  `:androidApp` + `iosApp/` Xcode project) documented in its own
+  README (D5 amendment).
 - **Source-set map:** `commonMain` (androidx.sqlite AND room3-runtime
   as `api` deps — the latter since Step 7, D10; public expect classes
   `DoltLiteDriver`/`DoltLiteConnection`/
@@ -91,7 +123,12 @@ Each step below is executed in one fresh agent session:
   commonized cinterop bindings from
   `src/nativeInterop/cinterop/doltlite.def` (headers-only bindings —
   see the class map; engine archives per D9).
-- **Test map (118 jvm + 52 androidHost + 52 linuxX64 tests, all
+- **Test map (118 jvm + 52 androidHost + 52 linuxX64 + 52
+  iosSimulatorArm64 + 52 androidDevice tests — the iOS leg via the
+  Step 12 `library/src/iosTest/` concretes, green on the iOS 18.3
+  simulator, macOS hosts only; the device leg via the Step 12
+  `library/src/androidDeviceTest/` concretes, green on a physical
+  arm64-v8a phone, needs a connected device — all
   green; linuxX64 lost its 33 Bundled-oracle legs to the post-Step-11
   symbol-collision fix — see the maintenance log entry):** `commonTest
   …/driver/AbstractDriverConformanceTest.kt` — the differential
@@ -676,6 +713,23 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   artifacts) — record in deferred-verification; final ARCHITECTURE.md
   codemap; flip this file to maintenance mode.
 - **Verify:** `./gradlew publishToMavenLocal` + full test matrix.
+
+### [x] Step 12 — samples/codelab: Fruitties on Dolt (human-opened iteration, 2026-07-21)
+- **Goal:** build out sample apps into `samples/codelab`: Google's
+  kmp-migrate-room codelab in its post-migration state, modified to
+  run on Dolt for all platforms, with a README documenting that
+  lineage.
+- **Skills:** `room3` (+ kmp-setup reference), `skill-maintenance`
+  (codelab fetch), `architecture-docs` (D5 amendment).
+- **Key tasks:** port the `end`-branch Fruitties app to Room 3 +
+  `DoltLiteDriver` as a standalone composite build; replace SKIE with
+  a manual Flow bridge (no Kotlin 2.3.x SKIE exists); add the iOS
+  engine archives the sample's framework link needs (deferred-
+  verification iOS item 3) plus `iosTest` concretes (item 4).
+- **Verify:** sample compile + unit tests; framework links (both
+  slices) + Swift typecheck; `:library:iosSimulatorArm64Test` green.
+  APK packaging/device tests and an in-simulator app run stay in
+  `docs/deferred-verification.md`.
 
 ## Step Log
 
@@ -1472,3 +1526,145 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   first-observed-CI-run checklist is fully closed
   (deferred-verification entry updated; note actions/cache saves
   only on job success, so a failed first run populates nothing).
+
+### Step 12 — samples/codelab: Fruitties on Dolt + first-macOS iOS verification (2026-07-21, branch `claude/kmp-room-codelab-samples-fcce62`)
+
+- **Opened by the human** ("Build out sample apps into samples/codelab"
+  with the codelab lineage in the README) — the first post-maintenance
+  iteration, appended per the MAINTENANCE MODE preamble.
+- **Source:** `android/codelab-android-kmp`, `migrate-room` project,
+  branch `end` (the codelab's solution state: Room 2.7.2 KMP over
+  BundledSQLiteDriver, SKIE 0.10.4, Hilt 2.57, Kotlin 2.2.0,
+  AGP 8.11.1). Copied wholesale; Apache-2.0 AOSP headers preserved;
+  every delta is listed in `samples/codelab/README.md`.
+- **Port decisions and findings (all verified by building):**
+  - Standalone composite build: `includeBuild("../..")` with an
+    EXPLICIT `dependencySubstitution` — automatic substitution does
+    not map the `doltrooms` artifactId onto the `:library` project
+    name. Runs off the root wrapper (no second wrapper committed).
+  - Kotlin floor: 2.3.10 (the library's klibs), which cascaded: KSP
+    2.3.10, AGP 9.0.1 (built-in Kotlin — `org.jetbrains.kotlin.android`
+    must NOT be applied; Hilt 2.57's plugin dies on removed
+    BaseExtension → 2.60.1), Room 2.7.2 → Room 3.0.0.
+  - Room 3 rename beyond the package: `@Relation` singular
+    `parentColumn`/`entityColumn` became plural array
+    `parentColumns`/`entityColumns` (verified via javap on
+    room3-common-jvm-3.0.0), and the processor rejects a relation POJO
+    whose constructor puts the `@Relation` property before the
+    `@Embedded` parent — reordered, fakes updated (room3 skill gained
+    the gotcha).
+  - No SKIE for Kotlin 2.3.x exists (Maven artifact sweep: per-KGP
+    plugins stop at kgp_2.2.0, latest 0.10.13 of 2026-06-24) — Swift
+    Flow interop replaced by `shared/src/iosMain/.../FlowWatch.kt` +
+    AsyncStream wrapping; Kotlin top-level funcs now reached via
+    file-facade classes; suspend Int returns arrive as KotlinInt.
+  - Upstream `end` branch does not itself compile its androidApp unit
+    tests (FakeFruittieApi feeds List<Fruittie> into
+    List<FruittieNetworkEntity>) — fixed in the sample.
+  - DoltLite divergence #1 honored: the Android factory mkdirs the
+    database parent directory before open.
+  - `iosX64` dropped (library ships arm64 slices only); Spotless
+    dropped.
+- **Library changes (bug-fix / deferred-verification scope):**
+  - `CompileDoltliteAppleStaticTask` — per-slice static engine
+    archives (`xcrun --sdk iphoneos|iphonesimulator clang` +
+    `libtool -static`, same pinned amalgamation + flags; targets
+    arm64-apple-ios12.0 / arm64-apple-ios14.0-simulator), embedded
+    into the iOS cinterop klibs via the linuxX64
+    `-staticLibrary`/`-libraryPath` pattern. Registration, embedding,
+    and task wiring are ALL gated on a macOS host so Linux/CI
+    behavior is unchanged.
+  - `CompileDoltliteAndroidJniTask` now picks the NDK host prebuilt
+    tag (darwin-x86_64 vs linux-x86_64) instead of hardcoding linux.
+  - `library/src/iosTest/` concretes mirroring linuxX64Test (temp
+    paths via NSTemporaryDirectory; no Bundled oracle — the
+    symbol-collision rule).
+- **Verified this session (macOS, Xcode 26.5, JDK 24):**
+  `:library:iosSimulatorArm64Test` GREEN — 52 tests / 0 failures on
+  the iOS 18.3 iPhone 16 Pro simulator (deferred-verification iOS
+  entry closed, incl. clean links for both slices);
+  `:androidApp:compileDebugKotlin` and `:androidApp:testDebugUnitTest`
+  green; `sharedKit` links for iosArm64 + iosSimulatorArm64; app
+  Swift sources typecheck against the framework (swiftc -typecheck,
+  target-membership-accurate file set).
+- **Still deferred (entries updated):** sample APK packaging +
+  connected tests (no NDK/emulator on this host), in-simulator app
+  run (xcodebuild refuses all destinations without the Xcode 26.5
+  iOS runtime download — `xcodebuild -downloadPlatform iOS`),
+  remotesrv osx-arm64 fixture (jvmTest not runnable here anyway:
+  desktop JNI build is still linux-only by design).
+- **Docs:** ARCHITECTURE.md D5 amended (samples as included builds) +
+  codemap row + §4 postscript + status date;
+  `docs/deferred-verification.md` iOS section flipped to VERIFIED
+  (XCFramework + publishing notes updated); `samples/codelab/README.md`
+  written (lineage + full delta list); room3 skill gotcha added.
+  Root README untouched (suggestion for the human: its "Status:
+  research only" line and milestone list now lag reality — samples
+  exist and iOS is verified).
+
+### Step 12 addendum — first on-device run (2026-07-21, same branch, user request "install debug android sample app on connected adb phone")
+
+- **Toolchain:** the Mac gained Android cmdline-tools (sdkmanager
+  13114758) and the pinned `ndk;28.2.13676358` (installed via
+  sdkmanager; the NDK task's darwin-x86_64 host-tag fix from earlier
+  this session made it usable).
+- **Sample verified end-to-end on a physical motorola razr 2025
+  (arm64-v8a):** `:androidApp:installDebug` green (first-ever APK
+  packaging of the DoltLite engine on a Mac host); app launched via
+  adb, fruit list loaded through the DoltLite-backed Room DB
+  (sharedfruits.db + WAL artifacts confirmed via run-as), cart writes
+  re-emitted into the UI; screenshots taken.
+  `:androidApp:connectedDebugAndroidTest` 10/10 — including the
+  foreign-key-violation case (pins that DoltLite ENFORCES `PRAGMA
+  foreign_keys` on-device, previously unverified anywhere) and both
+  `DoltVersioningTest` cases (commit/log, branch/merge on-device).
+  One sample fix: `androidTestImplementation(libs.doltrooms)` — the
+  instrumented tests reference the driver directly and :shared does
+  not export it.
+- **Library deferred entry "Android on-device" closed:**
+  `:library:connectedAndroidDeviceTest` 52/52 on the phone. The
+  first real execution exposed two latent gaps behind Step 5's
+  "device-test APK assembles" claim, both fixed: (1)
+  `androidx.test:runner` was never packaged into the device-test APK
+  (instrumentation crashed at init with ClassNotFoundException —
+  catalog gained `androidx-test-runner = 1.7.0`, androidDeviceTest
+  source set depends on it); (2) NO `androidDeviceTest` concretes
+  existed, so after fix 1 the run was "green" with 0 tests — created
+  `library/src/androidDeviceTest/` mirroring androidHostTest, minus
+  the `exceptionMessagesObservable = false` override (real
+  android.jar keeps messages; all 52 pass with them).
+- **Docs synced:** deferred-verification Android entry flipped to
+  VERIFIED (x86_64 ABI noted as the remainder), sample README
+  verification section updated, this file's Current State + test map
+  updated (52-test androidDevice leg).
+- **x86_64 verification (2026-07-21, later same session):** the full
+  Linux matrix also ran on a real Fedora 43 x86_64 host
+  (root@oxefit-fedora, ~/doltrooms rsync of this worktree, JDK 21,
+  /opt/android-sdk): jvmTest 118/118, testAndroidHostTest 52/52,
+  linuxX64Test 52/52, and the linux-x64-only RemoteServerSyncTest ran
+  for real (2/2 — live doltlite-remotesrv http sync). First
+  verification outside ubuntu CI; the USAGE.md Fedora note holds
+  (libcrypt.so.1 present via libxcrypt-compat, binary linked and ran).
+- **CI jobs for the ABI gap + samples (2026-07-21, later same
+  session):** the x86_64 emulator cannot run on any reachable host
+  (fedora box = KVM guest without nested virt, Apple Silicon =
+  arm64-only), so `ci.yml` gained three jobs: `android-x86_64-emulator`
+  (KVM-enabled GitHub runner, API 35 x86_64 image; library
+  connectedAndroidDeviceTest + sample connectedDebugAndroidTest),
+  `sample-android` (APK assembly + unit tests), `sample-ios`
+  (macos-15: library simulator suite, sharedKit link, xcodebuild of
+  the app; setup-android added because arm64 macOS images ship no
+  SDK and configuration needs one). None observed yet —
+  deferred-verification has the new first-run entry with the specific
+  watch-fors.
+- **iOS app end-to-end (2026-07-21, later same session, after the
+  user's `xcodebuild -downloadPlatform iOS`):** the Fruitties app
+  built with xcodebuild for the simulator — one fix surfaced and was
+  folded back into ci.yml's sample-ios job: the generic simulator
+  destination links BOTH arches and sharedKit has no x86_64 slice
+  (iosX64 dropped), so `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES` is
+  required. Installed + launched on the iPhone 16 Pro (iOS 18.3)
+  simulator: network fetch into the DoltLite DB, fruit list + cart
+  live via the FlowWatch bridge (incl. the @Relation join renders),
+  cart writes persist. The deferred-verification iOS entry now has
+  nothing simulator-side open; only physical Apple hardware remains.

@@ -93,6 +93,13 @@ until upstream documents it.
 5. `com.dolthub:doltlite-android` is a thin **JNA** wrapper over a
    bundled `libdoltlite.so` — it ships **no androidx.sqlite driver**;
    that is exactly the gap this project fills (ARCHITECTURE.md §1).
+6. Foreign keys ARE enforced when `PRAGMA foreign_keys` is on (Room 3
+   enables it per connection): a child insert with no parent row
+   fails as a constraint violation at 0.11.33 — pinned in-repo by
+   `samples/codelab` `CartDaoTest
+   .insert_foreignKeyConstraintViolation_throwsException`, green on
+   Android hardware 2026-07-21. Upstream docs are silent on FK
+   support; treat this test as the citation.
 
 ## When to load reference files
 
