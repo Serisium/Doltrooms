@@ -1,51 +1,55 @@
 # Deferred verification checklist
 
 Work that is implemented and believed correct but cannot be *verified*
-in the Linux-only development environment. Each entry lists what to run
-and where. Complete through PLAN.md Step 11 (publishing).
+in the current development environment. Each entry lists what to run
+and where. Complete through PLAN.md Step 12 (samples/codelab; first
+macOS-host session, 2026-07-21).
 
-## iOS (needs a macOS host with Xcode) — deferred by Step 6
+## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 (samples/codelab session), entry kept for the record
 
 Kotlin disables Apple-target compilation on non-Mac hosts as soon as
 the target has a cinterop: "cross compilation to target 'iosArm64' has
 been disabled because it contains cinterops: 'doltlite' which cannot be
 processed on host 'linux_x64'" (KGP 2.3.10 warning, observed
-2026-07-18). The iOS tasks are SKIPPED on Linux, so `./gradlew build`
-stays green here, but nothing iOS is actually compiled — compile,
-link, and test are ALL deferred to a Mac, not just link+test as
-PLAN.md Step 6's card originally assumed.
+2026-07-18). The iOS tasks are SKIPPED on Linux; compile, link, and
+test were all deferred to a Mac.
 
-On a Mac, in order:
+Executed 2026-07-21 on a macOS host (Xcode 26.5), in the order this
+entry prescribed:
 
-1. `./gradlew :library:cinteropDoltliteIosArm64
-   :library:cinteropDoltliteIosSimulatorArm64` — the def is
-   headers-only and `doltlite.h` needs nothing beyond compiler-builtin
-   headers (`<stdarg.h>`), so this is expected to work unchanged.
-2. `./gradlew :library:compileKotlinIosArm64
-   :library:compileKotlinIosSimulatorArm64` — the nativeMain actuals
-   compile against the commonized bindings (same sources linuxX64
-   verifies on every build).
-3. Extend `library/build.gradle.kts` with per-KonanTarget static
-   archives of the amalgamation for iOS (Apple clang per target slice,
-   same `doltliteCompileFlags`, embedded via the same
-   `-staticLibrary`/`-libraryPath` extraOpts pattern the linuxX64
-   cinterop uses — see `compileDoltliteStaticLinuxX64`). Keeping the
-   0.11.33 amalgamation pin is settled: the upstream
-   doltlite-swift/XCFramework artifacts lag the pin (0.11.17 at last
-   check), so we compile the amalgamation ourselves like every other
-   platform.
-4. `./gradlew :library:iosSimulatorArm64Test` — runs both commonTest
-   conformance suites (the linuxX64Test concrete classes have iOS
-   equivalents only if added; create `iosTest` concretes mirroring
-   `library/src/linuxX64Test/` first). Do NOT add Bundled-oracle
-   concretes or a `sqlite-bundled` dependency on Apple test
-   compilations: two statically linked engines exporting the same
-   `sqlite3_*` symbols in one binary silently resolve both drivers to
-   one engine (the post-Step-11 linuxX64 lesson — PLAN.md maintenance
-   log entry).
-5. Glibc-style symbol skew does not apply (Apple libSystem), but
-   verify the archive links clean against the device and simulator
-   sysroots.
+1. Both iOS cinterops ran unchanged (headers-only def). ✓
+2. `compileKotlinIosArm64` / `compileKotlinIosSimulatorArm64` compile
+   the nativeMain actuals against the commonized bindings. ✓
+3. `library/build.gradle.kts` gained `CompileDoltliteAppleStaticTask`:
+   per-slice static archives of the pinned 0.11.33 amalgamation
+   (`xcrun --sdk iphoneos|iphonesimulator clang` + `libtool -static`,
+   same `doltliteCompileFlags`; deployment targets
+   `arm64-apple-ios12.0` / `arm64-apple-ios14.0-simulator`), embedded
+   via the same `-staticLibrary`/`-libraryPath` extraOpts as linuxX64.
+   The tasks and the embedding are macOS-host-gated so Linux/CI
+   behavior is byte-identical (iOS cinterops stay headers-only
+   there). ✓
+4. `library/src/iosTest/` concretes were created mirroring
+   `linuxX64Test/` (temp paths via `NSTemporaryDirectory()`), and
+   `./gradlew :library:iosSimulatorArm64Test` is GREEN: 52 tests, 0
+   failures on the iOS 18.3 iPhone 16 Pro simulator — the same suite
+   count linuxX64 runs. No Bundled-oracle concretes were added (the
+   two-static-engines symbol-collision rule holds on Apple too). ✓
+5. Link cleanliness: the samples/codelab `sharedKit` framework links
+   with the embedded archive for BOTH slices
+   (`linkDebugFrameworkIosArm64` / `...IosSimulatorArm64`, no
+   undefined `sqlite3_*`, no deployment-target warnings), and the
+   sample app's Swift sources typecheck against it. ✓
+
+Later the same day, after `xcodebuild -downloadPlatform iOS`: the
+samples/codelab Fruitties app built with xcodebuild (ARCHS=arm64 —
+sharedKit has no x86_64 slice since the sample drops iosX64; the
+generic simulator destination otherwise links both arches), installed
+into the iPhone 16 Pro (iOS 18.3) simulator, and ran end-to-end —
+network fetch into the DoltLite DB, list + cart rendering live
+through the FlowWatch bridge (including the @Relation join), cart
+writes persisting. Nothing simulator-side remains; only physical
+Apple hardware is unexercised.
 
 ## remotesrv fixture on non-linux-x64 hosts — deferred by Step 8
 
@@ -66,9 +70,9 @@ No XCFramework is configured yet — the iOS targets publish klibs only
 (the KMP umbrella publication carries them; see the
 `kmp-native-interop` targets-and-publishing reference). If Apple
 consumers ever need a binary framework, the `XCFramework()` DSL plus
-`assembleXCFramework` are Mac-only, and they depend on the per-slice
-static amalgamation archives from item 3 of the iOS checklist above —
-do the iOS list first, then add the DSL.
+`assembleXCFramework` are Mac-only. The per-slice static amalgamation
+archives they depend on exist since 2026-07-21 (item 3 of the iOS
+checklist above) — only the DSL wiring remains.
 
 ## Maven Central publishing (needs a macOS host) — deferred by Step 11
 
@@ -86,10 +90,30 @@ cinterop, so a Linux `publish` would upload an umbrella that references
 iOS variants without their artifacts. The real Central release must
 run entirely from a single macOS host ("publish all artifacts from a
 single host"; Central "explicitly forbids duplicate publications" —
-`kmp-native-interop` targets-and-publishing reference). On the Mac,
-after the iOS checklist above: `./gradlew publishToMavenLocal` (now
+`kmp-native-interop` targets-and-publishing reference). The iOS
+checklist above closed 2026-07-21, so a macOS host can now produce
+the complete artifact set: `./gradlew publishToMavenLocal` (now
 including `-iosarm64`/`-iossimulatorarm64`), inspect, then
-`./gradlew publishToMavenCentral` with credentials + key in env.
+`./gradlew publishToMavenCentral` with credentials + key in env —
+still pending only credentials and the human's go.
+
+## First observed run of the Step 12 CI jobs (needs a GitHub push) — deferred 2026-07-21
+
+Step 12 added three jobs to `ci.yml`, none yet observed on a real
+runner: `android-x86_64-emulator` (KVM udev rule +
+reactivecircus/android-emulator-runner@v2, API 35 google_apis x86_64;
+runs `:library:connectedAndroidDeviceTest` — the missing x86_64 ABI
+leg — then the samples/codelab `connectedDebugAndroidTest`),
+`sample-android` (sample APK assembly + unit tests through the
+composite build), and `sample-ios` (macos-15: library simulator
+suite, sharedKit link, `xcodebuild` of the Fruitties app against the
+generic simulator destination). Watch the first run for: emulator
+image availability at API 35/x86_64, whether macos-15's preinstalled
+simulators satisfy the generic destination, Android SDK provisioning
+on the arm64 macOS image (`android-actions/setup-android`), and
+whether the sample jobs' Gradle invocations (cd + `../../gradlew`)
+behave under `gradle/actions/setup-gradle`. Fix-or-record like the
+first-CI-run entry below.
 
 ## First observed CI run — FULLY OBSERVED 2026-07-18 (PR #2), entry kept for the record
 
@@ -113,12 +137,24 @@ run populated nothing), and the download tasks passed through in
 sub-second time on the restored zips — the pre-seeded-zip acceptance
 worked with no network fetch. Nothing about CI remains deferred.
 
-## Android on-device (needs a device/emulator) — deferred by Step 5
+## Android on-device (needs a device/emulator) — VERIFIED 2026-07-21 (motorola razr 2025, arm64-v8a), entry kept for the record
 
-`connectedAndroidDeviceTest` exists (`withDeviceTestBuilder` is
-configured) and the device-test APK assembles with
-`lib/<abi>/libdoltroomsjni.so` present, but no device/emulator is
-available in-env. On a machine with one: `./gradlew
-:library:connectedAndroidDeviceTest` — runs both conformance suites
-on-device per ABI (arm64-v8a, x86_64), including the exception-message
-assertions the mockable android.jar erases in host tests.
+`./gradlew :library:connectedAndroidDeviceTest` is GREEN on a real
+device: 52 tests / 0 failures (driver conformance + Room + dolt
+suites, real android.jar, so the exception-message assertions the
+mockable jar erases in host tests ran for real). The first-ever
+execution surfaced two gaps this entry's "the device-test APK
+assembles" assumption hid, both fixed in `library/`:
+`androidx.test:runner` was never a dependency of the device-test APK
+(instrumentation died at init with ClassNotFoundException), and no
+`library/src/androidDeviceTest/` concretes existed, so the suite ran
+0 tests — they now mirror the androidHostTest concretes without the
+`exceptionMessagesObservable = false` override. Also verified on the
+same device: the `samples/codelab` Fruitties app installs, runs, and
+persists to its DoltLite database (manual smoke + its 10/10
+`connectedDebugAndroidTest` incl. `DoltVersioningTest`). Still
+unexercised: the x86_64 ABI — no reachable dev host can run an
+x86_64 emulator (Apple Silicon is arm64-only; the fedora box is a VM
+without nested virt), so ci.yml gained the `android-x86_64-emulator`
+job (GitHub Linux runners expose /dev/kvm); see the CI-jobs entry
+below for its first-run status.

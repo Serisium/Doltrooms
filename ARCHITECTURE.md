@@ -1,7 +1,8 @@
 # doltlite-room-bridge — Architecture
 
-**Status:** Target architecture as of 2026-07-18. Maintenance phase
-(§4); the implementation iteration completed at `PLAN.md` Step 11.
+**Status:** Target architecture as of 2026-07-21. Maintenance phase
+(§4); the implementation iteration completed at `PLAN.md` Step 11,
+and a human-opened samples iteration completed at Step 12.
 
 This document specifies the project's intended end state — the
 architecture every iteration builds toward, not a snapshot of what is
@@ -98,7 +99,11 @@ The project keeps the Kotlin `multiplatform-library-template` shape:
 one `:library` module holding the driver, Gradle version catalogs, no
 sample apps or extra modules until an iteration explicitly needs them.
 The template's `CustomFibi` placeholder code was deleted when the
-implementation iteration opened (2026-07-17).
+implementation iteration opened (2026-07-17). Amendment (Step 12,
+human-opened 2026-07-21): sample apps live under `samples/` as
+*separate Gradle builds* that consume the library source via
+`includeBuild("../..")` — the root build itself still contains only
+`:library`, and samples never become modules of it.
 
 ### D6 — Documentation structure: sacred README, this file, research skills
 
@@ -194,6 +199,7 @@ checkout.
 | `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test, XCFramework packaging, and Maven Central publishing (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
+| `samples/codelab/` | Fruitties sample: Google's kmp-migrate-room codelab in its post-migration state, ported to Room 3 + `DoltLiteDriver` for Android and iOS. A standalone composite build over the root (D5 amendment); its own README documents lineage and every delta from upstream. |
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
 
 ### 3.2 Gradle wiring
@@ -310,3 +316,10 @@ and burn down `docs/deferred-verification.md` when the needed
 hardware (macOS host, Android device, GitHub push) becomes available
 — do not scaffold new features. Test-first (D7) continues to bind
 any net-new production code.
+
+One such iteration has since run: **Step 12 (human-opened
+2026-07-21)** added the `samples/codelab` Fruitties app (D5
+amendment) and, running for the first time on a macOS host, closed
+the deferred iOS verification — per-slice engine archives, iosTest
+concretes, and a green `iosSimulatorArm64Test`. The scope gate above
+is back in force.
