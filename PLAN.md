@@ -1668,3 +1668,9 @@ in ARCHITECTURE.md. Revisit only as a dedicated iteration.
   live via the FlowWatch bridge (incl. the @Relation join renders),
   cart writes persist. The deferred-verification iOS entry now has
   nothing simulator-side open; only physical Apple hardware remains.
+- **Maiden CI run (PR #3, 2026-07-21): ALL GREEN on first attempt** —
+  build, sample-android, sample-ios, and android-x86_64-emulator all
+  passed, the last closing the x86_64 ABI leg (library 52/52 + sample
+  10/10 on an API 35 x86_64 emulator). Every platform leg of the test
+  matrix now runs per-PR; the deferred-verification CI-jobs and
+  Android-on-device entries are fully closed.
