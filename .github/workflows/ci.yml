@@ -54,3 +54,138 @@ jobs:
         with:
           name: test-reports
           path: library/build/reports/tests/
+
+  # The x86_64 ABI leg of the on-device suite (docs/deferred-verification.md,
+  # "Android on-device"): GitHub's Linux runners expose /dev/kvm, which no
+  # available dev host does (arm64 phone covers the other ABI; the fedora box
+  # is a VM without nested virt; Apple Silicon can't run x86_64 images). One
+  # emulator serves both the library device suite and the samples/codelab
+  # instrumented tests (DAO + DoltVersioningTest).
+  android-x86_64-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK (pinned in gradle/libs.versions.toml)
+        run: sdkmanager "ndk;28.2.13676358"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Cache DoltLite release downloads (amalgamation + tools zips)
+        uses: actions/cache@v4
+        with:
+          path: library/build/doltlite/*.zip
+          key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Run device suites on an x86_64 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # API level only needs minSdk 24+; 35 is the battle-tested image
+          # for this action. The point of the job is arch: x86_64.
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            ./gradlew :library:connectedAndroidDeviceTest
+            cd samples/codelab && ../../gradlew :androidApp:connectedDebugAndroidTest
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-test-reports
+          path: |
+            library/build/reports/androidTests/
+            samples/codelab/androidApp/build/reports/androidTests/
+
+  # samples/codelab Android app: APK packaging (exercises the NDK-built
+  # engine inside the AAR through the composite includeBuild) + JVM unit
+  # tests. Kept separate from `build` so a sample regression reads as a
+  # sample failure, not a library one.
+  sample-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK (pinned in gradle/libs.versions.toml)
+        run: sdkmanager "ndk;28.2.13676358"
+      - uses: gradle/actions/setup-gradle@v4
+      # Same pre-seeded-zip cache as `build`: the sample includes the root
+      # build, so the library's download tasks still write library/build/.
+      - name: Cache DoltLite release downloads (amalgamation + tools zips)
+        uses: actions/cache@v4
+        with:
+          path: library/build/doltlite/*.zip
+          key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Assemble sample APK + run unit tests
+        run: cd samples/codelab && ../../gradlew :androidApp:assembleDebug :androidApp:testDebugUnitTest
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-android-test-reports
+          path: samples/codelab/androidApp/build/reports/
+
+  # The Apple leg (docs/deferred-verification.md iOS entry): macOS runners
+  # are arm64 with simulators preinstalled. Runs the library's 52-test
+  # simulator suite, links the sample's sharedKit framework (engine
+  # embedded via the macOS-only static-archive tasks), and compiles the
+  # Fruitties app with xcodebuild against the generic simulator
+  # destination (signing off; the Xcode run-script phase drives the root
+  # Gradle wrapper).
+  sample-ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      # The arm64 macOS images ship no Android SDK, but even configuring
+      # these builds needs one (the androidLibrary targets). No NDK here —
+      # no Android compile tasks run in this job.
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Cache DoltLite release downloads (amalgamation + tools zips)
+        uses: actions/cache@v4
+        with:
+          path: library/build/doltlite/*.zip
+          key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Cache Konan (Kotlin/Native compiler + Apple sysroots)
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Run library suite on the iOS simulator
+        run: ./gradlew :library:iosSimulatorArm64Test
+      - name: Link the sample sharedKit framework
+        run: cd samples/codelab && ../../gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+      - name: Build the Fruitties iOS app
+        # ARCHS=arm64: sharedKit has no x86_64 slice (the sample drops the
+        # codelab's iosX64 target), and the generic simulator destination
+        # otherwise links both arches (observed locally 2026-07-21).
+        run: >
+          cd samples/codelab/iosApp &&
+          xcodebuild -project Fruitties.xcodeproj -scheme Fruitties
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build/DerivedData
+          CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-reports
+          path: library/build/reports/tests/
