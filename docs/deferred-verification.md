@@ -97,23 +97,24 @@ including `-iosarm64`/`-iossimulatorarm64`), inspect, then
 `./gradlew publishToMavenCentral` with credentials + key in env —
 still pending only credentials and the human's go.
 
-## First observed run of the Step 12 CI jobs (needs a GitHub push) — deferred 2026-07-21
+## First observed run of the Step 12 CI jobs — FULLY OBSERVED 2026-07-21 (PR #3), entry kept for the record
 
-Step 12 added three jobs to `ci.yml`, none yet observed on a real
-runner: `android-x86_64-emulator` (KVM udev rule +
-reactivecircus/android-emulator-runner@v2, API 35 google_apis x86_64;
-runs `:library:connectedAndroidDeviceTest` — the missing x86_64 ABI
-leg — then the samples/codelab `connectedDebugAndroidTest`),
-`sample-android` (sample APK assembly + unit tests through the
-composite build), and `sample-ios` (macos-15: library simulator
-suite, sharedKit link, `xcodebuild` of the Fruitties app against the
-generic simulator destination). Watch the first run for: emulator
-image availability at API 35/x86_64, whether macos-15's preinstalled
-simulators satisfy the generic destination, Android SDK provisioning
-on the arm64 macOS image (`android-actions/setup-android`), and
-whether the sample jobs' Gradle invocations (cd + `../../gradlew`)
-behave under `gradle/actions/setup-gradle`. Fix-or-record like the
-first-CI-run entry below.
+Step 12 added three jobs to `ci.yml`: `android-x86_64-emulator` (KVM
+udev rule + reactivecircus/android-emulator-runner@v2, API 35
+google_apis x86_64; `:library:connectedAndroidDeviceTest` — the
+x86_64 ABI leg — then the samples/codelab
+`connectedDebugAndroidTest`), `sample-android` (sample APK assembly +
+unit tests through the composite build), and `sample-ios` (macos-15:
+library simulator suite, sharedKit link, `xcodebuild` of the
+Fruitties app). All three, plus the pre-existing `build`, passed
+GREEN on their very first run (PR #3): every watch-for held — the
+API 35 x86_64 image resolved, macos-15's simulators satisfied the
+generic destination (with the `ARCHS=arm64` flag caught locally
+before push), `android-actions/setup-android` provisioned the SDK on
+the arm64 macOS image, and the `cd samples/codelab && ../../gradlew`
+invocations behaved under setup-gradle. With this, every platform
+leg of the test matrix runs per-PR in CI. Nothing about CI remains
+deferred.
 
 ## First observed CI run — FULLY OBSERVED 2026-07-18 (PR #2), entry kept for the record
 
@@ -152,9 +153,9 @@ assembles" assumption hid, both fixed in `library/`:
 `exceptionMessagesObservable = false` override. Also verified on the
 same device: the `samples/codelab` Fruitties app installs, runs, and
 persists to its DoltLite database (manual smoke + its 10/10
-`connectedDebugAndroidTest` incl. `DoltVersioningTest`). Still
-unexercised: the x86_64 ABI — no reachable dev host can run an
-x86_64 emulator (Apple Silicon is arm64-only; the fedora box is a VM
-without nested virt), so ci.yml gained the `android-x86_64-emulator`
-job (GitHub Linux runners expose /dev/kvm); see the CI-jobs entry
-below for its first-run status.
+`connectedDebugAndroidTest` incl. `DoltVersioningTest`). The x86_64
+ABI — which no reachable dev host can run (Apple Silicon is
+arm64-only; the fedora box is a VM without nested virt) — is covered
+by ci.yml's `android-x86_64-emulator` job, observed GREEN on its
+first run (PR #3, 2026-07-21: library 52/52 + sample 10/10 on an API
+35 x86_64 emulator). Both ABIs verified; nothing remains here.
