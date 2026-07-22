@@ -198,10 +198,11 @@ built-in ABI validation (experimental) compares the public binary API
 against a committed golden dump (`library/api/`, task
 `checkLegacyAbi`); the dump regenerates only deliberately
 (`updateLegacyAbi`), so accidental breaking changes fail the build.
-The dump is Linux-host-produced and the `check` gate self-arms when
-it exists (`docs/deferred-verification.md`). Rationale, citations,
-and the wider audit baseline live in the `kotlin-audit-baseline`
-skill.
+The dump is Linux-host-produced (iOS klib entries ride inference
+from the commonized declarations) and committed under `library/api/`,
+so `check` gates on `checkLegacyAbi`
+(`docs/deferred-verification.md`). Rationale, citations, and the
+wider audit baseline live in the `kotlin-audit-baseline` skill.
 
 ## 3. Codemap
 
@@ -358,6 +359,10 @@ justified suppression only — no code reshaping.
 
 **Step 15 (human-opened 2026-07-22)** enabled KGP's built-in ABI
 validation (D11 amendment). The golden dump needs a Linux host, so
-the `check` gate self-arms once `library/api/` is committed —
-procedure and the iOS-klib limitation in
-`docs/deferred-verification.md`.
+the `check` gate self-arms once `library/api/` is committed. The
+dump landed the same day from the oxefit-fedora build server (iOS
+klib entries inferred from the commonized declarations), arming the
+gate; the first armed `check` there ran green — jvmTest 118/0,
+linuxX64Test 52/0, detekt gates, `checkLegacyAbi` (android leg
+skipped: no SDK on that host; CI's `build` job covers it). Details
+in `docs/deferred-verification.md`.

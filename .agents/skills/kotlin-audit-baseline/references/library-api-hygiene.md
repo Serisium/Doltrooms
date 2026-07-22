@@ -134,9 +134,13 @@ validation (`abiValidation` block; Kotlin 2.3.10's task names are
 `checkLegacyAbi`/`updateLegacyAbi`, renamed `checkKotlinAbi`/
 `updateKotlinAbi` in newer KGPs —
 https://kotlinlang.org/docs/gradle-binary-compatibility-validation.html).
-Reference dir pinned to `library/api/`; the golden dump needs a
-Linux host and the `check` gate self-arms once it is committed
-(`docs/deferred-verification.md`, ARCHITECTURE.md D11).
+The golden dump is committed under `library/api/`
+(`jvm/library.api` + `library.klib.api`, generated on the
+oxefit-fedora Linux host — the dump inputs are Linux-only) and
+`check` gates on `checkLegacyAbi`. The klib dump covers iosArm64/
+iosSimulatorArm64 by inference from the commonized declarations;
+audit caveat in `docs/deferred-verification.md`
+(ARCHITECTURE.md D11).
 
 ## Library-authors' guidelines (design-level bar)
 
