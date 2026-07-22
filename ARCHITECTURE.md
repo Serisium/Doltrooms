@@ -340,3 +340,11 @@ is back in force.
 **Step 13 (human-opened 2026-07-22)** enabled Explicit API mode
 (D11) — all main compilations passed with zero violations, so the
 hand-maintained `public` discipline was already conformant.
+
+**Step 14 (human-opened 2026-07-22)** added detekt (2.0.0-alpha.3 —
+the 1.x line cannot read Kotlin 2.3 metadata — with the opt-in
+libraries ruleset; required a Gradle wrapper bump 9.1.0 → 9.3.1).
+`check` now gates on the five code-bearing main source sets;
+`library/config/detekt/detekt.yml` overlays the defaults and records
+each deliberate deviation's rationale. Findings resolved by
+justified suppression only — no code reshaping.

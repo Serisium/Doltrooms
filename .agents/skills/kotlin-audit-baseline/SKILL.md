@@ -79,12 +79,16 @@ Conforming today:
   `library/build.gradle.kts`, Step 13, ARCHITECTURE.md D11) —
   implicit visibility or inferred types on public declarations now
   fail the build.
+- detekt 2.0.0-alpha.3 with the libraries ruleset gates `check` on
+  the five code-bearing main source sets (Step 14);
+  `library/config/detekt/detekt.yml` records every deliberate
+  deviation. New suppressions require a justification comment.
 
 Gaps (candidate improvements — tooling additions are new work and
 need a human-opened iteration per ARCHITECTURE.md §4; suggest, don't
 implement unasked):
 
-- No detekt (including its opt-in `libraries` ruleset), no ktlint.
+- No ktlint/formatter config; match surrounding code by hand.
 - No binary-compatibility validation golden files despite being a
   published library.
 - No Dokka-warning or KDoc-coverage gate in CI.

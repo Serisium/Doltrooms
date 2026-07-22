@@ -19,6 +19,7 @@ plugins {
     // androidx.sqlite driver (D1); the Step 4 Room suite lives in commonTest.
     alias(libs.plugins.ksp)
     alias(libs.plugins.room3)
+    alias(libs.plugins.detekt)
 }
 
 group = "dev.seri.doltrooms"
@@ -681,6 +682,31 @@ kotlin {
 // RoomConformanceDbConstructor + database impl (room3 skill, kmp-setup
 // reference: per-target ksp configurations). Main compilations get none —
 // the shipped library has no Room code.
+detekt {
+    // Defaults come from detekt itself; config/detekt/detekt.yml holds only
+    // this module's deliberate deviations (each with its rationale).
+    buildUponDefaultConfig = true
+    config.setFrom(layout.projectDirectory.file("config/detekt/detekt.yml"))
+}
+
+// Gate `check` on detekt for the five main source sets that hold code. Not
+// gated, deliberately: leaf native Main tasks (they depend on the
+// host-gated static-engine builds and hold no sources); test source sets
+// (detekt's default test excludes don't know KMP custom test dirs like
+// androidHostTest); and the type-resolution tasks (the 2.0 alpha reports
+// spurious compiler errors on this layout, detektMainJvm needs the
+// Linux-host-only JNI build, and their extra rule
+// LibraryCodeMustSpecifyReturnType is redundant with explicitApi()).
+tasks.named("check") {
+    dependsOn(
+        "detektCommonMainSourceSet",
+        "detektJvmAndroidMainSourceSet",
+        "detektJvmMainSourceSet",
+        "detektAndroidMainSourceSet",
+        "detektNativeMainSourceSet",
+    )
+}
+
 dependencies {
     add("kspJvmTest", libs.room3.compiler)
     add("kspAndroidHostTest", libs.room3.compiler)
@@ -688,6 +714,9 @@ dependencies {
     add("kspLinuxX64Test", libs.room3.compiler)
     add("kspIosArm64Test", libs.room3.compiler)
     add("kspIosSimulatorArm64Test", libs.room3.compiler)
+    // detekt's opt-in ruleset for published libraries (D11 tooling,
+    // kotlin-audit-baseline skill).
+    detektPlugins(libs.detekt.rules.libraries)
 }
 
 // Package the NDK-built per-ABI libs into the AAR's jniLibs via the variant
