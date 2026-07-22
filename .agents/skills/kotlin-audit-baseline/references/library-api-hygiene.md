@@ -26,8 +26,10 @@ public declaration is a finding. Mechanical enforcement exists —
 Kotlin's Explicit API mode (`explicitApi()` in the `kotlin {}` block)
 was designed to enforce exactly these two rules at compile time
 (KEEP: https://github.com/Kotlin/KEEP/blob/master/proposals/explicit-api-mode.md).
-This repo does not enable it (SKILL.md gap list); until it does,
-check by hand.
+This repo enables it (Step 13, ARCHITECTURE.md D11), so violations
+fail the build; the rule remains listed for auditing other modules
+(e.g. samples are apps, not libraries — the mode is right to omit
+there).
 
 ## KDoc on all public members
 

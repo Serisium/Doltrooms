@@ -1,10 +1,11 @@
 # doltlite-room-bridge — Architecture
 
-**Status:** Target architecture as of 2026-07-21. Maintenance phase
-(§4); the implementation iteration completed at Step 11, and a
-human-opened samples iteration completed at Step 12. The step-by-step
-plan file that sequenced those iterations has been retired and
-deleted (2026-07-21), along with its frozen snapshot.
+**Status:** Target architecture as of 2026-07-22. Maintenance phase
+(§4); the implementation iteration completed at Step 11, and
+human-opened iterations have since landed samples (Step 12) and
+API-governance tooling (Step 13+). The step-by-step plan file that
+sequenced the original iterations has been retired and deleted
+(2026-07-21), along with its frozen snapshot.
 
 This document specifies the project's intended end state — the
 architecture every iteration builds toward, not a snapshot of what is
@@ -185,6 +186,16 @@ the pool's single writer connection because DoltLite branch state is
 per-connection session state — Room reader connections do not follow a
 checkout.
 
+### D11 — Public-API hygiene is compiler-enforced: Explicit API mode
+
+The library is a published artifact, so its `public` surface is a
+contract, not a default. Kotlin's Explicit API mode (`explicitApi()`
+in `library/build.gradle.kts`) makes the compiler reject implicit
+visibility and inferred types on public declarations — the two
+library rules of the official coding conventions the code had until
+now upheld only by hand. Rationale, citations, and the wider audit
+baseline live in the `kotlin-audit-baseline` skill.
+
 ## 3. Codemap
 
 ### 3.1 Repository layout
@@ -325,3 +336,7 @@ amendment) and, running for the first time on a macOS host, closed
 the deferred iOS verification — per-slice engine archives, iosTest
 concretes, and a green `iosSimulatorArm64Test`. The scope gate above
 is back in force.
+
+**Step 13 (human-opened 2026-07-22)** enabled Explicit API mode
+(D11) — all main compilations passed with zero violations, so the
+hand-maintained `public` discipline was already conformant.
