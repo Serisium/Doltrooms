@@ -83,14 +83,20 @@ Conforming today:
   the five code-bearing main source sets (Step 14);
   `library/config/detekt/detekt.yml` records every deliberate
   deviation. New suppressions require a justification comment.
+- KGP ABI validation is enabled (Step 15, D11 amendment):
+  `checkLegacyAbi` against `library/api/`, regenerated only via
+  `updateLegacyAbi` on a Linux host. Until the first dump is
+  committed the `check` gate stays un-armed
+  (`docs/deferred-verification.md`).
 
 Gaps (candidate improvements — tooling additions are new work and
 need a human-opened iteration per ARCHITECTURE.md §4; suggest, don't
 implement unasked):
 
 - No ktlint/formatter config; match surrounding code by hand.
-- No binary-compatibility validation golden files despite being a
-  published library.
+- The ABI golden dump is not yet committed (Linux host needed), and
+  iOS klib ABI has no dump path at all — see
+  `docs/deferred-verification.md`.
 - No Dokka-warning or KDoc-coverage gate in CI.
 
 ## When to load reference files

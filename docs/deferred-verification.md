@@ -4,7 +4,33 @@ Work that is implemented and believed correct but cannot be *verified*
 in the current development environment. Each entry lists what to run
 and where. Complete through Step 12 (samples/codelab; first
 macOS-host session, 2026-07-21) plus the same-day physical-iPad
-maintenance session.
+maintenance session; Step 15's ABI golden dump (below) is open.
+
+## ABI golden dump (needs a Linux host) — deferred by Step 15
+
+Step 15 (2026-07-22) enabled KGP's experimental ABI validation
+(`abiValidation` in `library/build.gradle.kts`, reference dir
+`library/api/`), but no golden dump is committed yet: the dump task
+graph needs `compileDoltliteStaticLinuxX64` (binutils `objcopy`) and
+`compileDoltliteJni` (linux JDK includes), both Linux-host-only, so
+`updateLegacyAbi` cannot run on the macOS host that opened the step.
+On the next Linux-host session:
+
+1. `./gradlew :library:updateLegacyAbi` — writes the reference dump
+   under `library/api/`.
+2. Inspect the dump (JVM + android class ABI, linuxX64 klib), then
+   commit it. The self-arming block at the bottom of
+   `library/build.gradle.kts` starts gating `check` on
+   `checkLegacyAbi` the moment `library/api/` exists — verify
+   `./gradlew :library:check` is green on that host and watch the
+   next CI `build` job (which runs on Linux) for the first gated run.
+
+Known limitation to record on close: iOS klib ABI entries never enter
+the dump — Linux hosts skip Apple compilations (cinterop
+host-gating, iOS entry above), and macOS hosts cannot run the dump
+task at all, so `keepLocallyUnsupportedTargets` (default true) has no
+iOS baseline to carry. iOS ABI stays guarded only by Explicit API
+mode and review until a host exists that can build every dump input.
 
 ## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 incl. physical hardware (samples/codelab session + same-day maintenance session), entry kept for the record
 

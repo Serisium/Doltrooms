@@ -129,6 +129,15 @@ public binary API and fails the build when it changes incompatibly
   experimental ABI validation built into the Kotlin Gradle Plugin —
   prefer the KGP-integrated successor for new setups (same README).
 
+Repo status (Step 15, 2026-07-22): this repo uses the KGP-integrated
+validation (`abiValidation` block; Kotlin 2.3.10's task names are
+`checkLegacyAbi`/`updateLegacyAbi`, renamed `checkKotlinAbi`/
+`updateKotlinAbi` in newer KGPs —
+https://kotlinlang.org/docs/gradle-binary-compatibility-validation.html).
+Reference dir pinned to `library/api/`; the golden dump needs a
+Linux host and the `check` gate self-arms once it is committed
+(`docs/deferred-verification.md`, ARCHITECTURE.md D11).
+
 ## Library-authors' guidelines (design-level bar)
 
 JetBrains' official guidelines for Kotlin library authors
