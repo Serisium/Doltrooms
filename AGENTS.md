@@ -109,6 +109,15 @@ Active for this iteration:
   — wrapping a C library per platform: cinterop `.def` files, JNI and
   native-lib packaging (AAR jniLibs vs JAR resources), JNA
   trade-offs, the AGP KMP library plugin, publishing.
+- [`kotlin-audit-baseline`](.agents/skills/kotlin-audit-baseline/SKILL.md)
+  — verified Kotlin best-practice audit rules for reviewing code
+  here: public-API hygiene (explicit visibility/types, KDoc, detekt
+  libraries ruleset, Explicit API mode, binary-compatibility
+  validation), expect/actual and cinterop/JNI interop checks,
+  coroutines discipline (dispatchers, cancellation,
+  CancellationException), and the AGENTS.md agent-guidelines
+  landscape. Load when auditing/reviewing Kotlin or debating lint
+  and API-stability tooling.
 - [`architecture-docs`](.agents/skills/architecture-docs/SKILL.md) —
   conventions for maintaining `ARCHITECTURE.md`; load before editing
   it.
