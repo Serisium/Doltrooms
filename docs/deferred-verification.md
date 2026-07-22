@@ -133,6 +133,74 @@ including `-iosarm64`/`-iossimulatorarm64`), inspect, then
 `./gradlew publishToMavenCentral` with credentials + key in env —
 still pending only credentials and the human's go.
 
+GAP DISCOVERED 2026-07-21 (first attempt of that macOS
+`publishToMavenLocal`): two tasks in `library/build.gradle.kts` still
+assumed a Linux host toolchain, and the "can now produce the complete
+artifact set" claim above was premature until they were fixed.
+`compileDoltliteStaticLinuxX64` invoked host `gcc` (on macOS that is
+Apple clang emitting Mach-O, not Linux ELF) and GNU `objcopy` (absent
+on macOS), and `compileDoltliteJni` compiled the jvm jar's
+`natives/linux-x64/libdoltroomsjni.so` with host `gcc`/`g++` against
+`$JAVA_HOME/include/linux`, which macOS JDKs don't ship (its comment
+still said cross-compilation "lands with later PLAN.md steps" — it
+never landed). Because `commonizeCInterop` needs the cinterop klibs
+of ALL native targets, the linuxX64 archive sits in the task graph of
+every publication — so NO publication could be produced on macOS, and
+`publish.yml` (macOS-latest) would have failed on first release.
+
+FIXED the same day, in the session that discovered it. On macOS both
+tasks now cross-compile with the toolchain Kotlin/Native itself
+provisions under `~/.konan/dependencies` (`KONAN_DATA_DIR`
+overrides), resolved by glob so Konan version bumps don't break:
+the `x86_64-unknown-linux-gnu-gcc-*` package supplies the
+glibc-2.19 sysroot Konan links linuxX64 binaries against — but its
+gcc/binutils are Linux-host ELF executables, unusable on macOS
+(`konan.properties` confirms Konan compiles with LLVM on Mac hosts:
+`targetToolchain.macos_arm64-linux_x64 = $llvmHome.macos_arm64`) —
+so the tasks use the `llvm-*` package's `clang`/`clang++`/`llvm-ar`
+with `--target=x86_64-unknown-linux-gnu --sysroot=<gcc pkg sysroot>
+--gcc-toolchain=<gcc pkg>` (JNI link: `-fuse-ld=lld`). The
+`__isoc23_strto*` objcopy remap is SKIPPED on the cross path: those
+redirects come from glibc-2.38+ headers, which the 2.19 sysroot
+predates, so they cannot appear (verified: `nm` on the produced
+`doltlite.o` shows zero `__isoc23_*`, plain `strtol`/`fcntl`
+undefined refs); `-DSQLITE_DISABLE_LFS` is kept on both hosts for one
+identical compile command. JNI headers: OpenJDK ships one shared
+POSIX `jni_md.h` (`src/java.base/unix/native/include/jni_md.h`,
+installed as both `include/linux` and `include/darwin`; only `_LP64`
+affects its typedefs), so the host JDK's darwin copy serves the Linux
+cross compile. Provisioning on a clean machine: the macOS tasks
+`dependsOn(downloadKotlinNativeDistribution)`, empirically verified
+to populate an empty `KONAN_DATA_DIR` with both packages, and the
+glob fails with an instruction to run that task if resolution still
+misses. Local test runs on macOS get a NOT-packaged host twin
+(`compileDoltliteJniHost` dylib): `jvmTest` loads it via the loader's
+`dev.seri.doltrooms.lib.path` override and `testAndroidHostTest` via
+`java.library.path` — the shipped jvm jar stays linux-x64-only on
+every host (README's platform table). Linux-host behavior is
+unchanged: same `gcc`/`g++`/`objcopy`/`ar` commands as before.
+
+Verified 2026-07-21 on the macOS host (Apple Silicon, Xcode 26.5):
+`./gradlew :library:publishToMavenLocal` GREEN; `~/.m2` carries the
+full set — umbrella, `-jvm`, `-android`, `-linuxx64`, `-iosarm64`,
+`-iossimulatorarm64`, each with real `-javadoc` jars; `file` reports
+the jvm jar's `natives/linux-x64/libdoltroomsjni.so` as ELF 64-bit
+x86-64 (with `JNI_OnLoad` exported, jar 1.57 MB vs the
+Linux-built 1.8 MB in the README table) and the embedded
+`libdoltlite.a` member likewise ELF; test legs GREEN on the same
+host — jvmTest 118/0 and testAndroidHostTest 52/0 against the
+host-twin dylib, iosSimulatorArm64Test 52/0, linuxX64Test correctly
+SKIPS (a Mac links but cannot run Linux binaries). One caveat for
+the record: running `allTests` and `testAndroidHostTest` in a single
+invocation put three suites plus a booting simulator on the machine
+at once and produced two 60-second `runTest` timeout flakes (one
+jvm, one androidHost, unrelated tests/engines); both suites pass
+0-failure when re-run serially. The Linux-host path runs the same
+commands as before by construction; `ci.yml` (ubuntu) on the fix PR
+is the observed check — green run pending at the time of writing.
+The release itself remains pending only credentials and the human's
+go.
+
 ## First observed run of the Step 12 CI jobs — FULLY OBSERVED 2026-07-21 (PR #3), entry kept for the record
 
 Step 12 added three jobs to `ci.yml`: `android-x86_64-emulator` (KVM
