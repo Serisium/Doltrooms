@@ -122,7 +122,7 @@ sqlite-wasm-style JS package (`@dolthub/doltlite-wasm`) from
 driver — Room 3's `androidx.sqlite:sqlite-web` `WebWorkerSQLiteDriver`
 is the template (`room3` skill).
 
-This repo's web rung was DROPPED at PLAN.md Step 9 (ARCHITECTURE.md
+This repo's web rung was DROPPED at implementation Step 9 (ARCHITECTURE.md
 D4 amendment). The decisive mechanic, probed in-repo 2026-07-18 by
 adding `wasmJs { browser() }` to the target set: androidx.sqlite
 2.7.0's interfaces are expect-split into nonWeb (synchronous

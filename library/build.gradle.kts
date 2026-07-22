@@ -1,6 +1,8 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.SourcesJar
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Properties
@@ -587,6 +589,162 @@ if (hostIsMac) {
             dependsOn(archiveTask)
             inputs.files(archiveTask.map { it.outputs.files })
         }
+    }
+}
+
+// --- iOS physical-device test runner (docs/deferred-verification.md) ------
+// KGP runs Kotlin/Native test binaries on simulators only; no device-run
+// task exists for iosArm64. This one wraps the linked test.kexe in a
+// minimal .app bundle, borrows the bundle id + provisioning profile from an
+// already-built-and-signed host app (a free personal team can mint profiles
+// only through Xcode; the samples/codelab Fruitties device build provides
+// one), signs the bundle, installs and launches it on a connected device
+// via devicectl, and fails unless the captured console output carries a
+// green Kotlin/Native test summary. Because the bundle id is borrowed,
+// installing the runner REPLACES the host app (and its data) on the device
+// — rebuild/reinstall the sample afterwards if you want it back.
+//
+// Usage (macOS host; device paired, Developer Mode on, profile trusted):
+//   ./gradlew :library:iosArm64DeviceTest \
+//     -Pdoltrooms.iosDeviceTest.udid=<devicectl UDID> \
+//     -Pdoltrooms.iosDeviceTest.hostApp=<path to a signed Fruitties.app>
+abstract class RunIosDeviceTestsTask @Inject constructor(
+    private val execOps: ExecOperations,
+) : DefaultTask() {
+
+    /** The linked iosArm64 Kotlin/Native test executable (test.kexe). */
+    @get:InputFile
+    abstract val testExecutable: RegularFileProperty
+
+    /** Built + signed .app whose bundle id and profile the runner borrows. */
+    @get:InputDirectory
+    abstract val hostApp: DirectoryProperty
+
+    /** devicectl device identifier (UDID from `devicectl list devices`). */
+    @get:Input
+    abstract val deviceUdid: Property<String>
+
+    /** codesign identity; any unique substring ("Apple Development") works. */
+    @get:Input
+    abstract val signingIdentity: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    private fun run(vararg cmd: String, ignoreExit: Boolean = false): String {
+        val stdout = ByteArrayOutputStream()
+        execOps.exec {
+            commandLine(*cmd)
+            standardOutput = stdout
+            isIgnoreExitValue = ignoreExit
+        }
+        return stdout.toString()
+    }
+
+    @TaskAction
+    fun runTests() {
+        val out = outputDir.get().asFile.apply { deleteRecursively(); mkdirs() }
+        val host = hostApp.get().asFile
+        val profile = host.resolve("embedded.mobileprovision")
+        require(profile.exists()) { "hostApp carries no embedded.mobileprovision: $host" }
+        val bundleId = run(
+            "/usr/libexec/PlistBuddy", "-c", "Print :CFBundleIdentifier",
+            host.resolve("Info.plist").absolutePath,
+        ).trim()
+
+        // Assemble the bundle around the bare test executable. The binary is
+        // a plain console main() (no UIApplication): FrontBoard treats the
+        // quick exit as a crash-at-checkin, but the process runs to
+        // completion first and its stdout reaches the attached console.
+        val app = out.resolve("DoltroomsTests.app").apply { mkdirs() }
+        val exe = app.resolve("DoltroomsTests")
+        testExecutable.get().asFile.copyTo(exe, overwrite = true)
+        exe.setExecutable(true)
+        profile.copyTo(app.resolve("embedded.mobileprovision"), overwrite = true)
+        app.resolve("Info.plist").writeText(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0"><dict>
+                <key>CFBundleExecutable</key><string>DoltroomsTests</string>
+                <key>CFBundleIdentifier</key><string>$bundleId</string>
+                <key>CFBundleName</key><string>DoltroomsTests</string>
+                <key>CFBundlePackageType</key><string>APPL</string>
+                <key>CFBundleShortVersionString</key><string>1.0</string>
+                <key>CFBundleVersion</key><string>1</string>
+                <key>CFBundleSupportedPlatforms</key><array><string>iPhoneOS</string></array>
+                <key>LSRequiresIPhoneOS</key><true/>
+                <key>MinimumOSVersion</key><string>12.0</string>
+                <key>UIDeviceFamily</key><array><integer>1</integer><integer>2</integer></array>
+                <key>UILaunchScreen</key><dict/>
+            </dict></plist>
+            """.trimIndent()
+        )
+
+        // Entitlements (application-identifier, team, get-task-allow) come
+        // from the borrowed profile itself: decode its CMS envelope, then
+        // lift the Entitlements dict into a standalone plist for codesign.
+        val profilePlist = out.resolve("profile.plist")
+        profilePlist.writeText(run("security", "cms", "-D", "-i", profile.absolutePath))
+        val entitlements = out.resolve("entitlements.plist")
+        entitlements.writeText(
+            run("/usr/libexec/PlistBuddy", "-x", "-c", "Print :Entitlements", profilePlist.absolutePath)
+        )
+        run(
+            "codesign", "--force", "--sign", signingIdentity.get(),
+            "--entitlements", entitlements.absolutePath, app.absolutePath,
+        )
+
+        run(
+            "xcrun", "devicectl", "device", "install", "app",
+            "--device", deviceUdid.get(), app.absolutePath,
+        )
+        // --console attaches and streams the process's stdio until exit.
+        val console = run(
+            "xcrun", "devicectl", "device", "process", "launch",
+            "--console", "--terminate-existing",
+            "--device", deviceUdid.get(), bundleId,
+            ignoreExit = true,
+        )
+        val log = out.resolve("console.log").apply { writeText(console) }
+        logger.lifecycle(console)
+
+        // Kotlin/Native's default test listener prints a gtest-style summary:
+        //   [==========] 52 tests from 8 test cases ran. (…)
+        //   [  PASSED  ] 52 tests.
+        val ran = Regex("""\[==========] (\d+) tests from .* ran""").find(console)
+        val passed = Regex("""\[  PASSED {2}] (\d+) tests?""").find(console)
+        when {
+            ran == null -> error(
+                "No Kotlin/Native test summary in the device console output " +
+                    "(launch failure or watchdog kill?) — see $log"
+            )
+            console.contains("[  FAILED  ]") || passed == null ->
+                error("Device test run FAILED — see $log")
+            else -> logger.lifecycle(
+                "iosArm64DeviceTest: ${passed.groupValues[1]}/${ran.groupValues[1]} " +
+                    "tests passed on device ${deviceUdid.get()}"
+            )
+        }
+    }
+}
+
+if (hostIsMac) {
+    val linkIosArm64Test =
+        tasks.named("linkDebugTestIosArm64", org.jetbrains.kotlin.gradle.tasks.KotlinNativeLink::class)
+    tasks.register<RunIosDeviceTestsTask>("iosArm64DeviceTest") {
+        group = "verification"
+        description =
+            "Runs the iosArm64 Kotlin/Native test binary on a connected physical device via devicectl."
+        dependsOn(linkIosArm64Test)
+        testExecutable = layout.file(linkIosArm64Test.flatMap { it.outputFile })
+        hostApp = layout.dir(
+            providers.gradleProperty("doltrooms.iosDeviceTest.hostApp").map { File(it) }
+        )
+        deviceUdid = providers.gradleProperty("doltrooms.iosDeviceTest.udid")
+        signingIdentity =
+            providers.gradleProperty("doltrooms.iosDeviceTest.identity").orElse("Apple Development")
+        outputDir = layout.buildDirectory.dir("iosDeviceTest")
     }
 }
 

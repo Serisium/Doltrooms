@@ -1,7 +1,7 @@
 # DoltLite remotes, doltlite-remotesrv, and sync
 
 Verified 2026-07-17 at DoltLite 0.11.33; "Probed facts" below observed
-empirically 2026-07-18 (PLAN.md Step 8). The sync stance for this
+empirically 2026-07-18 (implementation Step 8). The sync stance for this
 project is ARCHITECTURE.md D3: DoltLite's own remote protocol only.
 
 ## The SQL surface
@@ -24,7 +24,7 @@ https://www.dolthub.com/blog/2026-04-09-improving-doltlite/).
 
 ## Probed facts (0.11.33, 2026-07-18, via this repo's driver + release CLI)
 
-Observed empirically with throwaway probes (PLAN.md Step 8 log) —
+Observed empirically with throwaway probes (implementation Step 8, 2026-07-18) —
 version-sensitive, re-probe on upgrade:
 
 - **The amalgamation has no TLS/auth.** `doltlite.c` (0.11.33): "The

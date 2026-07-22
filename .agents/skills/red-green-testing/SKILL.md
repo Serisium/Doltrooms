@@ -29,10 +29,10 @@ retrofitting tests onto code that already works.
   suite passing against both `BundledSQLiteDriver` and the DoltLite driver
   — the `room3` skill's `references/testing.md`) is itself a red→green
   target at the conformance level.
-- **§4 scope.** The current iteration is implementation (ARCHITECTURE.md
-  §4), sequenced by `PLAN.md` — D7 binds every step that authors new
+- **§4 scope.** ARCHITECTURE.md §4 is the scope gate (currently
+  maintenance) — D7 binds any session that authors net-new production
   code. Do not scaffold test infrastructure ahead of the current
-  unchecked `PLAN.md` step (AGENTS.md working rules).
+  iteration's scope (AGENTS.md working rules).
 
 ## The cycle
 
