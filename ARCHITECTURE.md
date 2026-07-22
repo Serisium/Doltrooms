@@ -198,11 +198,11 @@ built-in ABI validation (experimental) compares the public binary API
 against a committed golden dump (`library/api/`, task
 `checkLegacyAbi`); the dump regenerates only deliberately
 (`updateLegacyAbi`), so accidental breaking changes fail the build.
-The dump is Linux-host-produced (iOS klib entries ride inference
-from the commonized declarations) and committed under `library/api/`,
-so `check` gates on `checkLegacyAbi`
-(`docs/deferred-verification.md`). Rationale, citations, and the
-wider audit baseline live in the `kotlin-audit-baseline` skill.
+The dump is committed under `library/api/` and reproduces
+byte-identically on macOS and Linux dev hosts (host details and the
+iOS-inference caveat: the comment on the `abiValidation` block in
+`library/build.gradle.kts`). Rationale, citations, and the wider
+audit baseline live in the `kotlin-audit-baseline` skill.
 
 ## 3. Codemap
 
@@ -215,7 +215,7 @@ wider audit baseline live in the `kotlin-audit-baseline` skill.
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
 | `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
-| `docs/deferred-verification.md` | Checklist of implemented-but-unverified work plus verified records that still bear on future work: the iOS record, the ABI golden dump (regeneration procedure + inference caveat), XCFramework packaging and Maven Central publishing (need a Mac), the remotesrv fixture off linux-x64. Fully-verified entries with no future bearing are pruned. |
+| `docs/deferred-verification.md` | Checklist of implemented-but-unverified work plus verified records that still bear on future work: the iOS record, XCFramework packaging and Maven Central publishing (need a Mac), the remotesrv fixture off linux-x64. Fully-verified entries with no future bearing are pruned. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `samples/codelab/` | Fruitties sample: Google's kmp-migrate-room codelab in its post-migration state, ported to Room 3 + `DoltLiteDriver` for Android and iOS. A standalone composite build over the root (D5 amendment); its own README documents lineage and every delta from upstream. |
@@ -358,11 +358,10 @@ each deliberate deviation's rationale. Findings resolved by
 justified suppression only — no code reshaping.
 
 **Step 15 (human-opened 2026-07-22)** enabled KGP's built-in ABI
-validation (D11 amendment). The golden dump needs a Linux host, so
-the `check` gate self-arms once `library/api/` is committed. The
-dump landed the same day from the oxefit-fedora build server (iOS
-klib entries inferred from the commonized declarations), arming the
-gate; the first armed `check` there ran green — jvmTest 118/0,
-linuxX64Test 52/0, detekt gates, `checkLegacyAbi` (android leg
-skipped: no SDK on that host; CI's `build` job covers it). Details
-in `docs/deferred-verification.md`.
+validation (D11 amendment) and committed the golden dump: `check`
+gates on `checkLegacyAbi`. First generated on the oxefit-fedora
+build server (predating the PR #6 cross toolchain), where the first
+gated `check` ran green — jvmTest 118/0, linuxX64Test 52/0, detekt
+gates, `checkLegacyAbi`; after rebasing onto PR #6, a macOS
+regeneration reproduced the dump byte-identically, so either dev
+host maintains it.

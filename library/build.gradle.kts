@@ -574,17 +574,20 @@ kotlin {
     // and type explicitly (kotlin-audit-baseline skill; ARCHITECTURE.md D11).
     explicitApi()
 
-    // ABI golden files (D11): checkLegacyAbi fails the build when the
-    // public binary API drifts from the committed dump; regenerate
-    // deliberately with updateLegacyAbi. (Kotlin 2.3.10's task names;
-    // newer KGPs rename them checkKotlinAbi/updateKotlinAbi.) KGP's
-    // built-in validation (experimental) replaces the maintenance-mode
-    // binary-compatibility-validator plugin
+    // ABI golden files (D11): checkLegacyAbi (in `check`) fails the build
+    // when the public binary API drifts from the committed library/api/
+    // dump; regenerate deliberately with updateLegacyAbi. (Kotlin 2.3.10's
+    // task names; newer KGPs rename them checkKotlinAbi/updateKotlinAbi.)
+    // KGP's built-in validation (experimental) replaces the
+    // maintenance-mode binary-compatibility-validator plugin
     // (https://kotlinlang.org/docs/gradle-binary-compatibility-validation.html).
-    // The golden dump can only be produced on a Linux host: the dump graph
-    // needs the linuxX64 static engine (objcopy) and the desktop JNI lib
-    // (linux JDK includes), both Linux-only tasks, while iOS klib entries
-    // ride keepLocallyUnsupportedTargets (docs/deferred-verification.md).
+    // Either dev host produces the same dump: a Mac dumps every target
+    // directly (Linux natives via the cross toolchain above); a Linux host
+    // infers the iOS klib entries from the commonized declarations —
+    // byte-identical outputs, verified 2026-07-22 (macOS vs oxefit-fedora).
+    // Caveat: Linux inference only sees declarations shared with a
+    // Linux-buildable target, so iOS-only declarations (a future iosMain)
+    // would need a Mac-produced dump.
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
     abiValidation {
         enabled.set(true)
@@ -708,31 +711,22 @@ detekt {
     config.setFrom(layout.projectDirectory.file("config/detekt/detekt.yml"))
 }
 
-// Gate `check` on detekt for the five main source sets that hold code. Not
-// gated, deliberately: leaf native Main tasks (they depend on the
-// host-gated static-engine builds and hold no sources); test source sets
-// (detekt's default test excludes don't know KMP custom test dirs like
-// androidHostTest); and the type-resolution tasks (the 2.0 alpha reports
-// spurious compiler errors on this layout, detektMainJvm needs the
-// Linux-host-only JNI build, and their extra rule
+// Gate `check` on the ABI dump and on detekt for the five main source sets
+// that hold code. Not detekt-gated, deliberately: leaf native Main tasks
+// (they depend on the static-engine builds and hold no sources); test
+// source sets (detekt's default test excludes don't know KMP custom test
+// dirs like androidHostTest); and the type-resolution tasks (the 2.0 alpha
+// reports spurious compiler errors on this layout, and their extra rule
 // LibraryCodeMustSpecifyReturnType is redundant with explicitApi()).
 tasks.named("check") {
     dependsOn(
+        "checkLegacyAbi",
         "detektCommonMainSourceSet",
         "detektJvmAndroidMainSourceSet",
         "detektJvmMainSourceSet",
         "detektAndroidMainSourceSet",
         "detektNativeMainSourceSet",
     )
-}
-
-// Self-arming ABI gate: once the golden dump exists (generated on a Linux
-// host via updateLegacyAbi and committed under library/api/ — see
-// docs/deferred-verification.md), check validates the public binary API.
-// Until then checkLegacyAbi stays manual, so hosts that cannot build the
-// Linux-only dump inputs keep a green check.
-if (layout.projectDirectory.dir("api").asFile.exists()) {
-    tasks.named("check") { dependsOn("checkLegacyAbi") }
 }
 
 dependencies {

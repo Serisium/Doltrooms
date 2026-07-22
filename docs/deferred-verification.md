@@ -4,41 +4,8 @@ Work that is implemented and believed correct but cannot be *verified*
 in the current development environment. Each entry lists what to run
 and where. Verified entries stay only while they still bear on future
 work (an open dependent, a reusable procedure, a live caveat);
-fully-verified entries with no future bearing are deleted (audit
-policy set 2026-07-22, when the two first-CI-run observations and the
-Android on-device record were pruned — git history keeps them).
-
-## ABI golden dump (needs a Linux host) — VERIFIED 2026-07-22 (oxefit-fedora); kept: regeneration procedure + inference caveat
-
-Step 15 (2026-07-22) enabled KGP's experimental ABI validation
-(`abiValidation` in `library/build.gradle.kts`, reference dir
-`library/api/`); the dump task graph needs
-`compileDoltliteStaticLinuxX64` (binutils `objcopy`) and
-`compileDoltliteJni` (linux JDK includes), both Linux-host-only, so
-`updateLegacyAbi` could not run on the macOS host that opened the
-step. Executed the same day on the oxefit-fedora build server (JDK
-21, isolated git worktree of the Step 15 commit):
-
-1. `./gradlew :library:updateLegacyAbi` — BUILD SUCCESSFUL (1m57s
-   cold). Wrote `library/api/jvm/library.api` (169 lines, JVM binary
-   signatures) and `library/api/library.klib.api` (198 lines).
-2. The klib dump header reads `Targets: [iosArm64,
-   iosSimulatorArm64, linuxX64]`: the iOS entries were **inferred**
-   from the commonized declarations (KGP warned "could not be
-   directly generated"; Linux skips Apple compilations) — complete
-   today because every native declaration lives in shared
-   `nativeMain`. Dump committed; the self-arming block in
-   `library/build.gradle.kts` now gates `check` on `checkLegacyAbi`.
-3. `./gradlew :library:checkLegacyAbi` — BUILD SUCCESSFUL on the
-   same host, and the first self-armed `:library:check` run was
-   verified there too (see ARCHITECTURE.md §4 Step 15).
-
-Residual caveat (narrower than this entry originally feared): iOS
-klib ABI rides inference, which only sees declarations shared with a
-Linux-buildable target. If iOS-only declarations ever appear (e.g.
-code in `iosMain`), their ABI is invisible to a Linux-host dump —
-regenerate and validate on a host that can build every dump input,
-or re-examine KGP's unsupported-target handling then.
+fully-verified entries with no future bearing are deleted — git
+history is the record (audit policy set 2026-07-22).
 
 ## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 incl. physical hardware; kept: the open entries below and the device-test procedure lean on it
 

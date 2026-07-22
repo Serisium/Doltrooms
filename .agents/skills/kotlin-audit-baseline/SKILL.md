@@ -85,19 +85,16 @@ Conforming today:
   deviation. New suppressions require a justification comment.
 - KGP ABI validation is enabled and armed (Step 15, D11 amendment):
   `check` gates on `checkLegacyAbi` against the committed
-  `library/api/` golden dump (JVM + klib; iOS klib entries inferred
-  from the commonized declarations). Regenerate only deliberately
-  via `updateLegacyAbi` on a Linux host
-  (`docs/deferred-verification.md`).
+  `library/api/` golden dump (JVM + klib, all targets). Regenerate
+  only deliberately via `updateLegacyAbi` — either dev host works;
+  host details and the iOS-inference caveat live on the
+  `abiValidation` block's comment in `library/build.gradle.kts`.
 
 Gaps (candidate improvements — tooling additions are new work and
 need a human-opened iteration per ARCHITECTURE.md §4; suggest, don't
 implement unasked):
 
 - No ktlint/formatter config; match surrounding code by hand.
-- iOS klib ABI rides dump inference: iOS-only declarations (a future
-  `iosMain`) would be invisible to a Linux-host dump — see
-  `docs/deferred-verification.md`.
 - No Dokka-warning or KDoc-coverage gate in CI.
 
 ## When to load reference files
