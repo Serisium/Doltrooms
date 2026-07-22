@@ -5,9 +5,10 @@ androidx.room) and DoltLite (DoltHub's SQLite fork with Git-style
 version control), implemented as a custom `androidx.sqlite`
 `SQLiteDriver` that links `libdoltlite` instead of sqlite3. Currently
 in the maintenance phase (`ARCHITECTURE.md` §4): the implementation
-iteration completed at `PLAN.md` Step 11 — still read `PLAN.md` (its
-Current State is the carried context) before doing anything else, but
-new feature work opens only by human decision as a new iteration.
+iteration completed 2026-07-18 at Step 11, and the step-by-step plan
+file has since been retired — read `ARCHITECTURE.md` and this file
+before doing anything else. New feature work opens only by human
+decision as a new iteration.
 
 ## Governing documents
 
@@ -25,10 +26,15 @@ new feature work opens only by human decision as a new iteration.
   speculative/deferred material to it. Where it and `README.md`
   disagree, the README is the newer decision: update `ARCHITECTURE.md`
   to follow it.
-- **`PLAN.md` is the living implementation plan** — session protocol,
-  current state, step backlog, and append-only step log. It is the
-  only context carried between agent sessions; keeping its "Current
-  State" truthful at the end of every session is part of every step.
+- **`docs/deferred-verification.md` is the live verification
+  burn-down** — implemented-but-unverified work, one entry per gap
+  with what to run and where, flipped to VERIFIED (entry kept for the
+  record) as hardware becomes reachable. Keeping it truthful in the
+  same session that closes or discovers a gap is part of the work.
+  (The step-by-step implementation plan that used to live in
+  `PLAN.md` was retired and deleted in July 2026 after its backlog
+  completed; the repo state plus these governing documents are the
+  context carried between sessions.)
 - **`docs/FEASIBILITY.md` holds the founding research** — why the
   bridge is DoltLite-as-driver and why Room-to-Dolt-server is
   infeasible. It is context, not decisions, and it is a snapshot

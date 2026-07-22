@@ -1,8 +1,10 @@
 # doltlite-room-bridge — Architecture
 
 **Status:** Target architecture as of 2026-07-21. Maintenance phase
-(§4); the implementation iteration completed at `PLAN.md` Step 11,
-and a human-opened samples iteration completed at Step 12.
+(§4); the implementation iteration completed at Step 11, and a
+human-opened samples iteration completed at Step 12. The step-by-step
+plan file that sequenced those iterations has been retired and
+deleted (2026-07-21), along with its frozen snapshot.
 
 This document specifies the project's intended end state — the
 architecture every iteration builds toward, not a snapshot of what is
@@ -73,7 +75,7 @@ Driver work lands in this order: JVM desktop (JNI shim — the
 proof-of-concept and test vehicle), Android, iOS (Kotlin/Native
 cinterop), then web. A JS/WASM driver is acknowledged as the hardest
 target; by human decision of 2026-07-17 it is scheduled last
-(`PLAN.md` Step 9) as a best-effort, explicitly droppable rung —
+(implementation Step 9) as a best-effort, explicitly droppable rung —
 nothing may be scaffolded for it before that step opens. Validation at
 every rung is running existing Room test suites against the new
 driver. Amendment (Step 9): the web rung was DROPPED, exercising the
@@ -192,9 +194,7 @@ checkout.
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
 | `ARCHITECTURE.md` | This file — settled decisions D1–D10. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
-| `PLAN.md` | The living implementation plan: session protocol, current state, step backlog, step log. The unit of work is one step per agent session (§4). |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
-| `docs/BUILDOUT_PLAN.md` | Historical snapshot of `PLAN.md` frozen at the close of the implementation iteration (Step 11) — record only, never executed from. |
 | `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
 | `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test, XCFramework packaging, and Maven Central publishing (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
@@ -218,7 +218,7 @@ The repo keeps the `multiplatform-library-template` build shape:
   androidx.sqlite `2.7.0`, KSP `2.3.10`, Android NDK
   `28.2.13676358` (cross-compiles the D8 device ABIs). Catalog
   aliases exist ahead
-  of use; build scripts wire them in only when the owning PLAN.md step
+  of use; build scripts wire them in only when the owning iteration
   opens.
 - Root `build.gradle.kts` — declares the build's plugins `apply false`
   (Kotlin Multiplatform, `com.android.kotlin.multiplatform.library`,
@@ -264,7 +264,8 @@ Targets declared in `library/build.gradle.kts`: `jvm()`,
 already covers the first three rungs of the D4 ladder; it grows (e.g.
 macOS) only when an iteration needs it.
 
-`library/src/` holds the driver, populated step by step by `PLAN.md`:
+`library/src/` holds the driver, populated step by step by the
+implementation iteration:
 `commonMain` declares the public `DoltLiteDriver`/`DoltLiteConnection`/
 `DoltLiteStatement` expect classes (D1's three interfaces) plus the
 `dev.seri.doltrooms.dolt` helper package (`DoltDatabase`, D10);
@@ -304,13 +305,14 @@ packages `dev.seri.doltrooms.*`).
 ## 4. Current iteration
 
 **Maintenance.** The implementation iteration (opened by human
-decision 2026-07-17, completed 2026-07-18 at `PLAN.md` Step 11) built
-the full library: the DoltLite-backed `SQLiteDriver` across the
-platform ladder (D4; the web rung was dropped at Step 9), the typed
-`dolt_*` versioning helpers (D10), `doltlite-remotesrv` sync (D3),
-CI, and publishing preparation. `PLAN.md` is now in maintenance mode:
-no unchecked steps remain, and new work opens only by human decision
-as a new iteration (with new `PLAN.md` steps or a successor plan).
+decision 2026-07-17, completed 2026-07-18 at Step 11) built the full
+library: the DoltLite-backed `SQLiteDriver` across the platform
+ladder (D4; the web rung was dropped at Step 9), the typed `dolt_*`
+versioning helpers (D10), `doltlite-remotesrv` sync (D3), CI, and
+publishing preparation. The plan is complete and its plan file has
+been retired (deleted 2026-07-21, frozen snapshot included); new
+work opens only by human decision as a new iteration with its own
+plan.
 Until then the scope gate is: fix bugs, keep docs/skills truthful,
 and burn down `docs/deferred-verification.md` when the needed
 hardware (macOS host, Android device, GitHub push) becomes available

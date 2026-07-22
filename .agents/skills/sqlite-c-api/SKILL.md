@@ -117,7 +117,7 @@ divergence risk splits cleanly:
 Prefer runtime probes (open a temp DB, try the pragma, check the
 returned string) over trusting version numbers.
 
-### Confirmed at DoltLite 0.11.33 (probed in-repo 2026-07-17/18; each pinned by a test — PLAN.md Current State divergence table)
+### Confirmed at DoltLite 0.11.33 (probed in-repo 2026-07-17/18; each pinned by a test — `KnownDivergenceTest` and the docs/USAGE.md divergence table)
 
 Confirmed diverged:
 
