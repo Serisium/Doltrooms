@@ -55,10 +55,10 @@ jobs:
           name: test-reports
           path: library/build/reports/tests/
 
-  # The x86_64 ABI leg of the on-device suite (docs/deferred-verification.md,
-  # "Android on-device"): GitHub's Linux runners expose /dev/kvm, which no
-  # available dev host does (arm64 phone covers the other ABI; the fedora box
-  # is a VM without nested virt; Apple Silicon can't run x86_64 images). One
+  # The x86_64 ABI leg of the on-device suite: GitHub's Linux runners expose
+  # /dev/kvm, which no available dev host does (arm64 phone covers the other
+  # ABI — verified 2026-07-21 on hardware; the fedora box is a VM without
+  # nested virt; Apple Silicon can't run x86_64 images). One
   # emulator serves both the library device suite and the samples/codelab
   # instrumented tests (DAO + DoltVersioningTest).
   android-x86_64-emulator:

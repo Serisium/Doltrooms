@@ -7,6 +7,9 @@ package dev.seri.doltrooms.driver
  * from `JNI_OnLoad` via `RegisterNatives`, so a signature mismatch
  * fails at library-load time rather than first call.
  */
+// One external fun per sqlite3_* entry point the driver needs — the
+// count is the C API's, not a design smell.
+@Suppress("TooManyFunctions")
 internal object DoltLiteNative {
     init {
         loadNativeLibrary()

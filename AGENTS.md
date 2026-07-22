@@ -17,7 +17,7 @@ decision as a new iteration.
   becomes out of date, suggest edits or additions to the human instead
   of making them yourself.
 - **`ARCHITECTURE.md` holds this project's architectural decisions**
-  (D1–D10). It may be agent-written and may contain historical detail.
+  (D1–D11). It may be agent-written and may contain historical detail.
   Read it before any non-trivial change. You are not permitted to make
   changes elsewhere in the project that violate a decision in
   `ARCHITECTURE.md` unless explicitly told to. When such a decision is
@@ -28,9 +28,13 @@ decision as a new iteration.
   to follow it.
 - **`docs/deferred-verification.md` is the live verification
   burn-down** — implemented-but-unverified work, one entry per gap
-  with what to run and where, flipped to VERIFIED (entry kept for the
-  record) as hardware becomes reachable. Keeping it truthful in the
-  same session that closes or discovers a gap is part of the work.
+  with what to run and where, flipped to VERIFIED as hardware
+  becomes reachable. A VERIFIED entry stays only while it still
+  bears on future work (an open dependent, a reusable procedure, a
+  live caveat); once nothing leans on it, delete it — git history is
+  the record (policy set 2026-07-22). Keeping the file truthful in
+  the same session that closes or discovers a gap is part of the
+  work.
   (The step-by-step implementation plan that used to live in
   `PLAN.md` was retired and deleted in July 2026 after its backlog
   completed; the repo state plus these governing documents are the
@@ -61,7 +65,7 @@ decision as a new iteration.
   platform artifacts, and claims in skills should record the version
   they were verified against.
 - **After editing any `.md` file, re-check cross-references.** Update
-  decision ids (D1–D10), section numbers (§1–§4), file names, and
+  decision ids (D1–D11), section numbers (§1–§4), file names, and
   links in the other docs (`AGENTS.md`, `ARCHITECTURE.md`,
   `.agents/skills/`) that point at what you changed. A dangling `§`
   or renamed file reference is a bug.
@@ -109,6 +113,15 @@ Active for this iteration:
   — wrapping a C library per platform: cinterop `.def` files, JNI and
   native-lib packaging (AAR jniLibs vs JAR resources), JNA
   trade-offs, the AGP KMP library plugin, publishing.
+- [`kotlin-audit-baseline`](.agents/skills/kotlin-audit-baseline/SKILL.md)
+  — verified Kotlin best-practice audit rules for reviewing code
+  here: public-API hygiene (explicit visibility/types, KDoc, detekt
+  libraries ruleset, Explicit API mode, binary-compatibility
+  validation), expect/actual and cinterop/JNI interop checks,
+  coroutines discipline (dispatchers, cancellation,
+  CancellationException), and the AGENTS.md agent-guidelines
+  landscape. Load when auditing/reviewing Kotlin or debating lint
+  and API-stability tooling.
 - [`architecture-docs`](.agents/skills/architecture-docs/SKILL.md) —
   conventions for maintaining `ARCHITECTURE.md`; load before editing
   it.

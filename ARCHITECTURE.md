@@ -1,10 +1,11 @@
 # doltlite-room-bridge — Architecture
 
-**Status:** Target architecture as of 2026-07-21. Maintenance phase
-(§4); the implementation iteration completed at Step 11, and a
-human-opened samples iteration completed at Step 12. The step-by-step
-plan file that sequenced those iterations has been retired and
-deleted (2026-07-21), along with its frozen snapshot.
+**Status:** Target architecture as of 2026-07-22. Maintenance phase
+(§4); the implementation iteration completed at Step 11, and
+human-opened iterations have since landed samples (Step 12) and
+API-governance tooling (Step 13+). The step-by-step plan file that
+sequenced the original iterations has been retired and deleted
+(2026-07-21), along with its frozen snapshot.
 
 This document specifies the project's intended end state — the
 architecture every iteration builds toward, not a snapshot of what is
@@ -185,6 +186,24 @@ the pool's single writer connection because DoltLite branch state is
 per-connection session state — Room reader connections do not follow a
 checkout.
 
+### D11 — The public API surface is mechanically enforced
+
+The library is a published artifact, so its `public` surface is a
+contract, not a default. Two mechanisms in `library/build.gradle.kts`
+enforce it. Kotlin's Explicit API mode (`explicitApi()`) makes the
+compiler reject implicit visibility and inferred types on public
+declarations — the two library rules of the official coding
+conventions the code had until now upheld only by hand. KGP's
+built-in ABI validation (experimental) compares the public binary API
+against a committed golden dump (`library/api/`, task
+`checkLegacyAbi`); the dump regenerates only deliberately
+(`updateLegacyAbi`), so accidental breaking changes fail the build.
+The dump is committed under `library/api/` and reproduces
+byte-identically on macOS and Linux dev hosts (host details and the
+iOS-inference caveat: the comment on the `abiValidation` block in
+`library/build.gradle.kts`). Rationale, citations, and the wider
+audit baseline live in the `kotlin-audit-baseline` skill.
+
 ## 3. Codemap
 
 ### 3.1 Repository layout
@@ -192,11 +211,11 @@ checkout.
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D10. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D11. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
 | `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
-| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test, XCFramework packaging, and Maven Central publishing (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
+| `docs/deferred-verification.md` | Checklist of implemented-but-unverified work plus verified records that still bear on future work: the iOS record, XCFramework packaging and Maven Central publishing (need a Mac), the remotesrv fixture off linux-x64. Fully-verified entries with no future bearing are pruned. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `samples/codelab/` | Fruitties sample: Google's kmp-migrate-room codelab in its post-migration state, ported to Room 3 + `DoltLiteDriver` for Android and iOS. A standalone composite build over the root (D5 amendment); its own README documents lineage and every delta from upstream. |
@@ -325,3 +344,24 @@ amendment) and, running for the first time on a macOS host, closed
 the deferred iOS verification — per-slice engine archives, iosTest
 concretes, and a green `iosSimulatorArm64Test`. The scope gate above
 is back in force.
+
+**Step 13 (human-opened 2026-07-22)** enabled Explicit API mode
+(D11) — all main compilations passed with zero violations, so the
+hand-maintained `public` discipline was already conformant.
+
+**Step 14 (human-opened 2026-07-22)** added detekt (2.0.0-alpha.3 —
+the 1.x line cannot read Kotlin 2.3 metadata — with the opt-in
+libraries ruleset; required a Gradle wrapper bump 9.1.0 → 9.3.1).
+`check` now gates on the five code-bearing main source sets;
+`library/config/detekt/detekt.yml` overlays the defaults and records
+each deliberate deviation's rationale. Findings resolved by
+justified suppression only — no code reshaping.
+
+**Step 15 (human-opened 2026-07-22)** enabled KGP's built-in ABI
+validation (D11 amendment) and committed the golden dump: `check`
+gates on `checkLegacyAbi`. First generated on the oxefit-fedora
+build server (predating the PR #6 cross toolchain), where the first
+gated `check` ran green — jvmTest 118/0, linuxX64Test 52/0, detekt
+gates, `checkLegacyAbi`; after rebasing onto PR #6, a macOS
+regeneration reproduced the dump byte-identically, so either dev
+host maintains it.

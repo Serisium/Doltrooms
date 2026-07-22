@@ -1,0 +1,23 @@
+# Overlay on detekt's default config (buildUponDefaultConfig = true in
+# library/build.gradle.kts) — only deliberate deviations live here.
+# Rule rationale follows the kotlin-audit-baseline skill.
+
+complexity:
+  TooManyFunctions:
+    # The driver classes implement androidx.sqlite's fixed three-interface
+    # contract (ARCHITECTURE.md D1): their function counts are the
+    # contract's, not a design smell.
+    ignoreOverridden: true
+
+libraries:
+  ForbiddenPublicDataClass:
+    # The typed dolt_* result rows (DoltCommit, DoltBranch, DoltStatusEntry,
+    # DoltRemote, DoltDiffRow) are settled public value types
+    # (ARCHITECTURE.md D10); the binary-compatibility cost of data classes
+    # is accepted there deliberately.
+    active: false
+  LibraryEntitiesShouldNotBePublic:
+    # Redundant with Explicit API mode (ARCHITECTURE.md D11): every
+    # `public` in this module is already an explicit, compiler-checked
+    # choice.
+    active: false
