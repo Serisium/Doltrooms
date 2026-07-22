@@ -569,6 +569,10 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
+    // Published library: every public declaration must state its visibility
+    // and type explicitly (kotlin-audit-baseline skill; ARCHITECTURE.md D11).
+    explicitApi()
+
     jvm()
     androidLibrary {
         namespace = "dev.seri.doltrooms"

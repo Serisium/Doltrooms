@@ -75,16 +75,18 @@ Conforming today:
   `androidx.sqlite`'s own expect-class driver contract
   (`androidx-sqlite` skill), with `-Xexpect-actual-classes` set —
   the Beta-status caveat in `kmp-interop-audit.md` applies.
+- Explicit API mode is enabled (`explicitApi()` in
+  `library/build.gradle.kts`, Step 13, ARCHITECTURE.md D11) —
+  implicit visibility or inferred types on public declarations now
+  fail the build.
 
 Gaps (candidate improvements — tooling additions are new work and
 need a human-opened iteration per ARCHITECTURE.md §4; suggest, don't
 implement unasked):
 
-- No `explicitApi()` mode: the `public` discipline is manual and
-  unenforced.
 - No detekt (including its opt-in `libraries` ruleset), no ktlint.
-- No binary-compatibility validation (`apiDump`/`apiCheck` golden
-  files) despite being a published library.
+- No binary-compatibility validation golden files despite being a
+  published library.
 - No Dokka-warning or KDoc-coverage gate in CI.
 
 ## When to load reference files
