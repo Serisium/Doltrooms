@@ -100,6 +100,15 @@ directly onto this repo's shape:
 detekt's docs scope these to library modules only — they are noise
 for applications, signal for this repo.
 
+Repo status (Step 14, 2026-07-22): detekt 2.0.0-alpha.3 + the
+libraries ruleset gate `check` for the main source sets.
+`library/config/detekt/detekt.yml` deliberately disables
+`ForbiddenPublicDataClass` (the D10 result rows) and
+`LibraryEntitiesShouldNotBePublic` (redundant with Explicit API
+mode); `LibraryCodeMustSpecifyReturnType` needs type resolution,
+whose tasks are ungated on the 2.0 alpha (spurious compiler
+errors) — Explicit API mode covers the same ground.
+
 ## Binary-compatibility validation
 
 The Kotlin/binary-compatibility-validator Gradle plugin dumps the

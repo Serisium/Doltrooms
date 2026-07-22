@@ -19,6 +19,11 @@ kotlinxCoroutines = "1.10.2"
 # it the on-device instrumentation crashes with ClassNotFoundException
 # (first observed on the first real device run, 2026-07-21).
 androidxTestRunner = "1.7.0"
+# detekt 2 alpha: the 1.x line cannot read Kotlin 2.3 metadata
+# (https://github.com/detekt/detekt/issues/8865); alpha.3 is built
+# against Kotlin 2.3.21 and needs Gradle >= 9.3.1
+# (https://detekt.dev/docs/introduction/compatibility/).
+detekt = "2.0.0-alpha.3"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -29,6 +34,10 @@ room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room
 room3-testing = { module = "androidx.room3:room3-testing", version.ref = "room3" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+# Opt-in ruleset for library maintainers (ForbiddenPublicDataClass,
+# LibraryEntitiesShouldNotBePublic, ...) — not bundled by default
+# (https://detekt.dev/docs/rules/libraries/).
+detekt-rules-libraries = { module = "dev.detekt:detekt-rules-libraries", version.ref = "detekt" }
 
 [plugins]
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
@@ -37,3 +46,4 @@ vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room3 = { id = "androidx.room3", version.ref = "room3" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
