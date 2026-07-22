@@ -27,7 +27,7 @@ Default location: `src/nativeInterop/cinterop/<name>.def`. Keys
 - Custom C declarations may follow a `---` separator line at the end
   of the file (macro wrappers etc.).
 
-The def this project settled on (PLAN.md Step 6; mirrors androidx's
+The def this project settled on (implementation Step 6; mirrors androidx's
 trivially small `androidXBundledSqlite.def` and SQLiter's sqlite3.def)
 is `library/src/nativeInterop/cinterop/doltlite.def`:
 

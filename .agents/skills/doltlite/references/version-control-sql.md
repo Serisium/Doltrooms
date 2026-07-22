@@ -97,7 +97,7 @@ table, or wholesale with
 ## Probed facts (0.11.33, 2026-07-18, via this repo's driver)
 
 Observed empirically with throwaway probe programs against the pinned
-amalgamation (PLAN.md Step 7 log) — version-sensitive, re-probe on
+amalgamation (implementation Step 7, 2026-07-18) — version-sensitive, re-probe on
 upgrade:
 
 - **Return values:** `dolt_commit(...)` returns the new commit hash

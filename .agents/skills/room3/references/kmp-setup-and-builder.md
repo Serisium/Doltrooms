@@ -31,7 +31,7 @@ room3 { schemaDirectory("$projectDir/schemas") }
   `<kotlinVersion>-<kspVersion>` compound that
   https://kotlinlang.org/docs/ksp-quickstart.html still shows. Kotlin
   2.3.10 + KSP 2.3.10 + room3-compiler 3.0.0 build green together
-  (verified in-repo 2026-07-18, PLAN.md Step 4).
+  (verified in-repo 2026-07-18, implementation Step 4).
 - KMP compiler wiring is per-target:
 
 ```kotlin
@@ -51,7 +51,7 @@ implementation(<driver artifact>) }`.
   `kspJvmTest`, `kspLinuxX64Test`, `kspIosArm64Test`,
   `kspIosSimulatorArm64Test`, and — under the AGP KMP library plugin —
   `kspAndroidHostTest` / `kspAndroidDeviceTest` (names verified
-  in-repo 2026-07-18 via `gradle :library:dependencies`; PLAN.md
+  in-repo 2026-07-18 via `gradle :library:dependencies`; implementation
   Step 4). An `expect object` `RoomDatabaseConstructor` referenced
   from `@ConstructedBy` in commonTest then gets its KSP-generated
   `actual` in every target's test compilation.
