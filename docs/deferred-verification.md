@@ -196,8 +196,9 @@ invocation put three suites plus a booting simulator on the machine
 at once and produced two 60-second `runTest` timeout flakes (one
 jvm, one androidHost, unrelated tests/engines); both suites pass
 0-failure when re-run serially. The Linux-host path runs the same
-commands as before by construction; `ci.yml` (ubuntu) on the fix PR
-is the observed check — green run pending at the time of writing.
+commands as before by construction, and `ci.yml` on the fix PR (#6)
+was observed GREEN on its first run — all four jobs, including the
+ubuntu `build` leg that exercises the unchanged gcc/objcopy path.
 The release itself remains pending only credentials and the human's
 go.
 
