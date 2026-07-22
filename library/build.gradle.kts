@@ -106,25 +106,17 @@ val unpackDoltliteAmalgamation by tasks.registering(Copy::class) {
 }
 
 // --- macOS-host cross toolchain for the Linux-targeted artifacts ----------
-// The jvm jar's natives/linux-x64/libdoltroomsjni.so and the linuxX64
-// cinterop's libdoltlite.a must be Linux ELF objects even when the build
-// runs on macOS: commonizeCInterop needs every native target's cinterop
-// klib, so the linuxX64 archive sits in the task graph of EVERY publication,
-// and the single-host Maven Central release runs on a Mac
-// (docs/deferred-verification.md, Maven Central entry). Kotlin/Native's own
-// provisioning supplies the full cross setup under ~/.konan/dependencies
-// (KONAN_DATA_DIR overrides): the x86_64-unknown-linux-gnu-gcc-* package is
-// the sysroot Konan links linuxX64 binaries against — its gcc and binutils
-// are LINUX-host ELF executables, unusable on macOS — so compilation uses
-// the clang/clang++/llvm-ar/ld.lld of the llvm-* package instead, exactly
-// as Konan itself does (konan.properties: targetToolchain
-// .macos_arm64-linux_x64 = $llvmHome.macos_arm64, targetSysRoot.linux_x64 =
-// the gcc package's sysroot). Directories are matched by glob so a Konan
-// dependency-version bump doesn't break the build, and resolved lazily
-// because they exist only after Kotlin/Native provisioning has run — which
-// the macOS-only dependsOn(downloadKotlinNativeDistribution) at the
-// registration sites guarantees within a clean build (verified 2026-07-21:
-// that task populates an empty KONAN_DATA_DIR).
+// The jvm jar's linux-x64 .so and the linuxX64 cinterop archive must be
+// Linux ELF even on the macOS publishing host (docs/deferred-verification
+// .md, Maven Central entry). Kotlin/Native's provisioned dependencies
+// supply the cross setup: the x86_64-unknown-linux-gnu-gcc-* package serves
+// only as the SYSROOT — its gcc/binutils are Linux-host executables — and
+// clang/clang++/llvm-ar/ld.lld come from the llvm-* package, the same split
+// Konan itself uses (konan.properties: targetToolchain.macos_arm64-linux_x64,
+// targetSysRoot.linux_x64). Globbed so Konan version bumps keep resolving,
+// and lazy because the packages exist only after provisioning — guaranteed
+// on a clean machine by the macOS-only
+// dependsOn(downloadKotlinNativeDistribution) at the registration sites.
 val hostIsMac = System.getProperty("os.name").lowercase().startsWith("mac")
 
 val konanDependenciesDir: Provider<File> =
