@@ -47,7 +47,7 @@ suspend fun commit(msg: String): String
 Even skipped, the SQL must parse under Room's embedded ANTLR SQLite
 grammar (`room3-external-antlr`); an unknown function name is
 ordinary call syntax and parses. **Validated empirically** (Room
-3.0.0 / KSP 2.3.10, PLAN.md Step 7): a
+3.0.0 / KSP 2.3.10, implementation Step 7): a
 `@SkipQueryVerification @Query("SELECT dolt_version()")` DAO function
 compiles through every target's test KSP and returns the engine
 string at runtime on DoltLite — this repo's `PersonDao.doltVersion`

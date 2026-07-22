@@ -68,7 +68,7 @@ db.useWriterConnection { transactor ->
 ```
 
 **Do NOT wrap `dolt_commit` in `immediateTransaction`** (settled
-empirically at DoltLite 0.11.33, PLAN.md Step 7): `dolt_commit` inside
+empirically at DoltLite 0.11.33, implementation Step 7): `dolt_commit` inside
 an open `BEGIN` commits and *ends* that transaction, so the wrapper's
 closing `COMMIT` fails with "cannot commit - no transaction is
 active", breaking `Transactor.withTransaction` bookkeeping. The plain
