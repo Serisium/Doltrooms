@@ -11,7 +11,7 @@ Next, I plan to implement Dolt’s git-like interface and [remotesrv](https://gi
 |-------------------------------|--------------------------------------------------|------------------------------|--------------------|--------------------------------|
 | Android · arm64-v8a           | ✅ Verified on a physical phone (52 + 10 tests)   | 3.1 MB `.so` (2.9 MB in APK) | 1.3 MB             | API 24+ (16 KB page-aligned)   |
 | Android · x86_64              | ✅ Verified in CI (emulator, 52 + 10 tests)       | 3.1 MB `.so` (2.9 MB in APK) | 1.2 MB             | API 24+ (16 KB page-aligned)   |
-| iOS · arm64 (device)          | ⚙️ Compiles + links; untested on hardware         | 3.9 MB static `.a`           | 2.3 MB             | iOS 12.0+                      |
+| iOS · arm64 (device)          | ✅ Verified on a physical iPad (52 tests + sample app run) | 3.9 MB static `.a`  | 2.3 MB             | iOS 12.0+                      |
 | iOS Simulator · arm64         | ✅ Verified (52 tests + sample app run)           | 4.0 MB static `.a`           | ≈2.3 MB            | iOS 14.0+                      |
 | JVM desktop · linux-x64       | ✅ Verified (118 tests incl. live remotesrv sync) | 3.1 MB `.so`                 | 1.9 MB             | JDK 11+                        |
 | JVM desktop · macOS / Windows | ❌ Not packaged yet                               | —                            | 1.8 / 1.9 MB²      | —                              |
@@ -118,7 +118,6 @@ All developer-facing documentation(including this README) is hand-written by [Se
 | [`docs/USAGE.md`](docs/USAGE.md)                             | The consumer guide: dependency setup, opening a database with `DoltLiteDriver`, the `dolt_*` helper tour, remotes and sync, and the known divergences from stock SQLite. |
 | [`docs/FEASIBILITY.md`](docs/FEASIBILITY.md)                 | The founding research (2026-07-17): why DoltLite-as-driver works and why Room-to-Dolt-server doesn't. Context, not decisions. |
 | [`docs/deferred-verification.md`](docs/deferred-verification.md) | The verification ledger: every claim that couldn't be verified in the environment it was written in, and the record of when and where it eventually was. |
-| [`docs/BUILDOUT_PLAN.md`](docs/BUILDOUT_PLAN.md)             | Historical snapshot of the implementation plan, frozen when the build-out completed. Record only. |
 | [`AGENTS.md`](AGENTS.md)                                     | Working rules for AI agents contributing to this repository, including which documents they may and may not edit. |
 | [`.agents/skills/`](.agents/skills/)                         | Reference docs on the libraries this project builds against (Room 3, androidx.sqlite, DoltLite, the SQLite C API, …), kept re-verified against upstream because most of them postdate model training cutoffs. |
 ## License & Acknowledgements

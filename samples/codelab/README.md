@@ -100,7 +100,7 @@ engine archive for the active slice and embeds it in `sharedKit`
 (macOS host required — the archives are compiled with the Apple SDK's
 clang by the library build).
 
-## Verification state (2026-07-21, macOS host + motorola razr 2025)
+## Verification state (2026-07-21, macOS host + motorola razr 2025 + iPad mini 6)
 
 Android — verified end-to-end on a physical arm64-v8a device:
 `:androidApp:installDebug` packages the DoltLite engine into the APK
@@ -118,4 +118,14 @@ generic simulator destination), installs, and runs — network fetch
 into the DoltLite database, list and cart rendering live through the
 FlowWatch bridge, cart writes persisting. The doltrooms library's own
 52-test conformance/Room/dolt suite also passes on the same
-simulator. Unexercised: physical Apple hardware.
+simulator. Also verified on physical hardware (iPad mini 6th gen,
+iPadOS 26.5.2): built against the device destination with
+`-allowProvisioningUpdates` and a free personal team, installed and
+launched via `devicectl` — the fruit list loads into the on-device
+DoltLite database and cart writes are durable at commit time and
+persist across app relaunch (confirmed both on-screen and by pulling
+`Documents/fruits.db` from the app data container). The library's
+52-test suite also passes on the same iPad via
+`:library:iosArm64DeviceTest`, which borrows this app's bundle id and
+provisioning profile (and replaces the installed app while it runs).
+Nothing unexercised remains.

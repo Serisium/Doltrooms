@@ -2,10 +2,11 @@
 
 Work that is implemented and believed correct but cannot be *verified*
 in the current development environment. Each entry lists what to run
-and where. Complete through PLAN.md Step 12 (samples/codelab; first
-macOS-host session, 2026-07-21).
+and where. Complete through Step 12 (samples/codelab; first
+macOS-host session, 2026-07-21) plus the same-day physical-iPad
+maintenance session.
 
-## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 (samples/codelab session), entry kept for the record
+## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 incl. physical hardware (samples/codelab session + same-day maintenance session), entry kept for the record
 
 Kotlin disables Apple-target compilation on non-Mac hosts as soon as
 the target has a cinterop: "cross compilation to target 'iosArm64' has
@@ -48,8 +49,43 @@ generic simulator destination otherwise links both arches), installed
 into the iPhone 16 Pro (iOS 18.3) simulator, and ran end-to-end —
 network fetch into the DoltLite DB, list + cart rendering live
 through the FlowWatch bridge (including the @Relation join), cart
-writes persisting. Nothing simulator-side remains; only physical
-Apple hardware is unexercised.
+writes persisting. Nothing simulator-side remains.
+
+Physical hardware (same day, maintenance session): the same app
+deployed to a physical iPad mini (6th generation, iPadOS 26.5.2,
+arm64). First-run setup was all user-side — Developer Mode enabled
+on-device, an Apple ID added in Xcode → Settings → Accounts (free
+personal team; `xcodebuild -allowProvisioningUpdates
+DEVELOPMENT_TEAM=<team>` then minted the certificate and profile
+itself), and the developer profile trusted on-device (first launch is
+denied with an FBSOpenApplicationServiceErrorDomain Security error
+until Settings → General → VPN & Device Management → Trust). Built
+against the `platform=iOS,id=<udid>` destination, installed and
+launched via `devicectl device install app` / `device process
+launch`. Verified end-to-end: network fetch into the DoltLite DB —
+`Documents/fruits.db` pulled from the app data container (`devicectl
+device copy from --domain-type appDataContainer`) shows the Room
+schema (Fruittie/CartItem incl. the FK ON DELETE CASCADE) and the
+fetched rows; the file is DoltLite-format (not stock-sqlite3 magic),
+with no WAL sidecar — the engine writes its own `.fruits.db-lock` /
+`fruits.db.lck` lock files. A watched single "Add" tap grew the DB
+file immediately (commit-time durability on hardware), and the full
+cart — including that tap — survived a `devicectl` terminate +
+relaunch, confirmed on-screen.
+
+The library's own 52-test suite also runs on the device: the same
+session added `:library:iosArm64DeviceTest` (macOS-gated, in
+`library/build.gradle.kts`) — it wraps the linked iosArm64 test.kexe
+in a minimal .app, borrows the bundle id + provisioning profile from
+a built-and-signed host app (pass
+`-Pdoltrooms.iosDeviceTest.hostApp=<path to Fruitties.app>` and
+`-Pdoltrooms.iosDeviceTest.udid=<udid>`; installing the runner
+replaces that app on the device), signs, installs, launches attached
+via `devicectl --console`, and parses the Kotlin/Native summary.
+First run: GREEN, 52/52 in ~3.5 s on the iPad mini 6 — the same
+suite count as every other platform leg. The device must be unlocked
+at launch (a locked device fails with FBSOpenApplicationErrorDomain
+"Locked"). Nothing iOS-side remains deferred.
 
 ## remotesrv fixture on non-linux-x64 hosts — deferred by Step 8
 
@@ -122,8 +158,9 @@ deferred.
 the workflow executes end-to-end (checkout, JDK, SDK/NDK, caches,
 Gradle) and completed in ~5 min — ample 60-minute headroom; the first
 run failed legitimately in `linuxX64Test` (the two-static-engines
-symbol collision, since fixed — see the PLAN.md maintenance log
-entry), which also proved the on-failure test-report upload works
+symbol collision, since fixed — the 2026-07-18 post-Step-11
+maintenance fix that removed the native Bundled-oracle test legs),
+which also proved the on-failure test-report upload works
 (the report artifact diagnosed the failure). It also exposed two
 unmaintained template workflows from the initial commit: `gradle.yml`
 (deleted — duplicated ci.yml, and its macos `iosSimulatorArm64Test`
