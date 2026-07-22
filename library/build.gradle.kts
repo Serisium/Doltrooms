@@ -574,6 +574,25 @@ kotlin {
     // and type explicitly (kotlin-audit-baseline skill; ARCHITECTURE.md D11).
     explicitApi()
 
+    // ABI golden files (D11): checkLegacyAbi fails the build when the
+    // public binary API drifts from the committed dump; regenerate
+    // deliberately with updateLegacyAbi. (Kotlin 2.3.10's task names;
+    // newer KGPs rename them checkKotlinAbi/updateKotlinAbi.) KGP's
+    // built-in validation (experimental) replaces the maintenance-mode
+    // binary-compatibility-validator plugin
+    // (https://kotlinlang.org/docs/gradle-binary-compatibility-validation.html).
+    // The golden dump can only be produced on a Linux host: the dump graph
+    // needs the linuxX64 static engine (objcopy) and the desktop JNI lib
+    // (linux JDK includes), both Linux-only tasks, while iOS klib entries
+    // ride keepLocallyUnsupportedTargets (docs/deferred-verification.md).
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        enabled.set(true)
+        legacyDump {
+            referenceDumpDir.set(layout.projectDirectory.dir("api"))
+        }
+    }
+
     jvm()
     androidLibrary {
         namespace = "dev.seri.doltrooms"
@@ -705,6 +724,15 @@ tasks.named("check") {
         "detektAndroidMainSourceSet",
         "detektNativeMainSourceSet",
     )
+}
+
+// Self-arming ABI gate: once the golden dump exists (generated on a Linux
+// host via updateLegacyAbi and committed under library/api/ — see
+// docs/deferred-verification.md), check validates the public binary API.
+// Until then checkLegacyAbi stays manual, so hosts that cannot build the
+// Linux-only dump inputs keep a green check.
+if (layout.projectDirectory.dir("api").asFile.exists()) {
+    tasks.named("check") { dependsOn("checkLegacyAbi") }
 }
 
 dependencies {

@@ -186,15 +186,22 @@ the pool's single writer connection because DoltLite branch state is
 per-connection session state — Room reader connections do not follow a
 checkout.
 
-### D11 — Public-API hygiene is compiler-enforced: Explicit API mode
+### D11 — The public API surface is mechanically enforced
 
 The library is a published artifact, so its `public` surface is a
-contract, not a default. Kotlin's Explicit API mode (`explicitApi()`
-in `library/build.gradle.kts`) makes the compiler reject implicit
-visibility and inferred types on public declarations — the two
-library rules of the official coding conventions the code had until
-now upheld only by hand. Rationale, citations, and the wider audit
-baseline live in the `kotlin-audit-baseline` skill.
+contract, not a default. Two mechanisms in `library/build.gradle.kts`
+enforce it. Kotlin's Explicit API mode (`explicitApi()`) makes the
+compiler reject implicit visibility and inferred types on public
+declarations — the two library rules of the official coding
+conventions the code had until now upheld only by hand. KGP's
+built-in ABI validation (experimental) compares the public binary API
+against a committed golden dump (`library/api/`, task
+`checkLegacyAbi`); the dump regenerates only deliberately
+(`updateLegacyAbi`), so accidental breaking changes fail the build.
+The dump is Linux-host-produced and the `check` gate self-arms when
+it exists (`docs/deferred-verification.md`). Rationale, citations,
+and the wider audit baseline live in the `kotlin-audit-baseline`
+skill.
 
 ## 3. Codemap
 
@@ -348,3 +355,9 @@ libraries ruleset; required a Gradle wrapper bump 9.1.0 → 9.3.1).
 `library/config/detekt/detekt.yml` overlays the defaults and records
 each deliberate deviation's rationale. Findings resolved by
 justified suppression only — no code reshaping.
+
+**Step 15 (human-opened 2026-07-22)** enabled KGP's built-in ABI
+validation (D11 amendment). The golden dump needs a Linux host, so
+the `check` gate self-arms once `library/api/` is committed —
+procedure and the iOS-klib limitation in
+`docs/deferred-verification.md`.
