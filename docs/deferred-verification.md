@@ -2,11 +2,13 @@
 
 Work that is implemented and believed correct but cannot be *verified*
 in the current development environment. Each entry lists what to run
-and where. Complete through Step 12 (samples/codelab; first
-macOS-host session, 2026-07-21) plus the same-day physical-iPad
-maintenance session; Step 15's ABI golden dump (below) is open.
+and where. Verified entries stay only while they still bear on future
+work (an open dependent, a reusable procedure, a live caveat);
+fully-verified entries with no future bearing are deleted (audit
+policy set 2026-07-22, when the two first-CI-run observations and the
+Android on-device record were pruned — git history keeps them).
 
-## ABI golden dump (needs a Linux host) — VERIFIED 2026-07-22 (oxefit-fedora), entry kept for the record
+## ABI golden dump (needs a Linux host) — VERIFIED 2026-07-22 (oxefit-fedora); kept: regeneration procedure + inference caveat
 
 Step 15 (2026-07-22) enabled KGP's experimental ABI validation
 (`abiValidation` in `library/build.gradle.kts`, reference dir
@@ -38,7 +40,7 @@ code in `iosMain`), their ABI is invisible to a Linux-host dump —
 regenerate and validate on a host that can build every dump input,
 or re-examine KGP's unsupported-target handling then.
 
-## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 incl. physical hardware (samples/codelab session + same-day maintenance session), entry kept for the record
+## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 incl. physical hardware; kept: the open entries below and the device-test procedure lean on it
 
 Kotlin disables Apple-target compilation on non-Mac hosts as soon as
 the target has a cinterop: "cross compilation to target 'iosArm64' has
@@ -146,104 +148,21 @@ checklist above) — only the DSL wiring remains.
 
 Publishing is fully configured (vanniktech plugin, real POM, Dokka
 javadoc jars, signing from `ORG_GRADLE_PROJECT_signingInMemoryKey*` /
-`mavenCentralUsername`/`-Password` environment) and smoke-verified on
-Linux: `./gradlew :library:publishToMavenLocal` publishes the root
-umbrella + `-jvm` + `-android` + `-linuxx64` publications with real
-Dokka HTML in every `-javadoc` jar, the extracted-resource `.so` in the
-jvm jar, both ABI `.so`s in the AAR, and the cinterop klib alongside
-the linuxX64 klib (signing tasks correctly SKIP with no key in the
-environment). What Linux cannot verify: the iOS publications — KGP
-skips Apple compilation on non-Mac hosts once a target carries a
-cinterop, so a Linux `publish` would upload an umbrella that references
-iOS variants without their artifacts. The real Central release must
-run entirely from a single macOS host ("publish all artifacts from a
-single host"; Central "explicitly forbids duplicate publications" —
-`kmp-native-interop` targets-and-publishing reference). The iOS
-checklist above closed 2026-07-21, so a macOS host can now produce
-the complete artifact set: `./gradlew publishToMavenLocal` (now
-including `-iosarm64`/`-iossimulatorarm64`), inspect, then
+`mavenCentralUsername`/`-Password` environment) and verified on the
+macOS host (2026-07-21, PR #6): `./gradlew :library:publishToMavenLocal`
+is GREEN with the full six-publication set (umbrella, `-jvm`,
+`-android`, `-linuxx64`, `-iosarm64`, `-iossimulatorarm64`, real
+`-javadoc` jars throughout; signing tasks correctly SKIP with no key
+in the environment). The Linux artifacts cross-compile on macOS with
+the Kotlin/Native-provisioned toolchain — design and rationale live
+in `library/build.gradle.kts` (the "macOS-host cross toolchain"
+comment block). The real Central release must run entirely from that
+single macOS host (Central "explicitly forbids duplicate
+publications" — `kmp-native-interop` targets-and-publishing
+reference): `./gradlew publishToMavenLocal`, inspect, then
 `./gradlew publishToMavenCentral` with credentials + key in env —
-still pending only credentials and the human's go.
-
-2026-07-21 addendum: the first macOS `publishToMavenLocal` exposed
-two tasks that still hardcoded a Linux host toolchain (host
-`gcc`/`objcopy`, `$JAVA_HOME/include/linux`), blocking every
-publication on macOS. Fixed the same session (PR #6): on macOS hosts
-the two Linux artifacts cross-compile with the
-Kotlin/Native-provisioned toolchain, and local test runs load a
-not-packaged host-twin dylib — the design and its rationale live in
-`library/build.gradle.kts` (the "macOS-host cross toolchain" comment
-block and the ones on the two compile tasks). Verified on the macOS
-host: `:library:publishToMavenLocal` GREEN with the full
-six-publication set (umbrella, `-jvm`, `-android`, `-linuxx64`,
-`-iosarm64`, `-iossimulatorarm64`, real `-javadoc` jars throughout);
-`file` reports the jvm jar's `natives/linux-x64/libdoltroomsjni.so`
-and the embedded `libdoltlite.a` member as ELF 64-bit x86-64, with
-no `__isoc23_*` symbols; jvmTest 118/0, testAndroidHostTest 52/0,
-iosSimulatorArm64Test 52/0 (linuxX64Test correctly SKIPS — a Mac
-links but cannot run Linux binaries); PR #6's `ci.yml` run observed
-GREEN, confirming the unchanged Linux-host path.
-
-## First observed run of the Step 12 CI jobs — FULLY OBSERVED 2026-07-21 (PR #3), entry kept for the record
-
-Step 12 added three jobs to `ci.yml`: `android-x86_64-emulator` (KVM
-udev rule + reactivecircus/android-emulator-runner@v2, API 35
-google_apis x86_64; `:library:connectedAndroidDeviceTest` — the
-x86_64 ABI leg — then the samples/codelab
-`connectedDebugAndroidTest`), `sample-android` (sample APK assembly +
-unit tests through the composite build), and `sample-ios` (macos-15:
-library simulator suite, sharedKit link, `xcodebuild` of the
-Fruitties app). All three, plus the pre-existing `build`, passed
-GREEN on their very first run (PR #3): every watch-for held — the
-API 35 x86_64 image resolved, macos-15's simulators satisfied the
-generic destination (with the `ARCHS=arm64` flag caught locally
-before push), `android-actions/setup-android` provisioned the SDK on
-the arm64 macOS image, and the `cd samples/codelab && ../../gradlew`
-invocations behaved under setup-gradle. With this, every platform
-leg of the test matrix runs per-PR in CI. Nothing about CI remains
-deferred.
-
-## First observed CI run — FULLY OBSERVED 2026-07-18 (PR #2), entry kept for the record
-
-`.github/workflows/ci.yml` ran for the first time on PR #2. Observed:
-the workflow executes end-to-end (checkout, JDK, SDK/NDK, caches,
-Gradle) and completed in ~5 min — ample 60-minute headroom; the first
-run failed legitimately in `linuxX64Test` (the two-static-engines
-symbol collision, since fixed — the 2026-07-18 post-Step-11
-maintenance fix that removed the native Bundled-oracle test legs),
-which also proved the on-failure test-report upload works
-(the report artifact diagnosed the failure). It also exposed two
-unmaintained template workflows from the initial commit: `gradle.yml`
-(deleted — duplicated ci.yml, and its macos `iosSimulatorArm64Test`
-job cannot pass before the iOS checklist above lands) and
-`publish.yml` (kept — release-triggered, dormant; review its secrets
-and env names against the finalized signing setup before the first
-release). Subsequently observed, closing the checklist: after the
-collision fix, the run is GREEN end-to-end (~5 min); on a re-run both
-`actions/cache` steps HIT and restored (DoltLite zips, `~/.konan` —
-note: actions/cache saves only on job success, so the failed first
-run populated nothing), and the download tasks passed through in
-sub-second time on the restored zips — the pre-seeded-zip acceptance
-worked with no network fetch. Nothing about CI remains deferred.
-
-## Android on-device (needs a device/emulator) — VERIFIED 2026-07-21 (motorola razr 2025, arm64-v8a), entry kept for the record
-
-`./gradlew :library:connectedAndroidDeviceTest` is GREEN on a real
-device: 52 tests / 0 failures (driver conformance + Room + dolt
-suites, real android.jar, so the exception-message assertions the
-mockable jar erases in host tests ran for real). The first-ever
-execution surfaced two gaps this entry's "the device-test APK
-assembles" assumption hid, both fixed in `library/`:
-`androidx.test:runner` was never a dependency of the device-test APK
-(instrumentation died at init with ClassNotFoundException), and no
-`library/src/androidDeviceTest/` concretes existed, so the suite ran
-0 tests — they now mirror the androidHostTest concretes without the
-`exceptionMessagesObservable = false` override. Also verified on the
-same device: the `samples/codelab` Fruitties app installs, runs, and
-persists to its DoltLite database (manual smoke + its 10/10
-`connectedDebugAndroidTest` incl. `DoltVersioningTest`). The x86_64
-ABI — which no reachable dev host can run (Apple Silicon is
-arm64-only; the fedora box is a VM without nested virt) — is covered
-by ci.yml's `android-x86_64-emulator` job, observed GREEN on its
-first run (PR #3, 2026-07-21: library 52/52 + sample 10/10 on an API
-35 x86_64 emulator). Both ABIs verified; nothing remains here.
+still pending only credentials and the human's go. Also before the
+first release: review the dormant, release-triggered `publish.yml`
+workflow's secrets and env names against the finalized signing setup
+(it survives from the initial template; noted when PR #2's first CI
+run exposed it, 2026-07-18).
