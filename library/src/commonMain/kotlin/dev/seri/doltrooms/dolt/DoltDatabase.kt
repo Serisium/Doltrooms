@@ -89,6 +89,10 @@ import androidx.sqlite.SQLiteStatement
  * Result shapes below were probed against the pinned DoltLite 0.11.33;
  * dolt_* names and columns are version-sensitive.
  */
+// TooManyFunctions: the helper set mirrors the settled dolt_* surface
+// (ARCHITECTURE.md D10), one function per procedure. MagicNumber: column
+// indexes in the row mappers follow each SELECT's column order.
+@Suppress("TooManyFunctions", "MagicNumber")
 public class DoltDatabase(private val db: RoomDatabase) {
 
     /**

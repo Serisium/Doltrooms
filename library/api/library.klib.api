@@ -1,0 +1,198 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, linuxX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.seri.doltrooms:library>
+final class dev.seri.doltrooms.dolt/DoltBranch { // dev.seri.doltrooms.dolt/DoltBranch|null[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/Boolean) // dev.seri.doltrooms.dolt/DoltBranch.<init>|<init>(kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.Boolean){}[0]
+
+    final val dirty // dev.seri.doltrooms.dolt/DoltBranch.dirty|{}dirty[0]
+        final fun <get-dirty>(): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltBranch.dirty.<get-dirty>|<get-dirty>(){}[0]
+    final val hash // dev.seri.doltrooms.dolt/DoltBranch.hash|{}hash[0]
+        final fun <get-hash>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.hash.<get-hash>|<get-hash>(){}[0]
+    final val latestCommitDate // dev.seri.doltrooms.dolt/DoltBranch.latestCommitDate|{}latestCommitDate[0]
+        final fun <get-latestCommitDate>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.latestCommitDate.<get-latestCommitDate>|<get-latestCommitDate>(){}[0]
+    final val latestCommitMessage // dev.seri.doltrooms.dolt/DoltBranch.latestCommitMessage|{}latestCommitMessage[0]
+        final fun <get-latestCommitMessage>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.latestCommitMessage.<get-latestCommitMessage>|<get-latestCommitMessage>(){}[0]
+    final val latestCommitter // dev.seri.doltrooms.dolt/DoltBranch.latestCommitter|{}latestCommitter[0]
+        final fun <get-latestCommitter>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.latestCommitter.<get-latestCommitter>|<get-latestCommitter>(){}[0]
+    final val latestCommitterEmail // dev.seri.doltrooms.dolt/DoltBranch.latestCommitterEmail|{}latestCommitterEmail[0]
+        final fun <get-latestCommitterEmail>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.latestCommitterEmail.<get-latestCommitterEmail>|<get-latestCommitterEmail>(){}[0]
+    final val name // dev.seri.doltrooms.dolt/DoltBranch.name|{}name[0]
+        final fun <get-name>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.name.<get-name>|<get-name>(){}[0]
+    final val remote // dev.seri.doltrooms.dolt/DoltBranch.remote|{}remote[0]
+        final fun <get-remote>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.remote.<get-remote>|<get-remote>(){}[0]
+    final val remoteBranch // dev.seri.doltrooms.dolt/DoltBranch.remoteBranch|{}remoteBranch[0]
+        final fun <get-remoteBranch>(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.remoteBranch.<get-remoteBranch>|<get-remoteBranch>(){}[0]
+
+    final fun component1(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component1|component1(){}[0]
+    final fun component2(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component2|component2(){}[0]
+    final fun component3(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component3|component3(){}[0]
+    final fun component4(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component4|component4(){}[0]
+    final fun component5(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component5|component5(){}[0]
+    final fun component6(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component6|component6(){}[0]
+    final fun component7(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component7|component7(){}[0]
+    final fun component8(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.component8|component8(){}[0]
+    final fun component9(): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltBranch.component9|component9(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/Boolean = ...): dev.seri.doltrooms.dolt/DoltBranch // dev.seri.doltrooms.dolt/DoltBranch.copy|copy(kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.Boolean){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltBranch.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.seri.doltrooms.dolt/DoltBranch.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.seri.doltrooms.dolt/DoltBranch.toString|toString(){}[0]
+}
+
+final class dev.seri.doltrooms.dolt/DoltCommit { // dev.seri.doltrooms.dolt/DoltCommit|null[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/String) // dev.seri.doltrooms.dolt/DoltCommit.<init>|<init>(kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
+
+    final val committer // dev.seri.doltrooms.dolt/DoltCommit.committer|{}committer[0]
+        final fun <get-committer>(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.committer.<get-committer>|<get-committer>(){}[0]
+    final val date // dev.seri.doltrooms.dolt/DoltCommit.date|{}date[0]
+        final fun <get-date>(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.date.<get-date>|<get-date>(){}[0]
+    final val email // dev.seri.doltrooms.dolt/DoltCommit.email|{}email[0]
+        final fun <get-email>(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.email.<get-email>|<get-email>(){}[0]
+    final val hash // dev.seri.doltrooms.dolt/DoltCommit.hash|{}hash[0]
+        final fun <get-hash>(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.hash.<get-hash>|<get-hash>(){}[0]
+    final val message // dev.seri.doltrooms.dolt/DoltCommit.message|{}message[0]
+        final fun <get-message>(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.message.<get-message>|<get-message>(){}[0]
+
+    final fun component1(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.component1|component1(){}[0]
+    final fun component2(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.component2|component2(){}[0]
+    final fun component3(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.component3|component3(){}[0]
+    final fun component4(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.component4|component4(){}[0]
+    final fun component5(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.component5|component5(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ...): dev.seri.doltrooms.dolt/DoltCommit // dev.seri.doltrooms.dolt/DoltCommit.copy|copy(kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltCommit.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.seri.doltrooms.dolt/DoltCommit.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.seri.doltrooms.dolt/DoltCommit.toString|toString(){}[0]
+}
+
+final class dev.seri.doltrooms.dolt/DoltDatabase { // dev.seri.doltrooms.dolt/DoltDatabase|null[0]
+    constructor <init>(androidx.room3/RoomDatabase) // dev.seri.doltrooms.dolt/DoltDatabase.<init>|<init>(androidx.room3.RoomDatabase){}[0]
+
+    final suspend fun addRemote(kotlin/String, kotlin/String) // dev.seri.doltrooms.dolt/DoltDatabase.addRemote|addRemote(kotlin.String;kotlin.String){}[0]
+    final suspend fun branch(kotlin/String) // dev.seri.doltrooms.dolt/DoltDatabase.branch|branch(kotlin.String){}[0]
+    final suspend fun branches(): kotlin.collections/List<dev.seri.doltrooms.dolt/DoltBranch> // dev.seri.doltrooms.dolt/DoltDatabase.branches|branches(){}[0]
+    final suspend fun checkout(kotlin/String, kotlin/Boolean = ...) // dev.seri.doltrooms.dolt/DoltDatabase.checkout|checkout(kotlin.String;kotlin.Boolean){}[0]
+    final suspend fun commit(kotlin/String, kotlin/Boolean = ...): kotlin/String // dev.seri.doltrooms.dolt/DoltDatabase.commit|commit(kotlin.String;kotlin.Boolean){}[0]
+    final suspend fun currentBranch(): kotlin/String // dev.seri.doltrooms.dolt/DoltDatabase.currentBranch|currentBranch(){}[0]
+    final suspend fun deleteBranch(kotlin/String) // dev.seri.doltrooms.dolt/DoltDatabase.deleteBranch|deleteBranch(kotlin.String){}[0]
+    final suspend fun diff(kotlin/String, kotlin/String, kotlin/String): kotlin.collections/List<dev.seri.doltrooms.dolt/DoltDiffRow> // dev.seri.doltrooms.dolt/DoltDatabase.diff|diff(kotlin.String;kotlin.String;kotlin.String){}[0]
+    final suspend fun fetch(kotlin/String, kotlin/String? = ...) // dev.seri.doltrooms.dolt/DoltDatabase.fetch|fetch(kotlin.String;kotlin.String?){}[0]
+    final suspend fun log(): kotlin.collections/List<dev.seri.doltrooms.dolt/DoltCommit> // dev.seri.doltrooms.dolt/DoltDatabase.log|log(){}[0]
+    final suspend fun merge(kotlin/String): kotlin/String // dev.seri.doltrooms.dolt/DoltDatabase.merge|merge(kotlin.String){}[0]
+    final suspend fun pull(kotlin/String, kotlin/String) // dev.seri.doltrooms.dolt/DoltDatabase.pull|pull(kotlin.String;kotlin.String){}[0]
+    final suspend fun push(kotlin/String, kotlin/String, kotlin/Boolean = ...) // dev.seri.doltrooms.dolt/DoltDatabase.push|push(kotlin.String;kotlin.String;kotlin.Boolean){}[0]
+    final suspend fun remotes(): kotlin.collections/List<dev.seri.doltrooms.dolt/DoltRemote> // dev.seri.doltrooms.dolt/DoltDatabase.remotes|remotes(){}[0]
+    final suspend fun removeRemote(kotlin/String) // dev.seri.doltrooms.dolt/DoltDatabase.removeRemote|removeRemote(kotlin.String){}[0]
+    final suspend fun status(): kotlin.collections/List<dev.seri.doltrooms.dolt/DoltStatusEntry> // dev.seri.doltrooms.dolt/DoltDatabase.status|status(){}[0]
+
+    final object Companion { // dev.seri.doltrooms.dolt/DoltDatabase.Companion|null[0]
+        final fun clone(androidx.sqlite/SQLiteDriver, kotlin/String, kotlin/String) // dev.seri.doltrooms.dolt/DoltDatabase.Companion.clone|clone(androidx.sqlite.SQLiteDriver;kotlin.String;kotlin.String){}[0]
+    }
+}
+
+final class dev.seri.doltrooms.dolt/DoltDiffRow { // dev.seri.doltrooms.dolt/DoltDiffRow|null[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin/String, kotlin.collections/Map<kotlin/String, kotlin/Any?>, kotlin.collections/Map<kotlin/String, kotlin/Any?>) // dev.seri.doltrooms.dolt/DoltDiffRow.<init>|<init>(kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.collections.Map<kotlin.String,kotlin.Any?>;kotlin.collections.Map<kotlin.String,kotlin.Any?>){}[0]
+
+    final val diffType // dev.seri.doltrooms.dolt/DoltDiffRow.diffType|{}diffType[0]
+        final fun <get-diffType>(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.diffType.<get-diffType>|<get-diffType>(){}[0]
+    final val from // dev.seri.doltrooms.dolt/DoltDiffRow.from|{}from[0]
+        final fun <get-from>(): kotlin.collections/Map<kotlin/String, kotlin/Any?> // dev.seri.doltrooms.dolt/DoltDiffRow.from.<get-from>|<get-from>(){}[0]
+    final val fromCommit // dev.seri.doltrooms.dolt/DoltDiffRow.fromCommit|{}fromCommit[0]
+        final fun <get-fromCommit>(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.fromCommit.<get-fromCommit>|<get-fromCommit>(){}[0]
+    final val fromCommitDate // dev.seri.doltrooms.dolt/DoltDiffRow.fromCommitDate|{}fromCommitDate[0]
+        final fun <get-fromCommitDate>(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.fromCommitDate.<get-fromCommitDate>|<get-fromCommitDate>(){}[0]
+    final val to // dev.seri.doltrooms.dolt/DoltDiffRow.to|{}to[0]
+        final fun <get-to>(): kotlin.collections/Map<kotlin/String, kotlin/Any?> // dev.seri.doltrooms.dolt/DoltDiffRow.to.<get-to>|<get-to>(){}[0]
+    final val toCommit // dev.seri.doltrooms.dolt/DoltDiffRow.toCommit|{}toCommit[0]
+        final fun <get-toCommit>(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.toCommit.<get-toCommit>|<get-toCommit>(){}[0]
+    final val toCommitDate // dev.seri.doltrooms.dolt/DoltDiffRow.toCommitDate|{}toCommitDate[0]
+        final fun <get-toCommitDate>(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.toCommitDate.<get-toCommitDate>|<get-toCommitDate>(){}[0]
+
+    final fun component1(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.component1|component1(){}[0]
+    final fun component2(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.component2|component2(){}[0]
+    final fun component3(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.component3|component3(){}[0]
+    final fun component4(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.component4|component4(){}[0]
+    final fun component5(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.component5|component5(){}[0]
+    final fun component6(): kotlin.collections/Map<kotlin/String, kotlin/Any?> // dev.seri.doltrooms.dolt/DoltDiffRow.component6|component6(){}[0]
+    final fun component7(): kotlin.collections/Map<kotlin/String, kotlin/Any?> // dev.seri.doltrooms.dolt/DoltDiffRow.component7|component7(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin.collections/Map<kotlin/String, kotlin/Any?> = ..., kotlin.collections/Map<kotlin/String, kotlin/Any?> = ...): dev.seri.doltrooms.dolt/DoltDiffRow // dev.seri.doltrooms.dolt/DoltDiffRow.copy|copy(kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.String;kotlin.collections.Map<kotlin.String,kotlin.Any?>;kotlin.collections.Map<kotlin.String,kotlin.Any?>){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltDiffRow.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.seri.doltrooms.dolt/DoltDiffRow.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.seri.doltrooms.dolt/DoltDiffRow.toString|toString(){}[0]
+}
+
+final class dev.seri.doltrooms.dolt/DoltRemote { // dev.seri.doltrooms.dolt/DoltRemote|null[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/String, kotlin/String) // dev.seri.doltrooms.dolt/DoltRemote.<init>|<init>(kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
+
+    final val fetchSpecs // dev.seri.doltrooms.dolt/DoltRemote.fetchSpecs|{}fetchSpecs[0]
+        final fun <get-fetchSpecs>(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.fetchSpecs.<get-fetchSpecs>|<get-fetchSpecs>(){}[0]
+    final val name // dev.seri.doltrooms.dolt/DoltRemote.name|{}name[0]
+        final fun <get-name>(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.name.<get-name>|<get-name>(){}[0]
+    final val params // dev.seri.doltrooms.dolt/DoltRemote.params|{}params[0]
+        final fun <get-params>(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.params.<get-params>|<get-params>(){}[0]
+    final val url // dev.seri.doltrooms.dolt/DoltRemote.url|{}url[0]
+        final fun <get-url>(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.url.<get-url>|<get-url>(){}[0]
+
+    final fun component1(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.component1|component1(){}[0]
+    final fun component2(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.component2|component2(){}[0]
+    final fun component3(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.component3|component3(){}[0]
+    final fun component4(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.component4|component4(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ...): dev.seri.doltrooms.dolt/DoltRemote // dev.seri.doltrooms.dolt/DoltRemote.copy|copy(kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltRemote.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.seri.doltrooms.dolt/DoltRemote.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.seri.doltrooms.dolt/DoltRemote.toString|toString(){}[0]
+}
+
+final class dev.seri.doltrooms.dolt/DoltStatusEntry { // dev.seri.doltrooms.dolt/DoltStatusEntry|null[0]
+    constructor <init>(kotlin/String, kotlin/Boolean, kotlin/String) // dev.seri.doltrooms.dolt/DoltStatusEntry.<init>|<init>(kotlin.String;kotlin.Boolean;kotlin.String){}[0]
+
+    final val staged // dev.seri.doltrooms.dolt/DoltStatusEntry.staged|{}staged[0]
+        final fun <get-staged>(): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltStatusEntry.staged.<get-staged>|<get-staged>(){}[0]
+    final val status // dev.seri.doltrooms.dolt/DoltStatusEntry.status|{}status[0]
+        final fun <get-status>(): kotlin/String // dev.seri.doltrooms.dolt/DoltStatusEntry.status.<get-status>|<get-status>(){}[0]
+    final val tableName // dev.seri.doltrooms.dolt/DoltStatusEntry.tableName|{}tableName[0]
+        final fun <get-tableName>(): kotlin/String // dev.seri.doltrooms.dolt/DoltStatusEntry.tableName.<get-tableName>|<get-tableName>(){}[0]
+
+    final fun component1(): kotlin/String // dev.seri.doltrooms.dolt/DoltStatusEntry.component1|component1(){}[0]
+    final fun component2(): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltStatusEntry.component2|component2(){}[0]
+    final fun component3(): kotlin/String // dev.seri.doltrooms.dolt/DoltStatusEntry.component3|component3(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/Boolean = ..., kotlin/String = ...): dev.seri.doltrooms.dolt/DoltStatusEntry // dev.seri.doltrooms.dolt/DoltStatusEntry.copy|copy(kotlin.String;kotlin.Boolean;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.seri.doltrooms.dolt/DoltStatusEntry.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.seri.doltrooms.dolt/DoltStatusEntry.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // dev.seri.doltrooms.dolt/DoltStatusEntry.toString|toString(){}[0]
+}
+
+final class dev.seri.doltrooms.driver/DoltLiteConnection : androidx.sqlite/SQLiteConnection { // dev.seri.doltrooms.driver/DoltLiteConnection|null[0]
+    final fun close() // dev.seri.doltrooms.driver/DoltLiteConnection.close|close(){}[0]
+    final fun inTransaction(): kotlin/Boolean // dev.seri.doltrooms.driver/DoltLiteConnection.inTransaction|inTransaction(){}[0]
+    final fun prepare(kotlin/String): androidx.sqlite/SQLiteStatement // dev.seri.doltrooms.driver/DoltLiteConnection.prepare|prepare(kotlin.String){}[0]
+}
+
+final class dev.seri.doltrooms.driver/DoltLiteDriver : androidx.sqlite/SQLiteDriver { // dev.seri.doltrooms.driver/DoltLiteDriver|null[0]
+    constructor <init>() // dev.seri.doltrooms.driver/DoltLiteDriver.<init>|<init>(){}[0]
+
+    final fun open(kotlin/String): androidx.sqlite/SQLiteConnection // dev.seri.doltrooms.driver/DoltLiteDriver.open|open(kotlin.String){}[0]
+}
+
+final class dev.seri.doltrooms.driver/DoltLiteStatement : androidx.sqlite/SQLiteStatement { // dev.seri.doltrooms.driver/DoltLiteStatement|null[0]
+    final fun bindBlob(kotlin/Int, kotlin/ByteArray) // dev.seri.doltrooms.driver/DoltLiteStatement.bindBlob|bindBlob(kotlin.Int;kotlin.ByteArray){}[0]
+    final fun bindDouble(kotlin/Int, kotlin/Double) // dev.seri.doltrooms.driver/DoltLiteStatement.bindDouble|bindDouble(kotlin.Int;kotlin.Double){}[0]
+    final fun bindLong(kotlin/Int, kotlin/Long) // dev.seri.doltrooms.driver/DoltLiteStatement.bindLong|bindLong(kotlin.Int;kotlin.Long){}[0]
+    final fun bindNull(kotlin/Int) // dev.seri.doltrooms.driver/DoltLiteStatement.bindNull|bindNull(kotlin.Int){}[0]
+    final fun bindText(kotlin/Int, kotlin/String) // dev.seri.doltrooms.driver/DoltLiteStatement.bindText|bindText(kotlin.Int;kotlin.String){}[0]
+    final fun clearBindings() // dev.seri.doltrooms.driver/DoltLiteStatement.clearBindings|clearBindings(){}[0]
+    final fun close() // dev.seri.doltrooms.driver/DoltLiteStatement.close|close(){}[0]
+    final fun getBlob(kotlin/Int): kotlin/ByteArray // dev.seri.doltrooms.driver/DoltLiteStatement.getBlob|getBlob(kotlin.Int){}[0]
+    final fun getColumnCount(): kotlin/Int // dev.seri.doltrooms.driver/DoltLiteStatement.getColumnCount|getColumnCount(){}[0]
+    final fun getColumnName(kotlin/Int): kotlin/String // dev.seri.doltrooms.driver/DoltLiteStatement.getColumnName|getColumnName(kotlin.Int){}[0]
+    final fun getColumnType(kotlin/Int): kotlin/Int // dev.seri.doltrooms.driver/DoltLiteStatement.getColumnType|getColumnType(kotlin.Int){}[0]
+    final fun getDouble(kotlin/Int): kotlin/Double // dev.seri.doltrooms.driver/DoltLiteStatement.getDouble|getDouble(kotlin.Int){}[0]
+    final fun getLong(kotlin/Int): kotlin/Long // dev.seri.doltrooms.driver/DoltLiteStatement.getLong|getLong(kotlin.Int){}[0]
+    final fun getText(kotlin/Int): kotlin/String // dev.seri.doltrooms.driver/DoltLiteStatement.getText|getText(kotlin.Int){}[0]
+    final fun isNull(kotlin/Int): kotlin/Boolean // dev.seri.doltrooms.driver/DoltLiteStatement.isNull|isNull(kotlin.Int){}[0]
+    final fun reset() // dev.seri.doltrooms.driver/DoltLiteStatement.reset|reset(){}[0]
+    final fun step(): kotlin/Boolean // dev.seri.doltrooms.driver/DoltLiteStatement.step|step(){}[0]
+}

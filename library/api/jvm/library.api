@@ -1,0 +1,169 @@
+public final class dev/seri/doltrooms/dolt/DoltBranch {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun component9 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)Ldev/seri/doltrooms/dolt/DoltBranch;
+	public static synthetic fun copy$default (Ldev/seri/doltrooms/dolt/DoltBranch;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Ldev/seri/doltrooms/dolt/DoltBranch;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDirty ()Z
+	public final fun getHash ()Ljava/lang/String;
+	public final fun getLatestCommitDate ()Ljava/lang/String;
+	public final fun getLatestCommitMessage ()Ljava/lang/String;
+	public final fun getLatestCommitter ()Ljava/lang/String;
+	public final fun getLatestCommitterEmail ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getRemote ()Ljava/lang/String;
+	public final fun getRemoteBranch ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/seri/doltrooms/dolt/DoltCommit {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ldev/seri/doltrooms/dolt/DoltCommit;
+	public static synthetic fun copy$default (Ldev/seri/doltrooms/dolt/DoltCommit;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/seri/doltrooms/dolt/DoltCommit;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCommitter ()Ljava/lang/String;
+	public final fun getDate ()Ljava/lang/String;
+	public final fun getEmail ()Ljava/lang/String;
+	public final fun getHash ()Ljava/lang/String;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/seri/doltrooms/dolt/DoltDatabase {
+	public static final field Companion Ldev/seri/doltrooms/dolt/DoltDatabase$Companion;
+	public fun <init> (Landroidx/room3/RoomDatabase;)V
+	public final fun addRemote (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun branch (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun branches (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun checkout (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun checkout$default (Ldev/seri/doltrooms/dolt/DoltDatabase;Ljava/lang/String;ZLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun commit (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun commit$default (Ldev/seri/doltrooms/dolt/DoltDatabase;Ljava/lang/String;ZLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun currentBranch (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun deleteBranch (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun diff (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun fetch (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun fetch$default (Ldev/seri/doltrooms/dolt/DoltDatabase;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun log (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun merge (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun pull (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun push (Ljava/lang/String;Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun push$default (Ldev/seri/doltrooms/dolt/DoltDatabase;Ljava/lang/String;Ljava/lang/String;ZLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun remotes (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun removeRemote (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun status (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class dev/seri/doltrooms/dolt/DoltDatabase$Companion {
+	public final fun clone (Landroidx/sqlite/SQLiteDriver;Ljava/lang/String;Ljava/lang/String;)V
+}
+
+public final class dev/seri/doltrooms/dolt/DoltDiffRow {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/util/Map;
+	public final fun component7 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;)Ldev/seri/doltrooms/dolt/DoltDiffRow;
+	public static synthetic fun copy$default (Ldev/seri/doltrooms/dolt/DoltDiffRow;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;ILjava/lang/Object;)Ldev/seri/doltrooms/dolt/DoltDiffRow;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDiffType ()Ljava/lang/String;
+	public final fun getFrom ()Ljava/util/Map;
+	public final fun getFromCommit ()Ljava/lang/String;
+	public final fun getFromCommitDate ()Ljava/lang/String;
+	public final fun getTo ()Ljava/util/Map;
+	public final fun getToCommit ()Ljava/lang/String;
+	public final fun getToCommitDate ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/seri/doltrooms/dolt/DoltRemote {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ldev/seri/doltrooms/dolt/DoltRemote;
+	public static synthetic fun copy$default (Ldev/seri/doltrooms/dolt/DoltRemote;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/seri/doltrooms/dolt/DoltRemote;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFetchSpecs ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getParams ()Ljava/lang/String;
+	public final fun getUrl ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/seri/doltrooms/dolt/DoltStatusEntry {
+	public fun <init> (Ljava/lang/String;ZLjava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Z
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;ZLjava/lang/String;)Ldev/seri/doltrooms/dolt/DoltStatusEntry;
+	public static synthetic fun copy$default (Ldev/seri/doltrooms/dolt/DoltStatusEntry;Ljava/lang/String;ZLjava/lang/String;ILjava/lang/Object;)Ldev/seri/doltrooms/dolt/DoltStatusEntry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStaged ()Z
+	public final fun getStatus ()Ljava/lang/String;
+	public final fun getTableName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/seri/doltrooms/driver/DoltLiteConnection : androidx/sqlite/SQLiteConnection {
+	public fun close ()V
+	public fun inTransaction ()Z
+	public fun prepare (Ljava/lang/String;)Landroidx/sqlite/SQLiteStatement;
+}
+
+public final class dev/seri/doltrooms/driver/DoltLiteDriver : androidx/sqlite/SQLiteDriver {
+	public fun <init> ()V
+	public fun hasConnectionPool ()Z
+	public fun open (Ljava/lang/String;)Landroidx/sqlite/SQLiteConnection;
+}
+
+public final class dev/seri/doltrooms/driver/DoltLiteStatement : androidx/sqlite/SQLiteStatement {
+	public fun bindBlob (I[B)V
+	public fun bindBoolean (IZ)V
+	public fun bindDouble (ID)V
+	public fun bindFloat (IF)V
+	public fun bindInt (II)V
+	public fun bindLong (IJ)V
+	public fun bindNull (I)V
+	public fun bindText (ILjava/lang/String;)V
+	public fun clearBindings ()V
+	public fun close ()V
+	public fun getBlob (I)[B
+	public fun getBoolean (I)Z
+	public fun getColumnCount ()I
+	public fun getColumnName (I)Ljava/lang/String;
+	public fun getColumnNames ()Ljava/util/List;
+	public fun getColumnType (I)I
+	public fun getDouble (I)D
+	public fun getFloat (I)F
+	public fun getInt (I)I
+	public fun getLong (I)J
+	public fun getText (I)Ljava/lang/String;
+	public fun isNull (I)Z
+	public fun reset ()V
+	public fun step ()Z
+}
+
