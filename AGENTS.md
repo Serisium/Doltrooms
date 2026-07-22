@@ -28,9 +28,13 @@ decision as a new iteration.
   to follow it.
 - **`docs/deferred-verification.md` is the live verification
   burn-down** — implemented-but-unverified work, one entry per gap
-  with what to run and where, flipped to VERIFIED (entry kept for the
-  record) as hardware becomes reachable. Keeping it truthful in the
-  same session that closes or discovers a gap is part of the work.
+  with what to run and where, flipped to VERIFIED as hardware
+  becomes reachable. A VERIFIED entry stays only while it still
+  bears on future work (an open dependent, a reusable procedure, a
+  live caveat); once nothing leans on it, delete it — git history is
+  the record (policy set 2026-07-22). Keeping the file truthful in
+  the same session that closes or discovers a gap is part of the
+  work.
   (The step-by-step implementation plan that used to live in
   `PLAN.md` was retired and deleted in July 2026 after its backlog
   completed; the repo state plus these governing documents are the

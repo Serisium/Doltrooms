@@ -211,11 +211,11 @@ wider audit baseline live in the `kotlin-audit-baseline` skill.
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D10. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D11. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
 | `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
-| `docs/deferred-verification.md` | Checklist of implemented-but-unverifiable-on-Linux work: iOS compile/link/test, XCFramework packaging, and Maven Central publishing (need a Mac), Android on-device tests, the remotesrv fixture off linux-x64, the first observed GitHub Actions run. |
+| `docs/deferred-verification.md` | Checklist of implemented-but-unverified work plus verified records that still bear on future work: the iOS record, the ABI golden dump (regeneration procedure + inference caveat), XCFramework packaging and Maven Central publishing (need a Mac), the remotesrv fixture off linux-x64. Fully-verified entries with no future bearing are pruned. |
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `library/` | The one KMP library module (D5) — driver sources under `library/src/` (§3.3). |
 | `samples/codelab/` | Fruitties sample: Google's kmp-migrate-room codelab in its post-migration state, ported to Room 3 + `DoltLiteDriver` for Android and iOS. A standalone composite build over the root (D5 amendment); its own README documents lineage and every delta from upstream. |
