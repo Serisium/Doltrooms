@@ -133,6 +133,25 @@ including `-iosarm64`/`-iossimulatorarm64`), inspect, then
 `./gradlew publishToMavenCentral` with credentials + key in env —
 still pending only credentials and the human's go.
 
+2026-07-21 addendum: the first macOS `publishToMavenLocal` exposed
+two tasks that still hardcoded a Linux host toolchain (host
+`gcc`/`objcopy`, `$JAVA_HOME/include/linux`), blocking every
+publication on macOS. Fixed the same session (PR #6): on macOS hosts
+the two Linux artifacts cross-compile with the
+Kotlin/Native-provisioned toolchain, and local test runs load a
+not-packaged host-twin dylib — the design and its rationale live in
+`library/build.gradle.kts` (the "macOS-host cross toolchain" comment
+block and the ones on the two compile tasks). Verified on the macOS
+host: `:library:publishToMavenLocal` GREEN with the full
+six-publication set (umbrella, `-jvm`, `-android`, `-linuxx64`,
+`-iosarm64`, `-iossimulatorarm64`, real `-javadoc` jars throughout);
+`file` reports the jvm jar's `natives/linux-x64/libdoltroomsjni.so`
+and the embedded `libdoltlite.a` member as ELF 64-bit x86-64, with
+no `__isoc23_*` symbols; jvmTest 118/0, testAndroidHostTest 52/0,
+iosSimulatorArm64Test 52/0 (linuxX64Test correctly SKIPS — a Mac
+links but cannot run Linux binaries); PR #6's `ci.yml` run observed
+GREEN, confirming the unchanged Linux-host path.
+
 ## First observed run of the Step 12 CI jobs — FULLY OBSERVED 2026-07-21 (PR #3), entry kept for the record
 
 Step 12 added three jobs to `ci.yml`: `android-x86_64-emulator` (KVM
