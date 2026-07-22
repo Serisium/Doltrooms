@@ -105,6 +105,49 @@ val unpackDoltliteAmalgamation by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("doltlite/src"))
 }
 
+// --- macOS-host cross toolchain for the Linux-targeted artifacts ----------
+// The jvm jar's linux-x64 .so and the linuxX64 cinterop archive must be
+// Linux ELF even on the macOS publishing host (docs/deferred-verification
+// .md, Maven Central entry). Kotlin/Native's provisioned dependencies
+// supply the cross setup: the x86_64-unknown-linux-gnu-gcc-* package serves
+// only as the SYSROOT — its gcc/binutils are Linux-host executables — and
+// clang/clang++/llvm-ar/ld.lld come from the llvm-* package, the same split
+// Konan itself uses (konan.properties: targetToolchain.macos_arm64-linux_x64,
+// targetSysRoot.linux_x64). Globbed so Konan version bumps keep resolving,
+// and lazy because the packages exist only after provisioning — guaranteed
+// on a clean machine by the macOS-only
+// dependsOn(downloadKotlinNativeDistribution) at the registration sites.
+val hostIsMac = System.getProperty("os.name").lowercase().startsWith("mac")
+
+val konanDependenciesDir: Provider<File> =
+    providers.environmentVariable("KONAN_DATA_DIR")
+        .orElse(providers.systemProperty("user.home").map { "$it/.konan" })
+        .map { File(it, "dependencies") }
+
+fun konanDependency(namePrefix: String): Provider<String> = konanDependenciesDir.map { deps ->
+    deps.listFiles { f: File -> f.isDirectory && f.name.startsWith(namePrefix) }
+        ?.sortedBy { it.name }
+        ?.lastOrNull()
+        ?.absolutePath
+        ?: error(
+            "Kotlin/Native dependency '$namePrefix*' not found in $deps. Run " +
+                "'./gradlew :library:downloadKotlinNativeDistribution' once to provision it."
+        )
+}
+
+val konanLlvmBin: Provider<String> = konanDependency("llvm-").map { "$it/bin" }
+
+/** Konan clang/clang++ retargeted at linux-x64 against Konan's own sysroot. */
+fun linuxCrossCompiler(tool: String): Provider<List<String>> =
+    konanLlvmBin.zip(konanDependency("x86_64-unknown-linux-gnu-gcc-")) { llvm, gcc ->
+        listOf(
+            "$llvm/$tool",
+            "--target=x86_64-unknown-linux-gnu",
+            "--sysroot=$gcc/x86_64-unknown-linux-gnu/sysroot",
+            "--gcc-toolchain=$gcc",
+        )
+    }
+
 abstract class CompileDoltliteJniTask @Inject constructor(
     private val execOps: ExecOperations,
 ) : DefaultTask() {
@@ -123,6 +166,26 @@ abstract class CompileDoltliteJniTask @Inject constructor(
     @get:Input
     abstract val osClassifier: Property<String>
 
+    /** C compiler command plus retargeting args ("gcc" on a Linux host). */
+    @get:Input
+    abstract val cc: ListProperty<String>
+
+    /** C++ compiler command plus retargeting args ("g++" on a Linux host). */
+    @get:Input
+    abstract val cxx: ListProperty<String>
+
+    /** Link-step-only flags (the macOS cross build adds -fuse-ld=lld). */
+    @get:Input
+    abstract val linkFlags: ListProperty<String>
+
+    /** $JAVA_HOME/include subdirectory that carries jni_md.h. */
+    @get:Input
+    abstract val jniMdSubdir: Property<String>
+
+    /** Produced library file name (libdoltroomsjni.so / .dylib). */
+    @get:Input
+    abstract val libFileName: Property<String>
+
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
@@ -136,40 +199,85 @@ abstract class CompileDoltliteJniTask @Inject constructor(
         val jdkInclude = "${javaHome.get()}/include"
         execOps.exec {
             commandLine(
-                listOf("gcc", "-c", "-fPIC", "-O3") + flags +
+                cc.get() + listOf("-c", "-fPIC", "-O3") + flags +
                     listOf("-I$src", "-o", obj.absolutePath, "$src/doltlite.c")
             )
         }
         val jniObj = temporaryDir.resolve("doltrooms_jni.o")
         execOps.exec {
             commandLine(
-                listOf("g++", "-c", "-fPIC", "-O3", "-fvisibility=hidden") + flags +
+                cxx.get() + listOf("-c", "-fPIC", "-O3", "-fvisibility=hidden") + flags +
                     listOf(
-                        "-I$src", "-I$jdkInclude", "-I$jdkInclude/linux",
+                        "-I$src", "-I$jdkInclude", "-I$jdkInclude/${jniMdSubdir.get()}",
                         "-o", jniObj.absolutePath, jniSource.get().asFile.absolutePath,
                     )
             )
         }
         execOps.exec {
             commandLine(
-                "g++", "-shared",
-                "-o", out.resolve("libdoltroomsjni.so").absolutePath,
-                obj.absolutePath, jniObj.absolutePath,
-                "-lpthread", "-ldl", "-lm",
+                cxx.get() + linkFlags.get() + listOf(
+                    "-shared",
+                    "-o", out.resolve(libFileName.get()).absolutePath,
+                    obj.absolutePath, jniObj.absolutePath,
+                    "-lpthread", "-ldl", "-lm",
+                )
             )
         }
     }
 }
 
+// The published jvm jar carries ONLY natives/linux-x64 (README's platform
+// table) on every host. On a Linux host that is a plain host build; on
+// macOS (the single-host publishing environment) the same .so is
+// cross-compiled with the Konan toolchain above. JNI headers for the cross
+// compile: jni.h is platform-independent and OpenJDK ships ONE POSIX
+// jni_md.h (src/java.base/unix/native/include/jni_md.h, installed as both
+// include/linux and include/darwin; only _LP64 affects its typedefs), so
+// the host JDK's darwin copy serves the Linux build.
 val compileDoltliteJni by tasks.registering(CompileDoltliteJniTask::class) {
     dependsOn(unpackDoltliteAmalgamation)
     amalgamationDir = layout.buildDirectory.dir("doltlite/src")
     jniSource = layout.projectDirectory.file("src/jvmAndroidMain/jni/doltrooms_jni.cpp")
     compileFlags = doltliteCompileFlags
     javaHome = providers.systemProperty("java.home")
-    osClassifier = "linux-x64" // host build; cross-compilation lands with later PLAN.md steps
+    osClassifier = "linux-x64"
+    libFileName = "libdoltroomsjni.so"
     outputDir = layout.buildDirectory.dir("nativeLibs/jvm")
+    if (hostIsMac) {
+        dependsOn("downloadKotlinNativeDistribution")
+        cc = linuxCrossCompiler("clang")
+        cxx = linuxCrossCompiler("clang++")
+        linkFlags = listOf("-fuse-ld=lld")
+        jniMdSubdir = "darwin"
+    } else {
+        cc = listOf("gcc")
+        cxx = listOf("g++")
+        linkFlags = listOf<String>()
+        jniMdSubdir = "linux"
+    }
 }
+
+// macOS host-test twin: the linux-x64 ELF .so above cannot load into the
+// local JVM, so jvmTest and testAndroidHostTest (wired below) get a host
+// dylib on the side. Deliberately NOT packaged — the shipped jvm jar stays
+// linux-x64-only on every host (README's platform table).
+val compileDoltliteJniHost = if (!hostIsMac) null else
+    tasks.register<CompileDoltliteJniTask>("compileDoltliteJniHost") {
+        dependsOn(unpackDoltliteAmalgamation)
+        amalgamationDir = layout.buildDirectory.dir("doltlite/src")
+        jniSource = layout.projectDirectory.file("src/jvmAndroidMain/jni/doltrooms_jni.cpp")
+        compileFlags = doltliteCompileFlags
+        javaHome = providers.systemProperty("java.home")
+        osClassifier = providers.systemProperty("os.arch").map {
+            if (it in setOf("aarch64", "arm64")) "osx-arm64" else "osx-x64"
+        }
+        libFileName = "libdoltroomsjni.dylib"
+        cc = listOf("cc")
+        cxx = listOf("c++")
+        linkFlags = listOf<String>()
+        jniMdSubdir = "darwin"
+        outputDir = layout.buildDirectory.dir("nativeLibs/jvmHost")
+    }
 
 // --- Android device ABIs: NDK cross-compile into AAR jniLibs --------------
 // The Android artifact ships our OWN NDK build of the amalgamation + glue
@@ -247,9 +355,9 @@ abstract class CompileDoltliteAndroidJniTask @Inject constructor(
 // Kotlin/Native consumes the amalgamation as headers + a static archive:
 // cinterop embeds libdoltlite.a into the klib (-staticLibrary), so linking a
 // linuxX64 test binary — or a consumer's binary — needs no external library.
-// The archive is built with host gcc, whose output Konan's linker consumes,
-// BUT Konan links against its own bundled glibc-2.19 sysroot, so the object
-// must not reference newer glibc symbols than that:
+// On a Linux host the archive is built with host gcc, whose output Konan's
+// linker consumes, BUT Konan links against its own bundled glibc-2.19
+// sysroot, so the object must not reference newer glibc symbols than that:
 //   -DSQLITE_DISABLE_LFS avoids _FILE_OFFSET_BITS=64 (self-defined by the
 //     amalgamation), whose glibc-2.28+ headers redirect fcntl->fcntl64 —
 //     semantically a no-op on x86_64, where off_t is 64-bit regardless;
@@ -258,6 +366,13 @@ abstract class CompileDoltliteAndroidJniTask @Inject constructor(
 //     -std) back to the classic symbols — the __isoc23_* variants differ
 //     only in accepting C23 0b binary literals, which no DoltLite input
 //     relies on.
+// On a macOS host (the publishing environment) the same archive is
+// cross-compiled by Konan's clang against that very 2.19 sysroot, where the
+// host-glibc skew cannot arise: the C23 redirects live in glibc-2.38+
+// HEADERS the sysroot predates, so the objcopy remap is unset/skipped there
+// (macOS ships no objcopy, and neither does Konan's LLVM package), while
+// -DSQLITE_DISABLE_LFS stays for one identical compile command on both
+// hosts (a no-op against 2.19 headers, which have no fcntl64 redirect).
 // iOS archives cannot be built on a Linux host (no Apple sysroot) — the iOS
 // cinterop is headers-only and linking is deferred to a Mac (Step 6 log).
 
@@ -269,6 +384,19 @@ abstract class CompileDoltliteStaticTask @Inject constructor(
 
     @get:Input
     abstract val compileFlags: ListProperty<String>
+
+    /** C compiler command plus retargeting args ("gcc" on a Linux host). */
+    @get:Input
+    abstract val cc: ListProperty<String>
+
+    /** Archiver ("ar" on a Linux host, llvm-ar on macOS). */
+    @get:Input
+    abstract val ar: Property<String>
+
+    /** Unset on macOS: no remap needed there (see the comment block above). */
+    @get:Input
+    @get:Optional
+    abstract val objcopy: Property<String>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -282,25 +410,27 @@ abstract class CompileDoltliteStaticTask @Inject constructor(
         execOps.exec {
             commandLine(
                 // -fPIC: Konan produces position-independent test executables.
-                listOf("gcc", "-c", "-fPIC", "-O3", "-DSQLITE_DISABLE_LFS") +
+                cc.get() + listOf("-c", "-fPIC", "-O3", "-DSQLITE_DISABLE_LFS") +
                     compileFlags.get() +
                     listOf("-I$src", "-o", obj.absolutePath, "$src/doltlite.c")
             )
         }
-        execOps.exec {
-            commandLine(
-                "objcopy",
-                "--redefine-sym", "__isoc23_strtol=strtol",
-                "--redefine-sym", "__isoc23_strtoul=strtoul",
-                "--redefine-sym", "__isoc23_strtoll=strtoll",
-                "--redefine-sym", "__isoc23_strtoull=strtoull",
-                obj.absolutePath,
-            )
+        if (objcopy.isPresent) {
+            execOps.exec {
+                commandLine(
+                    objcopy.get(),
+                    "--redefine-sym", "__isoc23_strtol=strtol",
+                    "--redefine-sym", "__isoc23_strtoul=strtoul",
+                    "--redefine-sym", "__isoc23_strtoll=strtoll",
+                    "--redefine-sym", "__isoc23_strtoull=strtoull",
+                    obj.absolutePath,
+                )
+            }
         }
         val archive = out.resolve("libdoltlite.a")
         archive.delete()
         execOps.exec {
-            commandLine("ar", "rcs", archive.absolutePath, obj.absolutePath)
+            commandLine(ar.get(), "rcs", archive.absolutePath, obj.absolutePath)
         }
     }
 }
@@ -310,6 +440,15 @@ val compileDoltliteStaticLinuxX64 by tasks.registering(CompileDoltliteStaticTask
     amalgamationDir = layout.buildDirectory.dir("doltlite/src")
     compileFlags = doltliteCompileFlags
     outputDir = layout.buildDirectory.dir("nativeLibs/linuxX64")
+    if (hostIsMac) {
+        dependsOn("downloadKotlinNativeDistribution")
+        cc = linuxCrossCompiler("clang")
+        ar = konanLlvmBin.map { "$it/llvm-ar" }
+    } else {
+        cc = listOf("gcc")
+        ar = "ar"
+        objcopy = "objcopy"
+    }
 }
 
 // --- Apple engine archives (docs/deferred-verification.md, iOS item 3) ---
@@ -368,8 +507,6 @@ abstract class CompileDoltliteAppleStaticTask @Inject constructor(
 // Registered on macOS hosts only: on Linux KGP disables Apple compilations
 // that carry cinterops (docs/deferred-verification.md), and the xcrun tasks
 // must not be reachable from the CI task graph.
-val hostIsMac = System.getProperty("os.name").lowercase().startsWith("mac")
-
 if (hostIsMac) {
     tasks.register<CompileDoltliteAppleStaticTask>("compileDoltliteStaticIosArm64") {
         dependsOn(unpackDoltliteAmalgamation)
@@ -819,18 +956,33 @@ tasks.withType<Test>()
                     .get().asFile.absolutePath,
             )
         }
+        // On macOS the classpath resource is a Linux ELF .so the local JVM
+        // cannot load; point the loader's explicit-path override at the
+        // host-test twin's dylib instead.
+        if (compileDoltliteJniHost != null) {
+            dependsOn(compileDoltliteJniHost)
+            val hostLibPath = compileDoltliteJniHost.map {
+                it.outputDir.get().asFile
+                    .resolve("natives/${it.osClassifier.get()}/${it.libFileName.get()}")
+                    .absolutePath
+            }
+            doFirst { systemProperty("dev.seri.doltrooms.lib.path", hostLibPath.get()) }
+        }
     }
 
 // Android host tests run on the host JVM, where androidMain's
 // System.loadLibrary("doltroomsjni") searches java.library.path — reuse the
-// desktop .so from compileDoltliteJni instead of packaging a host lib into
-// the AAR (kmp-native-interop skill: jniLibs is a device mechanism).
+// desktop native lib instead of packaging a host lib into the AAR
+// (kmp-native-interop skill: jniLibs is a device mechanism). On macOS the
+// desktop .so is a Linux ELF cross build, so the host-test twin's dylib
+// serves instead.
 tasks.withType<Test>()
     .matching { it.name == "testAndroidHostTest" }
     .configureEach {
-        dependsOn(compileDoltliteJni)
-        val hostNativesDir = compileDoltliteJni.map {
-            it.outputDir.get().dir("natives/linux-x64").asFile.absolutePath
+        val nativesTask = compileDoltliteJniHost ?: compileDoltliteJni
+        dependsOn(nativesTask)
+        val hostNativesDir = nativesTask.map {
+            it.outputDir.get().dir("natives/${it.osClassifier.get()}").asFile.absolutePath
         }
         doFirst {
             // Prepend rather than replace: AGP already sets a path that ends
