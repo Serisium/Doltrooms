@@ -153,7 +153,17 @@ Further probes (0.11.33, 2026-07-22, via the jvmTest
   engine-minted "Initialize data repository" commit keeps its
   db-creation date forever. Backdated timelines should exclude it from
   date-ordered reads via its NULL `parent_hash` in
-  `dolt_commit_ancestors`.
+  `dolt_commit_ancestors` — OR start from a **seed file whose history
+  begins at the desired epoch**: the root date comes from the wall
+  clock at creation, so minting the file under an `LD_PRELOAD` time
+  shim (`time`/`gettimeofday`/`clock_gettime` pinned) bakes any root
+  date in permanently and deterministically (fixed committer + clock →
+  reproducible root hash). This repo's
+  `library/src/jvmTest/resources/dolt/backrooms-epoch-2019.db`
+  (1148 bytes, history beginning 2019-05-13 12:00:00, root hash
+  `44dda288…`) was made this way with the pinned tools-zip `doltlite`
+  CLI; recipe in `BackroomsEpochSeedTest`. Engine-version-sensitive —
+  re-mint on pin bumps.
 - **Tags:** `dolt_tag(name, '-m', msg)` works; `dolt_tags` = tag_name,
   tag_hash, tagger, email, date, message. Creating a tag does not dirty
   the working tree.
