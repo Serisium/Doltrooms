@@ -230,6 +230,7 @@ Compile = verified `@Query` compiles under the shim. Runtime = test in
 | 9 | multimap `Map<BranchRow, List<CommitRow>>` | ✅ ✅ | Works with disjoint column names despite `getTableName` = null; ambiguous multimaps may need `@MapColumn` |
 | 10 | `PagingSource<Int, CommitRow>` | ❌ platform gap | Room 3.0.0: "Only suspend functions are allowed in DAOs declared in source sets targeting non-Android platforms" — PagingSource is Android-only. The query itself verifies; expected to work in an Android source set (unvalidated — needs instrumentation) |
 | + | `dolt_status`, `dolt_remotes`, `SELECT dolt_version()` | ✅ ✅ | `sqlite_sequence` appears in status alongside user tables (AUTOINCREMENT bookkeeping) |
+| ++ | Second wave (`DoltPropQueriesDao`, all ✅✅): author filter (`WHERE committer`), branch-prefix `LIKE`, date-window `BETWEEN` over `--date`-stamped commits, tag lookup, merge-commit detection via ancestry `GROUP BY/HAVING`, `dolt_history_<t>` row versions, `dolt_diff_stat(:from,:to)` | ✅ ✅ | Two data-shape lessons: backdated (`--date`) commits make `ORDER BY date` misleading (the engine root keeps its creation date; rely on `dolt_log`'s topological order), and `dolt_diff_stat` fails with "SQL logic error" when the window contains a `sqlite_sequence` change — i.e. any insert into a Room `autoGenerate` table (probe-pinned; update/delete-only windows work) |
 
 Under approaches A/B alone: 1, 2, 3', 5, 8 become canned library
 functions (no user-authored verified SQL), 6/7/9 are impossible (7
@@ -251,15 +252,20 @@ rejected on dolt system tables. Consequences:
   views that should track *data* changes.
 - Version-control verbs (commit/checkout/merge) perform no DML on user
   tables → no trigger fires → **flows go stale across vcs operations**.
-  Recipe until a better story exists: re-run reads after `DoltDatabase`
-  verbs (the verbs are all suspend calls with known completion points —
-  callers can `flow.retrigger()` by resubscribing or use plain suspend
-  reads). A future library refinement: a one-row `dolt_events` entity
-  the writer-side verbs touch after each vcs operation, giving every
-  dolt-reading Flow an `observedEntities` anchor — expressible today
-  with `@RawQuery(observedEntities=[DoltEvents::class])`, or even a
-  verified `@Query` JOINing the anchor table. Not prototyped; noted as
-  the obvious next experiment.
+  The fix is the **anchor pattern — prototyped and green** (second
+  wave, `DoltPropQueriesDao` + `DoltPropQueriesTest`): a one-row
+  `DoltEvent` entity is bumped (ordinary DML) after each vcs verb, and
+  dolt-reading flows are declared
+  `@RawQuery(observedEntities = [DoltEvent::class])` with fixed SQL.
+  Both `Flow<List<CommitRow>>` (new commit → new emission) and
+  `Flow<List<BranchRow>>` (new branch → new emission) pass. The
+  seemingly-nicer verified form — a plain `@Query` Flow JOINing the
+  anchor into the dolt SQL — compiles but still fails at collection:
+  Room derives the observed set from the parsed FROM clause, so it asks
+  the tracker to observe `dolt_log` too (pinned by
+  `verifiedJoinFlowStillFailsAtRuntime`). `@RawQuery` is the right
+  tool, with the anchor bump folded into the library's writer-side
+  verbs at productization.
 
 ### 6.2 Views are versioned schema
 
