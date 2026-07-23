@@ -50,7 +50,7 @@ jobs:
         run: ./gradlew build :library:jvmTest :library:testAndroidHostTest :library:linuxX64Test
       - name: Upload test reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: library/build/reports/tests/
@@ -98,7 +98,7 @@ jobs:
             cd samples/codelab && ../../gradlew :androidApp:connectedDebugAndroidTest
       - name: Upload test reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: emulator-test-reports
           path: |
@@ -133,7 +133,7 @@ jobs:
         run: cd samples/codelab && ../../gradlew :androidApp:assembleDebug :androidApp:testDebugUnitTest
       - name: Upload test reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sample-android-test-reports
           path: samples/codelab/androidApp/build/reports/
@@ -185,7 +185,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
       - name: Upload test reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-reports
           path: library/build/reports/tests/
