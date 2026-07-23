@@ -58,6 +58,38 @@ Recommendation for this project: scope the annotation per-function
 `useWriterConnection` for write-shaped `dolt_*` calls anyway
 (`raw-connections-and-transactions.md`).
 
+## The verifier's engine binding is swappable (probed 2026-07-22)
+
+`DatabaseVerifier` binds its engine by CLASS NAME, not driver
+registration — pinned from room3-compiler 3.0.0 bytecode: static init
+calls `org.sqlite.SQLiteJDBCLoader.initialize()` then
+`org.sqlite.JDBC.isValidURL(...)`; `create()` calls the static
+`org.sqlite.JDBC.createConnection("jdbc:sqlite::memory:", Properties)`,
+whose descriptor returns the class `org/sqlite/SQLiteConnection`. The
+full JDBC surface it then touches: `createStatement().executeUpdate`
+(entity/index/view DDL), `prepareStatement` (SQLException here = the
+compile error), and pre-execution `getMetaData()` →
+`getColumnCount`/`getColumnName`/`getColumnTypeName` (matched against
+`SQLTypeAffinity` names NULL/TEXT/INTEGER/REAL/BLOB, else NULL
+affinity)/`getTableName`.
+
+Consequence, proven by `prototypes/room-entity-primitives/`: shipping
+shadow `org.sqlite.{JDBC, SQLiteJDBCLoader, SQLiteConnection}` classes
+on the KSP classpath (with `org.xerial:sqlite-jdbc` excluded), backed
+by `DoltLiteDriver`, makes ALL dolt_* constructs — system tables, TVFs
+with bound refs, even `@DatabaseView` over `dolt_branches` — verify
+natively, with real "no such table/column" compile errors from
+DoltLite. Two shim obligations: commit after each DDL statement (the
+engine materializes per-table TVFs for committed tables only), and be
+loud on connection failure (Room's silent-fallback warning otherwise
+masks a dead shim — keep a deliberately-broken canary query to prove
+verification is live). See `docs/design/room-entity-dolt-primitives.md`.
+
+Related platform limit (same probe session): `PagingSource` DAO
+functions are Android-target-only in Room 3.0.0 — on other targets the
+compiler rejects them with "Only suspend functions are allowed in DAOs
+declared in source sets targeting non-Android platforms".
+
 ## Environment pitfalls
 
 - The verifier extracts sqlite-jdbc's native library to
