@@ -1,12 +1,12 @@
 package dev.seri.doltrooms.prototype
 
-import androidx.room3.Room
 import androidx.room3.useWriterConnection
+import dev.seri.doltrooms.dolt.DoltCommit
 import dev.seri.doltrooms.dolt.DoltDatabase
-import dev.seri.doltrooms.driver.DoltLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -32,10 +32,8 @@ class DoltPropQueriesTest {
 
     private var tick = 0L
 
-    private fun db(): PrototypeDatabase =
-        Room.inMemoryDatabaseBuilder<PrototypeDatabase>()
-            .setDriver(DoltLiteDriver())
-            .build()
+    /** Seeded from the epoch database — history begins 2019-05-13. */
+    private fun db(): PrototypeDatabase = epochSeededDatabase()
 
     private suspend fun PrototypeDatabase.writerSql(sql: String, vararg args: String) {
         useWriterConnection { tx ->
@@ -67,18 +65,24 @@ class DoltPropQueriesTest {
     }
 
     // ── Flow<List<CommitRow>>: new commit → new emission ───────────────
+    // On a file database (this suite — the epoch seed is a file) the
+    // reader pool freezes dolt_log at each reader's open-time session
+    // head, so the working recipe is the anchor's VERIFIED tick flow
+    // mapped through the writer-side DoltDatabase.log(), always fresh.
     @Test
     fun liveCommitsEmitsWhenACommitIsAdded() = runTest {
         withContext(Dispatchers.Default) {
             val database = db().seed()
             try {
-                val dao = database.doltPropQueriesDao()
-                val emissions = Channel<List<CommitRow>>(Channel.UNLIMITED)
+                val dolt = DoltDatabase(database)
+                val emissions = Channel<List<DoltCommit>>(Channel.UNLIMITED)
                 val collector = launch {
-                    dao.liveCommits(liveCommitsQuery()).collect { emissions.send(it) }
+                    database.doltPropQueriesDao().commitTicks()
+                        .map { dolt.log() }
+                        .collect { emissions.send(it) }
                 }
                 val initial = withTimeout(10_000) { emissions.receive() }
-                assertEquals(2, initial.size) // seed + engine root commit
+                assertEquals(2, initial.size) // seed + epoch root commit
 
                 database.doltPrimitivesDao()
                     .insert(Fruittie(name = "Pear", fullName = "Pear fruit", calories = "57"))
@@ -227,17 +231,34 @@ class DoltPropQueriesTest {
         }
     }
 
-    // ── Date-ordered timeline without the root anomaly ─────────────────
+    // ── History begins at the lore epoch ───────────────────────────────
     @Test
-    fun timelineByDateExcludesTheModernDatedRoot() = runTest {
+    fun historyBeginsAtTheLoreEpoch() = runTest {
+        val database = db().seed()
+        try {
+            val oldest = database.doltPropQueriesDao()
+                .commitsBetween("2019-01-01", "2019-12-31 23:59:59")
+            assertEquals(listOf("Initialize data repository"), oldest.map { it.message })
+            assertEquals(listOf(LORE_EPOCH_DATE), oldest.map { it.date })
+        } finally {
+            database.close()
+        }
+    }
+
+    // ── Date-ordered timeline, root excluded ───────────────────────────
+    @Test
+    fun timelineByDateListsMilestonesWithoutTheRoot() = runTest {
         val database = db().seed() // seed commit backdated 2025-07-07
         try {
             database.doltPrimitivesDao()
                 .insert(Fruittie(name = "Pear", fullName = "Pear fruit", calories = "57"))
             database.commitDated("2025-08-14", "Principal photography wraps (2025-08-14)")
 
-            // Plain date order ranks the 2026-dated engine root first;
-            // the ancestry-filtered query yields the pure timeline.
+            // On the epoch seed the root is 2019-dated, so plain date
+            // order is already coherent; the ancestry-filtered query
+            // additionally drops the root bookkeeping entry (and stays
+            // correct on databases NOT minted from the seed, where the
+            // root carries its modern creation date).
             assertEquals(
                 listOf(
                     "Principal photography wraps (2025-08-14)",

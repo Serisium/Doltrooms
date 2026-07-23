@@ -267,6 +267,25 @@ rejected on dolt system tables. Consequences:
   tool, with the anchor bump folded into the library's writer-side
   verbs at productization.
 
+  **File-database caveat (frozen session heads).** Moving the prototype
+  tests onto a file-backed seed (real 4-reader/1-writer pool) exposed
+  an engine fact the in-memory single-connection pool masks: a
+  connection's `dolt_log`/`dolt_history_<t>` walk from the session head
+  resolved at connection OPEN and never refresh (not on statements, not
+  on transaction boundaries, not on same-branch re-checkout — only a
+  checkout away-and-back re-resolves; probed in
+  `DoltReadSurfaceProbeTest.commitGraphWalksFreezeAtTheSessionHead`).
+  Data, `dolt_branches`, `dolt_commit_ancestors`, and `dolt_at_<t>`
+  always read fresh, so the anchored `dolt_branches` flow works
+  everywhere — but an anchored `dolt_log` flow re-emits stale history
+  once the pool's readers predate the commit (`@Transaction` sets
+  `inTransaction=true` yet does not reroute to the writer — verified
+  ineffective). The recipe that works on every pool shape: a verified
+  `@Query` flow over the anchor itself
+  (`commitTicks(): Flow<List<Long>>`) mapped through the writer-side
+  `DoltDatabase.log()`, which is always fresh —
+  `dao.commitTicks().map { dolt.log() }` (tested on the file seed).
+
 ### 6.2 Views are versioned schema
 
 Probed: `CREATE VIEW` lands in `dolt_schemas` and **dirties the

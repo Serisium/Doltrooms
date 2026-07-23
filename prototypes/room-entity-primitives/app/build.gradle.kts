@@ -23,6 +23,16 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 
+// Tests seed from the canonical Backrooms epoch database (history
+// beginning 2019-05-13) kept in the library's jvmTest resources — one
+// copy in the repo, handed over by path.
+tasks.test {
+    systemProperty(
+        "doltrooms.epochSeed",
+        rootDir.resolve("../../library/src/jvmTest/resources/dolt/backrooms-epoch-2019.db").absolutePath,
+    )
+}
+
 // On a macOS dev host the library jar packages only the linux-x64 .so;
 // point the loader's explicit-path override at the host-test dylib the
 // root build compiles (same wiring the library's own jvmTest uses).

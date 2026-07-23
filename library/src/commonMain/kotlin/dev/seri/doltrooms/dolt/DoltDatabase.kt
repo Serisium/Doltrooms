@@ -33,6 +33,14 @@ import androidx.sqlite.SQLiteStatement
  *   the database's default branch (`main`). After switching branches,
  *   treat DAO query results as main-branch reads unless the work stays
  *   on the writer connection.
+ * - On **file** databases, a connection's `dolt_log` and
+ *   `dolt_history_<table>` walk from the session head resolved when the
+ *   connection OPENED and never refresh on their own (probed at
+ *   0.11.33; table data, `dolt_branches`, `dolt_commit_ancestors`, and
+ *   `dolt_at_<table>(ref)` always read fresh state). Room readers never
+ *   re-checkout, so DAO reads of those two surfaces are frozen at each
+ *   reader's open time — read commit history through [log] (this
+ *   writer-connection helper), which is always fresh.
  *
  * ### Transactions
  *
