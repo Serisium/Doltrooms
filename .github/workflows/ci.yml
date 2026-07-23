@@ -25,7 +25,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install NDK (pinned in gradle/libs.versions.toml)
         run: sdkmanager "ndk;28.2.13676358"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # setup-gradle caches ~/.gradle but neither the project build dir nor
       # ~/.konan. The download tasks accept a pre-seeded zip whose SHA-256
       # matches the pin (library/build.gradle.kts), so caching just the zips
@@ -78,7 +78,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install NDK (pinned in gradle/libs.versions.toml)
         run: sdkmanager "ndk;28.2.13676358"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v4
         with:
@@ -121,7 +121,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install NDK (pinned in gradle/libs.versions.toml)
         run: sdkmanager "ndk;28.2.13676358"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # Same pre-seeded-zip cache as `build`: the sample includes the root
       # build, so the library's download tasks still write library/build/.
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
@@ -158,7 +158,7 @@ jobs:
       # these builds needs one (the androidLibrary targets). No NDK here —
       # no Android compile tasks run in this job.
       - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v4
         with:
