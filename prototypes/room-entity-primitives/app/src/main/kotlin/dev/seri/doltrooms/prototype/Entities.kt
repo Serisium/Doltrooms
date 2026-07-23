@@ -14,6 +14,19 @@ data class Fruittie(
     val calories: String,
 )
 
+/**
+ * The invalidation ANCHOR (design doc §6.1): version-control verbs are
+ * not DML on any observed entity, so Room flows cannot see them. This
+ * one-row entity is bumped (ordinary DML) after each vcs operation,
+ * giving every dolt-reading Flow an observable table via
+ * `@RawQuery(observedEntities = [DoltEvent::class])`.
+ */
+@Entity(tableName = "dolt_event")
+data class DoltEvent(
+    @PrimaryKey val id: Long = 1,
+    val tick: Long,
+)
+
 /** `dolt_branches` row (probed schema, DoltLite 0.11.33). */
 data class BranchRow(
     val name: String,
@@ -75,6 +88,33 @@ data class FruittieWithCommit(
     @ColumnInfo(name = "fullName") val fullName: String,
     val calories: String,
     @ColumnInfo(name = "lastCommit") val lastCommit: String,
+)
+
+/** One `dolt_tags` row (probed schema). */
+data class TagRow(
+    @ColumnInfo(name = "tag_name") val tagName: String,
+    @ColumnInfo(name = "tag_hash") val tagHash: String,
+    val tagger: String,
+    val email: String,
+    val date: String,
+    val message: String,
+)
+
+/** One `dolt_diff_stat(from, to)` row — the parameterized diff-stat TVF. */
+data class DiffStatRow(
+    @ColumnInfo(name = "table_name") val tableName: String,
+    @ColumnInfo(name = "rows_added") val rowsAdded: Long,
+    @ColumnInfo(name = "rows_deleted") val rowsDeleted: Long,
+    @ColumnInfo(name = "rows_modified") val rowsModified: Long,
+)
+
+/** One `dolt_history_fruittie` row: the entity's columns plus commit metadata. */
+data class FruittieHistoryRow(
+    val id: Long,
+    val name: String,
+    @ColumnInfo(name = "commit_hash") val commitHash: String,
+    val committer: String,
+    @ColumnInfo(name = "commit_date") val commitDate: String,
 )
 
 /**
