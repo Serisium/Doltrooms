@@ -227,6 +227,29 @@ class DoltPropQueriesTest {
         }
     }
 
+    // ── Date-ordered timeline without the root anomaly ─────────────────
+    @Test
+    fun timelineByDateExcludesTheModernDatedRoot() = runTest {
+        val database = db().seed() // seed commit backdated 2025-07-07
+        try {
+            database.doltPrimitivesDao()
+                .insert(Fruittie(name = "Pear", fullName = "Pear fruit", calories = "57"))
+            database.commitDated("2025-08-14", "Principal photography wraps (2025-08-14)")
+
+            // Plain date order ranks the 2026-dated engine root first;
+            // the ancestry-filtered query yields the pure timeline.
+            assertEquals(
+                listOf(
+                    "Principal photography wraps (2025-08-14)",
+                    "Principal photography begins (2025-07-07)",
+                ),
+                database.doltPropQueriesDao().timelineByDate().map { it.message },
+            )
+        } finally {
+            database.close()
+        }
+    }
+
     // ── Tag lookup ─────────────────────────────────────────────────────
     @Test
     fun tagNamedFindsTheReleaseTag() = runTest {

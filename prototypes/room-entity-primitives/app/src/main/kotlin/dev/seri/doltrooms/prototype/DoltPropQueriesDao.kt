@@ -75,6 +75,22 @@ interface DoltPropQueriesDao {
     @Query("SELECT * FROM dolt_log WHERE date BETWEEN :from AND :to ORDER BY date")
     suspend fun commitsBetween(from: String, to: String): List<CommitRow>
 
+    /**
+     * The timeline in true DATE order, root commit excluded. The engine
+     * mints "Initialize data repository" at db-creation time and refuses
+     * to amend it (probed: "cannot --amend: HEAD has no parent"), so a
+     * backdated timeline always carries one modern-dated root that would
+     * outrank every milestone under ORDER BY date — filter it out via
+     * its NULL parent in the ancestry table.
+     */
+    @Query(
+        """SELECT l.* FROM dolt_log l
+           JOIN dolt_commit_ancestors a ON a.commit_hash = l.commit_hash
+           WHERE a.parent_hash IS NOT NULL
+           ORDER BY l.date DESC"""
+    )
+    suspend fun timelineByDate(): List<CommitRow>
+
     /** A tag by exact name, or null. */
     @Query("SELECT * FROM dolt_tags WHERE tag_name = :name")
     suspend fun tagNamed(name: String): TagRow?
