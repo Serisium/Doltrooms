@@ -134,6 +134,37 @@ class DoltReadSurfaceProbeTest {
         )
     }
 
+    @Test
+    fun doltDiffStatChokesOnSqliteSequenceRows() {
+        // Engine limitation (0.11.33): when a diff window contains a
+        // change to sqlite_sequence (AUTOINCREMENT bookkeeping — created
+        // or updated by any insert into an AUTOINCREMENT table),
+        // iterating dolt_diff_stat's rows fails with the bare
+        // "SQL logic error" once the cursor reaches that row — no
+        // projection or WHERE rescues it. Windows without a
+        // sqlite_sequence change work. Room's autoGenerate=true maps to
+        // AUTOINCREMENT, so diff_stat windows over Room-insert commits
+        // are affected (docs/design/room-entity-dolt-primitives.md).
+        DoltLiteDriver().open(":memory:").use { conn ->
+            conn.execSQL("CREATE TABLE auto (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
+            conn.execSQL("INSERT INTO auto (name) VALUES ('a')")
+            conn.queryAll("SELECT dolt_commit('-Am', 'c1')")
+            conn.execSQL("INSERT INTO auto (name) VALUES ('b')")
+            conn.queryAll("SELECT dolt_commit('-Am', 'c2: sequence modified')")
+
+            val insertWindow = assertFailsWith<SQLiteException> {
+                conn.queryAll("SELECT table_name FROM dolt_diff_stat('HEAD~1', 'HEAD')")
+            }
+            assertTrue("SQL logic error" in insertWindow.message.orEmpty(), "actual: ${insertWindow.message}")
+
+            conn.execSQL("UPDATE auto SET name = 'z' WHERE id = 1")
+            conn.queryAll("SELECT dolt_commit('-Am', 'c3: update only')")
+            val updateWindow =
+                conn.queryAll("SELECT table_name, rows_modified FROM dolt_diff_stat('HEAD~1', 'HEAD')")
+            assertEquals(listOf("auto"), updateWindow.map { it["table_name"] })
+        }
+    }
+
     // ── Views over dolt system tables ──────────────────────────────────
 
     @Test
