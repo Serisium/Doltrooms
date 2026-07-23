@@ -22,7 +22,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - name: Install NDK (pinned in gradle/libs.versions.toml)
         run: sdkmanager "ndk;28.2.13676358"
       - uses: gradle/actions/setup-gradle@v6
@@ -75,7 +75,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - name: Install NDK (pinned in gradle/libs.versions.toml)
         run: sdkmanager "ndk;28.2.13676358"
       - uses: gradle/actions/setup-gradle@v6
@@ -118,7 +118,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - name: Install NDK (pinned in gradle/libs.versions.toml)
         run: sdkmanager "ndk;28.2.13676358"
       - uses: gradle/actions/setup-gradle@v6
@@ -157,7 +157,7 @@ jobs:
       # The arm64 macOS images ship no Android SDK, but even configuring
       # these builds needs one (the androidLibrary targets). No NDK here —
       # no Android compile tasks run in this job.
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v6
