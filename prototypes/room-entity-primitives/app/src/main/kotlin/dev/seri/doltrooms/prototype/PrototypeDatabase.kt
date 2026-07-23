@@ -4,13 +4,14 @@ import androidx.room3.Database
 import androidx.room3.RoomDatabase
 
 @Database(
-    entities = [Fruittie::class],
+    entities = [Fruittie::class, DoltEvent::class],
     views = [Branch::class],
     version = 1,
     exportSchema = false,
 )
 abstract class PrototypeDatabase : RoomDatabase() {
     abstract fun doltPrimitivesDao(): DoltPrimitivesDao
+    abstract fun doltPropQueriesDao(): DoltPropQueriesDao
 }
 
 /**
