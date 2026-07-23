@@ -140,6 +140,31 @@ upgrade:
 - AUTOINCREMENT bookkeeping (`sqlite_sequence`) shows up as a changed
   table in `dolt_status` and diffs alongside user tables.
 
+Further probes (0.11.33, 2026-07-22, via the jvmTest
+`BackroomsProductionFixture` seed-data work):
+
+- **`dolt_commit('--date', '<ISO-8601>', '-Am', msg)` is supported**
+  (as in Dolt-proper): the commit is stamped with the given timestamp
+  and `dolt_log.date` echoes it (`2023-02-06T12:00:00` →
+  `2023-02-06 12:00:00`).
+- **Tags:** `dolt_tag(name, '-m', msg)` works; `dolt_tags` = tag_name,
+  tag_hash, tagger, email, date, message. Creating a tag does not dirty
+  the working tree.
+- **A resolved conflicted merge commits with a SINGLE parent.** After
+  the explicit-transaction recipe (resolve → `COMMIT` → `dolt_commit`),
+  the resulting commit's only parent is the pre-merge head — the merged
+  branch's head never enters the ancestry (`dolt_log`,
+  `dolt_commit_ancestors`); only its row data lands. The same holds when
+  `dolt_commit` runs inside the still-open transaction. Contrast: a
+  CLEAN three-way merge does create a two-parent merge commit.
+- Row-level conflict resolution works as documented: `UPDATE` the target
+  table to the reconciled values, then `DELETE FROM
+  dolt_conflicts_<table>`; mixing that with a wholesale
+  `dolt_conflicts_resolve` on another conflicted table in the same
+  transaction is fine.
+- `dolt_commit_ancestors` exists as a repo-wide table: commit_hash,
+  parent_hash (NULL for the root), parent_index.
+
 ## Implication for Room usage
 
 Because everything is `SELECT`-shaped, version control is reachable
