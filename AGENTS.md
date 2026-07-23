@@ -69,10 +69,16 @@ decision as a new iteration.
   links in the other docs (`AGENTS.md`, `ARCHITECTURE.md`,
   `.agents/skills/`) that point at what you changed. A dangling `§`
   or renamed file reference is a bug.
-- **Branch and PR flow:** day-to-day work happens on `develop` or
-  feature branches; PRs target `main`. Keep commits small and
-  single-topic; never commit `build/`, `.gradle/`, `.kotlin/`, or
-  `.idea/` content. Do not commit or push without being asked.
+- **Branch and PR flow:** day-to-day work happens on branches named
+  `feature/<desc>`, `fix/<desc>`, `docs/<desc>`, or `chore/<desc>`
+  (kebab-case; agent branches use the same categories — never a
+  `claude/` or other agent-specific prefix). PRs target `develop`;
+  `main` only receives `develop → main` release PRs, merged with a
+  merge commit so `main` stays an ancestor of `develop`. Both
+  branches are protected by a ruleset: no direct pushes — every
+  change lands via a PR with all CI checks green. Keep commits small
+  and single-topic; never commit `build/`, `.gradle/`, `.kotlin/`,
+  or `.idea/` content. Do not commit or push without being asked.
 - Build/test loop: `./gradlew build`, tests
   via `./gradlew :library:allTests` (JVM/native) — Android host tests
   run under `:library:testAndroidHostTest`.
