@@ -181,10 +181,16 @@ Probed by `library/src/jvmTest/.../dolt/DoltReadSurfaceProbeTest.kt`
   parent_hash, parent_index`) IS present and repo-wide (covers all
   branches), so a recursive CTE from `dolt_branches.hash` can walk any
   ref's hash chain.
-- **`dolt_diff_stat(from, to)` is a parameterized TVF** (refs bindable),
-  columns `table_name, rows_unmodified, rows_added, rows_deleted,
-  rows_modified, cells_added, cells_deleted, cells_modified,
-  old_row_count, new_row_count, old_cell_count, new_cell_count`.
+- **`dolt_diff_stat(from, to)` is a parameterized TVF** (refs bindable,
+  `HEAD~1`-style ancestry refs included), columns `table_name,
+  rows_unmodified, rows_added, rows_deleted, rows_modified, cells_added,
+  cells_deleted, cells_modified, old_row_count, new_row_count,
+  old_cell_count, new_cell_count`. **Limitation:** iterating its result
+  fails with a bare "SQL logic error" once the cursor reaches a
+  `sqlite_sequence` change — i.e. whenever the window contains an
+  insert into an AUTOINCREMENT (Room `autoGenerate`) table; a
+  projection or WHERE does not rescue it, and stepping only the rows
+  before the sequence row can mask it. Update/delete-only windows work.
 - **More probed schemas:** `dolt_tags` = `tag_name, tag_hash, tagger,
   email, date, message`; `dolt_history_<t>` = table cols + `commit_hash,
   committer, commit_date` (no message); `dolt_blame_<t>` = pk cols +
