@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # Covers every pin in gradle/libs.versions.toml (kotlin, doltlite, room3,
+  # AGP, plugins). DoltLite bumps deliberately break storage-format
+  # assumptions (AGENTS.md "Pin versions deliberately") — treat its PRs as
+  # a prompt to re-verify, never an auto-merge.
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
