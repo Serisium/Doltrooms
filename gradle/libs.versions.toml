@@ -14,7 +14,7 @@ doltlite = "0.11.33"
 room3 = "3.0.0"
 androidxSqlite = "2.7.0"
 ksp = "2.3.10"
-kotlinxCoroutines = "1.10.2"
+kotlinxCoroutines = "1.11.0"
 # Instrumentation runner packaged into the androidDeviceTest APK — without
 # it the on-device instrumentation crashes with ClassNotFoundException
 # (first observed on the first real device run, 2026-07-21).
