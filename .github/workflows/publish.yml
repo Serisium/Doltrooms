@@ -3,9 +3,35 @@ on:
   release:
     types: [released, prereleased]
 jobs:
+  # A mistyped release must not ship a mismatched version to Maven
+  # Central: the tag (vX.Y.Z) must equal the version in
+  # library/build.gradle.kts before anything builds or signs.
+  verify-tag:
+    name: Verify tag matches library version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare release tag to library version
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' library/build.gradle.kts)"
+          echo "tag=$tag library-version=$version"
+          if [ -z "$version" ]; then
+            echo "::error::Could not extract version from library/build.gradle.kts"
+            exit 1
+          fi
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::Release tag '$tag' does not match library version 'v$version'"
+            exit 1
+          fi
   publish:
     name: Release build and publish
+    needs: verify-tag
     runs-on: macOS-latest
+    # Publishing secrets live in the 'release' environment, whose
+    # deployment policy only admits v* tags — no other ref can reach
+    # the signing key.
+    environment: release
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -22,4 +48,3 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
-
