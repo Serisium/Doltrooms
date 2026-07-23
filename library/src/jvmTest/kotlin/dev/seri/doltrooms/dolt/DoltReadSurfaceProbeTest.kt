@@ -165,6 +165,35 @@ class DoltReadSurfaceProbeTest {
         }
     }
 
+    @Test
+    fun rootCommitDateIsImmutableButAmendWorksElsewhere() {
+        // The engine mints "Initialize data repository" at db-creation
+        // time and its date CANNOT be changed: dolt_commit supports
+        // --amend (a fact this probe pins — Dolt-proper parity), but
+        // refuses on the root. Backdated timelines therefore always
+        // carry one modern-dated root; date-ordered reads should filter
+        // it via its NULL parent in dolt_commit_ancestors.
+        DoltLiteDriver().open(":memory:").use { conn ->
+            conn.execSQL("CREATE TABLE lore (id INTEGER PRIMARY KEY, note TEXT)")
+            val rootAmend = assertFailsWith<SQLiteException> {
+                conn.queryAll(
+                    "SELECT dolt_commit('-A', '--amend', '--date', '2019-05-13T12:00:00', '-m', 'lore epoch')"
+                )
+            }
+            assertTrue("HEAD has no parent" in rootAmend.message.orEmpty(), "actual: ${rootAmend.message}")
+
+            // Non-root commits amend fine, including a rewritten --date.
+            conn.queryAll("SELECT dolt_commit('-Am', 'first draft')")
+            conn.execSQL("INSERT INTO lore VALUES (1, 'original 4chan thread')")
+            conn.queryAll(
+                "SELECT dolt_commit('-A', '--amend', '--date', '2019-05-13T12:00:00', '-m', 'The Backrooms: lore epoch')"
+            )
+            val log = conn.queryAll("SELECT date, message FROM dolt_log")
+            assertEquals("2019-05-13 12:00:00", log.first()["date"])
+            assertEquals("The Backrooms: lore epoch", log.first()["message"])
+        }
+    }
+
     // ── Views over dolt system tables ──────────────────────────────────
 
     @Test
