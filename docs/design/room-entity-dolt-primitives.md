@@ -1,330 +1,119 @@
-# Design: Entity-grade Dolt primitives for Room 3
+# Design: Entity-grade Dolt primitives for Room 3 — decisions
 
-**Status: DESIGN with working prototype — 2026-07-22.** Human-opened
-exploration (Seri, 2026-07-22); pre-production, so breaking existing
-contracts is allowed. Complements `docs/design/vcs-interface-draft.md`
-(the writer-side git-verb facade): this document covers the READ path —
-making Dolt's system tables, TVFs, and diffs consumable through ordinary
-verified `@Query` SQL with typed results and Room's coroutine machinery.
+**Status: DECIDED, prototype-proven — 2026-07-23.** Read path only;
+writer verbs stay on `DoltDatabase` (D10). Evidence lives in the
+runnable suites: `prototypes/room-entity-primitives/` (verifier shim +
+23 tests), `library/src/jvmTest/.../DoltReadSurfaceProbeTest.kt` (15
+pinned engine facts), `BackroomsEpochSeedTest`. The exploration record
+(approach comparison, per-query matrix) is in this file's git history.
 
-All engine facts below were probed at the DoltLite 0.11.33 pin; all Room
-facts against room3-compiler 3.0.0. Evidence lives in two committed,
-runnable places:
+## The decision
 
-- `library/src/jvmTest/.../dolt/DoltReadSurfaceProbeTest.kt` — the
-  engine-fact probes (11 tests).
-- `prototypes/room-entity-primitives/` — the working prototype: a
-  verifier shim + a DAO whose target queries compile **with verification
-  on** and pass 10 runtime tests on DoltLite
-  (`cd prototypes/room-entity-primitives && ../../gradlew :app:test`).
+End users write ordinary verified `@Query`/`@DatabaseView` SQL against
+Dolt's read surface and get compile-time verification, typed POJOs,
+`suspend`, and `Flow`. This is delivered by swapping Room's
+verification engine to DoltLite via a KSP-classpath artifact, plus a
+small set of library-shipped types and recipes.
 
-## 1. Recommendation (up front)
+## Decided objects
 
-**Ship approach D — a `doltrooms-verifier` artifact for the consumer's
-KSP classpath that swaps Room's compile-time verification database from
-stock SQLite to DoltLite — layered with the small amount of B
-(`@RawQuery` builders) that per-table TVF naming forces, and library-
-shipped row types (the POJO half of A).** With the shim on the processor
-classpath, end users write ordinary `@Query`/`@DatabaseView` SQL against
-`dolt_branches`, `dolt_tags`, `dolt_log`, `dolt_status`, `dolt_remotes`,
-`dolt_commit_ancestors`, `dolt_at_<table>(ref)`,
-`dolt_diff_<table>(from,to)`, `dolt_history_<table>` … and get real
-compile-time verification (bad table/column names fail the build with
-DoltLite's own error text), typed POJOs, `suspend`, and — within the
-invalidation limits of §6 — `Flow`.
+### 1. `doltrooms-verifier` — the verification artifact
 
-The prototype proves the full loop: 9 of the 10 target queries compile
-verified and run green (§5); the tenth (`PagingSource`) is an
-Android-only Room feature, not a dolt limitation.
+A host-JVM-only artifact shadowing xerial's `org.sqlite.JDBC`,
+`org.sqlite.SQLiteJDBCLoader`, and `org.sqlite.SQLiteConnection` with a
+JDBC facade over the public `DoltLiteDriver` (~200 lines; prototyped in
+`prototypes/room-entity-primitives/verifier-shim/`). It serves every
+KMP target (verification is host-side) and never ships in the app.
+Packages host natives (linux-x64, osx-arm64, osx-x64) from the pinned
+amalgamation (D9).
 
-## 2. Why plain `@Entity` cannot work (approach C — dead end)
+Behavioral contract (pinned from room3-compiler 3.0.0 bytecode; re-pin
+on Room upgrades):
+- `createConnection("jdbc:sqlite::memory:")` → `DoltLiteDriver().open(":memory:")`.
+- `executeUpdate` runs each entity/index/view DDL, then
+  `dolt_commit('-Am', …)` — per-table TVFs exist only for committed
+  tables.
+- `prepareStatement` maps `SQLiteException` → `SQLException` (the
+  compile error); metadata = column names from the prepared statement,
+  affinities from a step-once harvest (NULL affinity on empty results),
+  `getTableName` = null.
+- Connection failure prints a loud stderr banner before rethrowing
+  (Room otherwise disables verification silently).
 
-Two independent walls, both already established and re-confirmed:
+Consumer wiring:
 
-1. **Compile time:** Room's `DatabaseVerifier` prepares every `@Query`
-   against in-memory *stock* SQLite via xerial JDBC; dolt names fail
-   with "no such table/function". There is no global verification-skip
-   option and no externally-managed-entity opt-out.
-2. **Runtime:** Room's generated open delegate CREATEs every entity
-   table and validates its `PRAGMA table_info` (including a required
-   `@PrimaryKey`). A `@Entity(tableName = "dolt_branches")` would
-   collide with the engine's virtual table and fail validation.
+```kotlin
+ksp("androidx.room3:room3-compiler:3.0.0")
+ksp("dev.seri.doltrooms:doltrooms-verifier:<version>")
+configurations.matching { it.name.startsWith("ksp") }.configureEach {
+    exclude(group = "org.xerial", module = "sqlite-jdbc")
+}
+```
 
-Approach C would need two upstream Room features (verification engine
-injection + externally-managed entities). Approach D delivers the first
-of those *without* forking Room, because the verifier's engine binding
-is a loose, name-based JDBC contract (§4). The second stays out of
-reach — dolt system tables can never be `entities = [...]` members —
-but §5 shows that matters less than expected: plain POJOs + views cover
-every read shape except direct invalidation tracking.
+Canary (documented consumer recipe): temporarily attach a DAO with a
+deliberately bad query; the build must fail with a DoltLite-sourced
+error. Proves verification is live.
 
-## 3. The approaches
+### 2. Library row types and query builders (`commonMain`)
 
-| | Mechanism | Verification | User experience |
-|---|---|---|---|
-| **A** | Library ships `@Dao` interfaces annotated `@SkipQueryVerification` + `@ColumnInfo` POJOs | None (skipped) | Canned queries only — consumers cannot write their own dolt SQL verified |
-| **B** | `@RawQuery(observedEntities=[...])` + library `RoomRawQuery` builders | Never verified (by design) | Typed results + Flow; SQL is opaque strings |
-| **C** | Plain `@Entity` over dolt tables | n/a | Dead end (§2) |
-| **D** | `org.sqlite` JDBC facade over DoltLite on the KSP classpath | **Full, native** — dolt SQL verifies like ordinary schema | Ordinary `@Query`/`@DatabaseView`; compile errors for typos in dolt SQL |
+Typed rows for the system tables — `BranchRow`, `CommitRow`, `TagRow`,
+`StatusRow`, `RemoteRow`, `DiffStatRow`, history rows — and
+`RoomRawQuery` builders for the per-table TVFs, whose table name is
+part of the function NAME and cannot bind: `tableDiffQuery(table,
+from, to)`, plus `tableAtQuery`/`tableHistoryQuery` siblings.
+Deliberate ABI event (D11, `updateLegacyAbi`).
 
-A and B remain useful *under* D: A's POJO row types (`BranchRow`,
-`CommitRow`, …) should ship in the library regardless of who verifies
-the SQL, and B is still *required* for exactly one shape — the
-per-table TVFs (`dolt_diff_<table>`), whose table name is part of the
-function NAME and cannot bind as a parameter, so a DAO cannot express
-"diff any table" as one `@Query`. (A fixed table's diff *can* be a
-verified `@Query` — target query 8 embeds
-`dolt_diff_fruittie('HEAD~1','HEAD')` literally.)
+### 3. `DoltEvent` — the invalidation anchor
 
-## 4. Approach D: the verifier shim
+Version-control verbs perform no DML, so no Room flow can observe them
+directly. Decision: a one-row entity bumped by the library's
+writer-side verbs after each vcs operation. Flow recipes on top:
 
-### 4.1 The contract (pinned from room3-compiler 3.0.0 bytecode)
-
-`DatabaseVerifier` binds its engine by *class name*, not by
-`DriverManager` URL resolution. The complete surface it touches:
-
-- static init: `org.sqlite.SQLiteJDBCLoader.initialize()`,
-  `org.sqlite.JDBC.isValidURL("jdbc:sqlite::memory:")`,
-  `DriverManager.getDriver("jdbc:sqlite:")` falling back to
-  `new org.sqlite.JDBC()`; warns unless the resolved driver is
-  `instanceof org.sqlite.JDBC`.
-- `create()`: `org.sqlite.JDBC.createConnection("jdbc:sqlite::memory:",
-  Properties)` — a **static** call whose bytecode descriptor returns
-  `org/sqlite/SQLiteConnection`, so that exact class must exist. Any
-  `Throwable` here is swallowed into the
-  `CANNOT_CREATE_VERIFICATION_DATABASE` warning (verification silently
-  off — §4.4).
-- schema setup: `connection.createStatement().executeUpdate(ddl)` for
-  every entity `CREATE TABLE`, every index, and every `@DatabaseView`'s
-  `CREATE VIEW`.
-- `analyze(sql)`: `connection.prepareStatement(sql)` — an
-  `SQLException` here becomes the "There is a problem with the query"
-  **compile error** — then `getMetaData()` (never executes the
-  statement): `getColumnCount`, `getColumnName(i)`,
-  `getColumnTypeName(i)` (matched against affinity names
-  `NULL/TEXT/INTEGER/REAL/BLOB`; anything else falls back to NULL
-  affinity), `getTableName(i)`.
-
-That is the whole engine dependency: three named classes, six JDBC
-interface methods, four metadata getters.
-
-### 4.2 The shim (prototyped, working)
-
-`prototypes/room-entity-primitives/verifier-shim/` implements the
-contract over the **public** `DoltLiteDriver` (androidx.sqlite API) —
-no new native code, no touching the library's internals:
-
-- `org.sqlite.JDBC`, `org.sqlite.SQLiteJDBCLoader`,
-  `org.sqlite.SQLiteConnection` shadow xerial's classes; the big
-  `java.sql` interfaces are `java.lang.reflect.Proxy` handlers, so only
-  the ~10 methods Room calls are implemented (anything else throws
-  `UnsupportedOperationException` loudly).
-- `createConnection` → `DoltLiteDriver().open(":memory:")` — probed
-  fact: `:memory:` DoltLite supports the full dolt_* surface.
-- **Commit-after-DDL:** after every `executeUpdate`, the shim runs
-  `SELECT dolt_commit('-Am', 'verifier schema')`. Required — DoltLite
-  materializes the generated per-table TVFs (`dolt_at_<t>`,
-  `dolt_diff_<t>`, …) only for committed tables; without it, target
-  queries 5/8 fail verification with "no such table: dolt_at_fruittie"
-  (observed).
-- **Metadata:** column names come from the prepared statement
-  (`sqlite3_column_name` needs no execution). androidx.sqlite exposes
-  no decltype, so the shim steps once inside try/catch and reads the
-  first row's storage classes for affinities; empty results (all
-  ordinary user-table queries — the verify repo's tables are empty)
-  report NULL affinity, which Room treats as "unknown" exactly as it
-  does xerial's expression columns. Observed: **zero** Room warnings on
-  a clean build of the whole prototype DAO. `getTableName` returns null
-  ("unknown origin"); consequence: Room resolves multimap column
-  ambiguity by parsing, and the disjoint-column multimap (query 9)
-  works; heavily-ambiguous multimaps may need `@MapColumn` (untested).
-- Consumer wiring (deterministic, not classpath-ordering-dependent):
-
-  ```kotlin
-  dependencies {
-      ksp("androidx.room3:room3-compiler:3.0.0")
-      ksp("dev.seri.doltrooms:doltrooms-verifier:<version>")   // the shim
-  }
-  configurations.matching { it.name.startsWith("ksp") }.configureEach {
-      exclude(group = "org.xerial", module = "sqlite-jdbc")     // exactly one org.sqlite
-  }
-  ```
-
-  (If a project runs other KSP processors that need xerial, scope the
-  exclude to the Room-bearing configurations instead.)
-
-### 4.3 Why this serves every KMP target
-
-Verification is a *host* concern: KSP compilations for all targets
-(jvm, android, iOS, linux) run room3-compiler on the host JVM, so one
-host-JVM shim serves the whole target matrix. The shim needs a
-host-loadable DoltLite: the library jar packages `natives/linux-x64`
-(covers Linux dev/CI hosts); on macOS the prototype borrows the
-`compileDoltliteJniHost` dylib into the shim's resources. A shipped
-`doltrooms-verifier` artifact must package host natives for
-linux-x64, osx-arm64, osx-x64 (the D9 one-pin rule extends: same
-amalgamation, same flags). The KSP daemon re-runs processors in fresh
-classloaders; the loader's extract-to-fresh-temp-file pattern survives
-this (observed across many KSP runs in one daemon).
-
-### 4.4 The silent-fallback risk, mitigated
-
-If the shim's connection fails, Room *silently disables verification*
-(warning `CANNOT_CREATE_VERIFICATION_DATABASE`) and everything
-compiles unchecked. Mitigations, all prototyped:
-
-1. The shim prints a loud stderr banner before rethrowing, so the
-   condition is visible in build logs.
-2. **Canary recipe** (negative control): attach a DAO with a deliberate
-   error and confirm the build fails. Recorded 2026-07-22 —
-   attaching the prototype's `CanaryDao` produces:
-
-   ```
-   e: [ksp] ...: There is a problem with the query: Error code: 1, message: no such table: table_that_does_not_exist
-   e: [ksp] ...: There is a problem with the query: Error code: 1, message: no such column: definitely_not_a_column
-   ```
-
-   Real DoltLite error text, sourced through the shim. The shipped
-   artifact's docs should carry this recipe; a library-side compile
-   test (expected-failure KSP invocation) can automate it later.
-3. `@Query("SELECT dolt_version()")` compiles **only** under an active
-   shim (stock SQLite rejects it) — a cheap positive control, though it
-   cannot distinguish "shim active" from "verification disabled".
-
-### 4.5 Risks
-
-- **Internal contract.** The `org.sqlite.*` binding is room3-compiler
-  *implementation*, pinned here from 3.0.0 bytecode. A Room upgrade can
-  change it (Room 2.7.2's verifier is the same shape, so it is stable in
-  practice, but it is not API). The canary turns a broken contract into
-  a visible failure, and the shim itself is ~200 lines to re-pin.
-- **Verification engine = DoltLite ≠ stock SQLite.** Under the shim,
-  *ordinary* queries are also verified against DoltLite. That is
-  arguably more correct for this project (the runtime engine IS
-  DoltLite), and the library's conformance suite keeps the two engines'
-  SQL surfaces aligned — but a stock-SQLite-only construct DoltLite
-  rejects would now fail verification. None are known
-  (`KnownDivergenceTest` tracks the divergence set).
-- **Step-once execution.** Harvesting affinities executes the query
-  against the throwaway verify repo. Write-shaped dolt calls
-  (`dolt_commit(...)`) in a `@Query` would execute there — but those
-  belong on the writer connection by design (D10), not in DAOs, and
-  step errors are swallowed (prepare success is the verification
-  signal). Documented, acceptable.
-
-## 5. Target-query matrix (all verdicts empirical)
-
-Compile = verified `@Query` compiles under the shim. Runtime = test in
-`DoltPrimitivesDaoTest` green on DoltLite.
-
-| # | Query | Verdict | Notes |
-|---|---|---|---|
-| 1 | `dolt_branches WHERE name LIKE :p` → `List<BranchRow>` | ✅ compile ✅ runtime | Pure win for D; A could only can it |
-| 2 | branches ∪ `dolt_tags` ref search → `List<RefRow>` | ✅ ✅ | `dolt_tags` schema probed: `tag_name, tag_hash, tagger, email, date, message` |
-| 3 | `dolt_log(:ref)` per-ref history | ❌ **engine gap** | `dolt_log` takes 0 args at 0.11.33 ("too many arguments on dolt_log() - max 0"). No approach can express it. Amended substitutes, both ✅✅: current-branch `dolt_log` → `List<CommitRow>`; per-ref **hash chain** via recursive CTE over repo-wide `dolt_commit_ancestors` (metadata for off-branch commits is unreachable — no `dolt_commits` table either; upstream feature request is the real fix) |
-| 4 | per-table diff Flow via `@RawQuery(observedEntities=[Fruittie])` | ✅ ✅ | Table name is part of the TVF NAME → RawQuery is *required*, not a fallback; library ships the `RoomRawQuery` builder; Flow re-emits on entity DML (tested) |
-| 5 | `dolt_at_fruittie(:ref)` → `List<Fruittie>` (real entity type) | ✅ ✅ | Needs the shim's commit-after-DDL; refs bind as parameters |
-| 6 | `Flow<List<BranchRow>>` over `dolt_branches` | ✅ compile ❌ runtime | `IllegalArgumentException: There is no table with name dolt_branches` from the InvalidationTracker at collection. See §6 |
-| 7 | `@DatabaseView("SELECT … FROM dolt_branches")` + verified query on the view | ✅ ✅ | D's flagship: view DDL verifies AND runs (Room creates it at open; DoltLite accepts views over system tables — probed). Caveats §6.2 |
-| 8 | JOIN `dolt_log` × `fruittie` with embedded `dolt_diff_fruittie('HEAD~1','HEAD')` | ✅ ✅ | Cross-domain verified SQL, subquery TVF with literal refs |
-| 9 | multimap `Map<BranchRow, List<CommitRow>>` | ✅ ✅ | Works with disjoint column names despite `getTableName` = null; ambiguous multimaps may need `@MapColumn` |
-| 10 | `PagingSource<Int, CommitRow>` | ❌ platform gap | Room 3.0.0: "Only suspend functions are allowed in DAOs declared in source sets targeting non-Android platforms" — PagingSource is Android-only. The query itself verifies; expected to work in an Android source set (unvalidated — needs instrumentation) |
-| + | `dolt_status`, `dolt_remotes`, `SELECT dolt_version()` | ✅ ✅ | `sqlite_sequence` appears in status alongside user tables (AUTOINCREMENT bookkeeping) |
-| ++ | Second wave (`DoltPropQueriesDao`, all ✅✅): author filter (`WHERE committer`), branch-prefix `LIKE`, date-window `BETWEEN` over `--date`-stamped commits, tag lookup, merge-commit detection via ancestry `GROUP BY/HAVING`, `dolt_history_<t>` row versions, `dolt_diff_stat(:from,:to)` | ✅ ✅ | Two data-shape lessons: backdated (`--date`) commits make `ORDER BY date` misleading (the engine root keeps its creation date; rely on `dolt_log`'s topological order), and `dolt_diff_stat` fails with "SQL logic error" when the window contains a `sqlite_sequence` change — i.e. any insert into a Room `autoGenerate` table (probe-pinned; update/delete-only windows work) |
-
-Under approaches A/B alone: 1, 2, 3', 5, 8 become canned library
-functions (no user-authored verified SQL), 6/7/9 are impossible (7
-cannot even compile — `@DatabaseView` has no skip-verification escape),
-4 is unchanged. That contrast is the case for D.
-
-## 6. Reactivity and runtime semantics
-
-### 6.1 What invalidation can and cannot see
-
-Room invalidation is trigger-based on *declared entity tables*; probed:
-`CREATE TEMP TRIGGER` works on user tables under DoltLite but is
-rejected on dolt system tables. Consequences:
-
-- `Flow` over dolt system tables directly (query 6) fails at runtime —
-  the tracker refuses unknown table names.
-- `@RawQuery(observedEntities=[UserEntity])` Flows re-emit on DML to
-  those entities (query 4, tested) — the right tool for diff/status
-  views that should track *data* changes.
-- Version-control verbs (commit/checkout/merge) perform no DML on user
-  tables → no trigger fires → **flows go stale across vcs operations**.
-  The fix is the **anchor pattern — prototyped and green** (second
-  wave, `DoltPropQueriesDao` + `DoltPropQueriesTest`): a one-row
-  `DoltEvent` entity is bumped (ordinary DML) after each vcs verb, and
-  dolt-reading flows are declared
+- Branches/tags/status (always-fresh surfaces):
   `@RawQuery(observedEntities = [DoltEvent::class])` with fixed SQL.
-  Both `Flow<List<CommitRow>>` (new commit → new emission) and
-  `Flow<List<BranchRow>>` (new branch → new emission) pass. The
-  seemingly-nicer verified form — a plain `@Query` Flow JOINing the
-  anchor into the dolt SQL — compiles but still fails at collection:
-  Room derives the observed set from the parsed FROM clause, so it asks
-  the tracker to observe `dolt_log` too (pinned by
-  `verifiedJoinFlowStillFailsAtRuntime`). `@RawQuery` is the right
-  tool, with the anchor bump folded into the library's writer-side
-  verbs at productization.
+- Commit log: `dao.commitTicks().map { dolt.log() }` — a verified
+  `@Query` flow over the anchor mapped through the writer-connection
+  helper. Required because reader connections freeze their
+  `dolt_log`/`dolt_history` walk at open-time (constraint 4 below);
+  `@Transaction` does not reroute flows to the writer (verified).
 
-  **File-database caveat (frozen session heads).** Moving the prototype
-  tests onto a file-backed seed (real 4-reader/1-writer pool) exposed
-  an engine fact the in-memory single-connection pool masks: a
-  connection's `dolt_log`/`dolt_history_<t>` walk from the session head
-  resolved at connection OPEN and never refresh (not on statements, not
-  on transaction boundaries, not on same-branch re-checkout — only a
-  checkout away-and-back re-resolves; probed in
-  `DoltReadSurfaceProbeTest.commitGraphWalksFreezeAtTheSessionHead`).
-  Data, `dolt_branches`, `dolt_commit_ancestors`, and `dolt_at_<t>`
-  always read fresh, so the anchored `dolt_branches` flow works
-  everywhere — but an anchored `dolt_log` flow re-emits stale history
-  once the pool's readers predate the commit (`@Transaction` sets
-  `inTransaction=true` yet does not reroute to the writer — verified
-  ineffective). The recipe that works on every pool shape: a verified
-  `@Query` flow over the anchor itself
-  (`commitTicks(): Flow<List<Long>>`) mapped through the writer-side
-  `DoltDatabase.log()`, which is always fresh —
-  `dao.commitTicks().map { dolt.log() }` (tested on the file seed).
+### 4. The epoch seed
 
-### 6.2 Views are versioned schema
+`library/src/jvmTest/resources/dolt/backrooms-epoch-2019.db` (1148
+bytes): a database whose history begins 2019-05-13 12:00:00, minted
+under a pinned clock (recipe in `BackroomsEpochSeedTest`; re-mint on
+engine pin bumps). Standard seed for read-path tests; the Backrooms
+production fixture builds on top with fully date-coherent history.
 
-Probed: `CREATE VIEW` lands in `dolt_schemas` and **dirties the
-working tree**. So a `@DatabaseView` created by Room at first open
-leaves `dolt_status` non-empty until the next commit, and the view is
-part of per-branch schema — a branch created before the view existed
-lacks it after checkout. Consumer guidance (for USAGE.md when this
-ships): commit once after first open ("schema" commit), before
-branching.
+## Engine constraints the surface is shaped by (0.11.33, probe-pinned)
 
-## 7. Productization sketch (not started)
+1. No `dolt_log('<ref>')`, no `dolt_commits`: per-ref history is hash
+   chains only (recursive CTE over repo-wide `dolt_commit_ancestors`
+   from `dolt_branches.hash`); metadata needs the current branch or an
+   upstream feature.
+2. `dolt_diff_stat(from,to)` fails when the window contains a
+   `sqlite_sequence` change — i.e. inserts into Room `autoGenerate`
+   tables. Safe on update/delete-only windows.
+3. Root commit date is immutable (`--amend` refuses the root); the
+   ancestry-filtered `timelineByDate` query or an epoch seed handles
+   date-ordered reads.
+4. Reader connections freeze commit-graph walks (`dolt_log`,
+   `dolt_history_<t>`) at their open-time session head; data,
+   `dolt_branches`, `dolt_commit_ancestors`, `dolt_at_<t>(ref)` are
+   always fresh.
+5. `@DatabaseView` DDL lands in `dolt_schemas`, dirties the working
+   tree, and is versioned per-branch — consumers commit once after
+   first open, before branching.
+6. `PagingSource` DAO functions are Android-target-only in Room 3.0.0.
 
-1. New artifact **`doltrooms-verifier`** (host-JVM-only Gradle module):
-   the three `org.sqlite` classes + proxy handlers, packaged host
-   natives (linux-x64, osx-arm64, osx-x64) built from the pinned
-   amalgamation (D9 discipline). It never touches the app runtime
-   classpath. ~200 lines of Kotlin as prototyped.
-2. Library `commonMain` gains the row types (`BranchRow`, `CommitRow`,
-   `TagRow`, `StatusRow`, `RemoteRow`, …) and the `RoomRawQuery`
-   builders (`tableDiffQuery`, `tableAtQuery`, `tableHistoryQuery`) —
-   deliberate ABI event (D11, `updateLegacyAbi`).
-3. Whether the library also ships a canned `@Dao` (approach A) becomes
-   a UX choice, not a necessity; if shipped, its queries can be
-   *verified* in this repo's own build via the shim instead of carrying
-   `@SkipQueryVerification`.
-4. Docs: consumer wiring + canary recipe + §6 semantics.
-5. Test-first throughout (D7); the prototype's DAO tests seed the
-   suite.
+## Productization steps
 
-## 8. Open items
-
-- Upstream: request `dolt_log('<ref>')` / `dolt_commits` in DoltLite —
-  the one read shape (per-ref history with metadata) no design can
-  reach today (§5 row 3).
-- Validate query 10 (`PagingSource`) and the whole shim flow in the
-  `samples/codelab` Android build (host-side KSP is identical; runtime
-  paging is the open half).
-- Prototype the `dolt_events` invalidation anchor (§6.1).
-- Automate the canary as an expected-failure compile test.
-- If/when the Room pin moves, re-pin the §4.1 bytecode contract (a
-  10-minute javap pass; the shim fails loudly if a method goes
-  missing).
+1. Promote the shim into the `doltrooms-verifier` artifact with
+   packaged host natives.
+2. Land the row types + builders in `commonMain` (`updateLegacyAbi`).
+3. Fold the `DoltEvent` bump into `DoltDatabase`'s writer verbs.
+4. Docs: consumer wiring + canary + §constraints in USAGE.md.
+5. Automate the canary as an expected-failure compile test.
+6. Validate paging + the shim flow in the Android sample.
+7. Upstream requests: `dolt_log(ref)`/`dolt_commits`; `dolt_diff_stat`
+   sqlite_sequence fix; session-head refresh on statement boundaries.
