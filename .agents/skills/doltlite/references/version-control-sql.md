@@ -163,7 +163,46 @@ Further probes (0.11.33, 2026-07-22, via the jvmTest
   `dolt_conflicts_resolve` on another conflicted table in the same
   transaction is fine.
 - `dolt_commit_ancestors` exists as a repo-wide table: commit_hash,
-  parent_hash (NULL for the root), parent_index.
+  parent_hash (NULL for the root), parent_index — more in the
+  read-surface section below.
+
+## Read-surface probes (0.11.33, 2026-07-22)
+
+Probed by `library/src/jvmTest/.../dolt/DoltReadSurfaceProbeTest.kt`
+(committed, runnable) for the Room-entity design
+(`docs/design/room-entity-dolt-primitives.md`):
+
+- **`dolt_log` and `dolt_diff` take NO arguments** — Dolt-proper's
+  `dolt_log('<ref>')` / `dolt_diff(from,to,table)` table functions do
+  not exist ("too many arguments on dolt_log() - max 0"). `dolt_log`
+  reflects only the connection's current branch. **`dolt_commits` does
+  not exist either**, so per-ref history with commit metadata is
+  unreachable; `dolt_commit_ancestors` (columns `commit_hash,
+  parent_hash, parent_index`) IS present and repo-wide (covers all
+  branches), so a recursive CTE from `dolt_branches.hash` can walk any
+  ref's hash chain.
+- **`dolt_diff_stat(from, to)` is a parameterized TVF** (refs bindable),
+  columns `table_name, rows_unmodified, rows_added, rows_deleted,
+  rows_modified, cells_added, cells_deleted, cells_modified,
+  old_row_count, new_row_count, old_cell_count, new_cell_count`.
+- **More probed schemas:** `dolt_tags` = `tag_name, tag_hash, tagger,
+  email, date, message`; `dolt_history_<t>` = table cols + `commit_hash,
+  committer, commit_date` (no message); `dolt_blame_<t>` = pk cols +
+  `commit, commit_date, committer, email, message`;
+  `dolt_workspace_<t>` = `id, staged, diff_type, to_<col>…, from_<col>…`;
+  `dolt_schemas` = `type, name, fragment, extra, sql_mode`.
+- **`dolt_at_<t>(ref)`** returns exactly the table's own columns; the
+  ref binds as a parameter (`HEAD~1`, branch names, hashes).
+- **Per-table TVFs exist only for COMMITTED tables**: right after
+  `CREATE TABLE t`, `dolt_at_t` / `dolt_diff_t` are "no such table"
+  until a `dolt_commit`.
+- **Views over dolt system tables and TVFs work** (`CREATE VIEW v AS
+  SELECT ... FROM dolt_branches` / `... FROM dolt_at_t('HEAD')`), are
+  recorded in `dolt_schemas`, and **dirty the working tree** — schema
+  is versioned per-branch.
+- **Triggers**: `CREATE TEMP TRIGGER` works on user tables (Room's
+  invalidation machinery functions), but is rejected on dolt system
+  tables — they can never be observed directly.
 
 ## Implication for Room usage
 
