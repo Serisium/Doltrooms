@@ -10,7 +10,7 @@ jobs:
     name: Verify tag matches library version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compare release tag to library version
         run: |
           tag="${{ github.event.release.tag_name }}"
@@ -34,7 +34,7 @@ jobs:
     environment: release
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
