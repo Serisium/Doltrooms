@@ -23,7 +23,7 @@ androidxTestRunner = "1.7.0"
 # (https://github.com/detekt/detekt/issues/8865); alpha.3 is built
 # against Kotlin 2.3.21 and needs Gradle >= 9.3.1
 # (https://detekt.dev/docs/introduction/compatibility/).
-detekt = "2.0.0-alpha.3"
+detekt = "2.0.0-alpha.5"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
