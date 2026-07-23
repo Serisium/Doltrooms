@@ -20,10 +20,12 @@ kotlinxCoroutines = "1.11.0"
 # (first observed on the first real device run, 2026-07-21).
 androidxTestRunner = "1.7.0"
 # detekt 2 alpha: the 1.x line cannot read Kotlin 2.3 metadata
-# (https://github.com/detekt/detekt/issues/8865); alpha.3 is built
-# against Kotlin 2.3.21 and needs Gradle >= 9.3.1
-# (https://detekt.dev/docs/introduction/compatibility/).
-detekt = "2.0.0-alpha.3"
+# (https://github.com/detekt/detekt/issues/8865); alpha.5 is built
+# against Kotlin 2.4.0 / Gradle 9.5.1 / AGP 9.2.1
+# (https://detekt.dev/docs/introduction/compatibility/) and is the
+# first alpha aligned with Kotlin 2.4.x — keep detekt >= alpha.5
+# when/before the Kotlin 2.4 bump lands.
+detekt = "2.0.0-alpha.5"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
