@@ -194,6 +194,66 @@ class DoltReadSurfaceProbeTest {
         }
     }
 
+    @Test
+    fun commitGraphWalksFreezeAtTheSessionHead() {
+        // Cross-connection visibility on a FILE database (0.11.33):
+        // table data, dolt_branches, dolt_commit_ancestors, and
+        // dolt_at_<t>(ref) always read FRESH state — but dolt_log and
+        // dolt_history_<t> walk from the session head resolved at
+        // connection OPEN (or checkout) and never refresh on their own:
+        // not on new statements, not on transaction boundaries, not on a
+        // same-branch re-checkout. Only a checkout AWAY and back (or a
+        // new connection) re-resolves the head. Room's reader pool never
+        // checks out, so DAO reads of dolt_log/dolt_history on file
+        // databases are frozen at each reader's open time — route
+        // commit-log reads through the writer connection instead
+        // (docs/design/room-entity-dolt-primitives.md §6).
+        val path = java.io.File.createTempFile("stale-probe", ".db").also { it.delete() }.absolutePath
+        val driver = DoltLiteDriver()
+        val a = driver.open(path)
+        val b: SQLiteConnection
+        try {
+            a.execSQL("CREATE TABLE item (id INTEGER PRIMARY KEY, name TEXT, count INTEGER)")
+            a.execSQL("INSERT INTO item VALUES (1, 'apple', 3)")
+            a.queryAll("SELECT dolt_commit('-Am', 'c1')")
+            b = driver.open(path)
+        } catch (t: Throwable) {
+            a.close()
+            throw t
+        }
+        try {
+            assertEquals(2, b.queryAll("SELECT message FROM dolt_log").size)
+            a.execSQL("INSERT INTO item VALUES (2, 'pear', 1)")
+            a.queryAll("SELECT dolt_commit('-Am', 'c2')")
+
+            assertEquals(3, a.queryAll("SELECT message FROM dolt_log").size, "writer sees its commit")
+            // B's DATA and refs are fresh...
+            assertEquals(2, b.queryAll("SELECT * FROM item").size)
+            assertEquals(
+                a.queryAll("SELECT hash FROM dolt_branches"),
+                b.queryAll("SELECT hash FROM dolt_branches"),
+            )
+            assertEquals(3, b.queryAll("SELECT * FROM dolt_commit_ancestors").size)
+            // ...but its commit-graph walk is frozen at c1:
+            assertEquals(2, b.queryAll("SELECT message FROM dolt_log").size)
+            b.execSQL("BEGIN")
+            b.queryAll("SELECT 1")
+            b.execSQL("COMMIT")
+            assertEquals(2, b.queryAll("SELECT message FROM dolt_log").size, "txn boundary: no refresh")
+            b.queryAll("SELECT dolt_checkout('main')")
+            assertEquals(2, b.queryAll("SELECT message FROM dolt_log").size, "same-branch checkout: no-op")
+
+            // A round-trip checkout re-resolves the session head.
+            a.queryAll("SELECT dolt_branch('side')")
+            b.queryAll("SELECT dolt_checkout('side')")
+            b.queryAll("SELECT dolt_checkout('main')")
+            assertEquals(3, b.queryAll("SELECT message FROM dolt_log").size, "round-trip refreshes")
+        } finally {
+            a.close()
+            b.close()
+        }
+    }
+
     // ── Views over dolt system tables ──────────────────────────────────
 
     @Test

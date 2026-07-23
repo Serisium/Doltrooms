@@ -1,9 +1,7 @@
 package dev.seri.doltrooms.prototype
 
-import androidx.room3.Room
 import androidx.room3.useWriterConnection
 import dev.seri.doltrooms.dolt.DoltDatabase
-import dev.seri.doltrooms.driver.DoltLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
@@ -23,10 +21,8 @@ import kotlin.test.assertTrue
  */
 class DoltPrimitivesDaoTest {
 
-    private fun db(): PrototypeDatabase =
-        Room.inMemoryDatabaseBuilder<PrototypeDatabase>()
-            .setDriver(DoltLiteDriver())
-            .build()
+    /** Seeded from the epoch database — history begins 2019-05-13. */
+    private fun db(): PrototypeDatabase = epochSeededDatabase()
 
     private suspend fun PrototypeDatabase.seedAndCommit(): String {
         doltPrimitivesDao().insert(Fruittie(name = "Apple", fullName = "Apple fruit", calories = "52"))

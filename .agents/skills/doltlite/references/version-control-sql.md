@@ -226,6 +226,16 @@ Probed by `library/src/jvmTest/.../dolt/DoltReadSurfaceProbeTest.kt`
 - **Triggers**: `CREATE TEMP TRIGGER` works on user tables (Room's
   invalidation machinery functions), but is rejected on dolt system
   tables — they can never be observed directly.
+- **Commit-graph walks freeze at the session head** (file databases,
+  cross-connection): `dolt_log` and `dolt_history_<t>` resolve the
+  session's head at connection OPEN (or checkout) and do NOT refresh on
+  new statements, transaction boundaries, or a same-branch re-checkout
+  — only a checkout away-and-back (or a fresh connection) re-resolves.
+  Table data, `dolt_branches`, `dolt_commit_ancestors`, and
+  `dolt_at_<t>(ref)` always read fresh state. Implication: Room's
+  reader pool (which never checks out) serves permanently stale
+  `dolt_log`/`dolt_history` on file databases — route commit-log reads
+  through the writer connection (`DoltDatabase.log()`).
 
 ## Implication for Room usage
 

@@ -27,8 +27,27 @@ interface DoltPropQueriesDao {
     // Room re-runs the query whenever dolt_event changes; the SQL itself
     // reads dolt_log. Callers pass liveCommitsQuery() below (the SQL is
     // fixed — RawQuery is used purely for its observedEntities escape).
+    //
+    // SINGLE-CONNECTION DATABASES ONLY (e.g. :memory:). On a file
+    // database Room's reader pool serves the (re-)queries, and a reader
+    // connection's dolt_log/dolt_history walk is FROZEN at the session
+    // head resolved when that connection opened (probed:
+    // DoltReadSurfaceProbeTest; @Transaction sets inTransaction=true but
+    // does not reroute to the writer — verified ineffective). For
+    // file databases use [commitTicks] mapped through the writer-side
+    // DoltDatabase.log(), which is always fresh.
     @RawQuery(observedEntities = [DoltEvent::class])
     fun liveCommits(query: RoomRawQuery): Flow<List<CommitRow>>
+
+    /**
+     * The anchor's tick stream — an ordinary VERIFIED flow over a real
+     * entity table, so it works on every pool shape. Map it through
+     * `DoltDatabase.log()` (writer connection, always fresh) for a
+     * commit-list flow that survives the reader pool's frozen-log
+     * semantics: `dao.commitTicks().map { dolt.log() }`.
+     */
+    @Query("SELECT tick FROM dolt_event")
+    fun commitTicks(): Flow<List<Long>>
 
     // ── Reactive: branch list ──────────────────────────────────────────
     @RawQuery(observedEntities = [DoltEvent::class])
