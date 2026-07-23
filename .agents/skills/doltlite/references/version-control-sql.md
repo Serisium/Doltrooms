@@ -147,6 +147,13 @@ Further probes (0.11.33, 2026-07-22, via the jvmTest
   (as in Dolt-proper): the commit is stamped with the given timestamp
   and `dolt_log.date` echoes it (`2023-02-06T12:00:00` →
   `2023-02-06 12:00:00`).
+- **`--amend` is supported too** (with staged changes; `--date` may be
+  rewritten in the same call) — but it REFUSES on the root commit
+  ("cannot --amend: HEAD has no parent (initial commit)"), so the
+  engine-minted "Initialize data repository" commit keeps its
+  db-creation date forever. Backdated timelines should exclude it from
+  date-ordered reads via its NULL `parent_hash` in
+  `dolt_commit_ancestors`.
 - **Tags:** `dolt_tag(name, '-m', msg)` works; `dolt_tags` = tag_name,
   tag_hash, tagger, email, date, message. Creating a tag does not dirty
   the working tree.
