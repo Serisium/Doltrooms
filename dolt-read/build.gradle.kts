@@ -26,8 +26,13 @@ kotlin {
     explicitApi()
 
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    // ABI gate deferred until this module has public API (matches
+    // :verifier/:processor): with klib cross-compilation off, non-mac
+    // hosts must infer unavailable targets from the golden dump, and
+    // KGP rejects an empty dump ("File is empty"). Enabling it is part
+    // of the deliberate D11 event that lands this module's first API.
     abiValidation {
-        enabled.set(true)
+        enabled.set(false)
         legacyDump {
             referenceDumpDir.set(layout.projectDirectory.dir("api"))
         }
