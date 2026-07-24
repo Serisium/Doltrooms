@@ -52,13 +52,14 @@ include(":androidApp")
 include(":shared")
 
 // The doltrooms library is consumed from source: Gradle substitutes the
-// dev.seri.doltrooms:doltrooms coordinates with the :library project of
-// the repository root build (the substitution is explicit because the
-// artifactId "doltrooms" differs from the project name "library").
-// Run this sample with the ROOT wrapper, e.g.
+// published coordinates with the matching projects of the repository root
+// build (the multi-module split, docs/design/module-architecture.md). The
+// substitutions are explicit because the artifactIds differ from the project
+// paths. Run this sample with the ROOT wrapper, e.g.
 //   cd samples/codelab && ../../gradlew :androidApp:assembleDebug
 includeBuild("../..") {
     dependencySubstitution {
-        substitute(module("dev.seri.doltrooms:doltrooms")).using(project(":library"))
+        substitute(module("dev.seri.doltrooms:doltrooms-driver")).using(project(":driver"))
+        substitute(module("dev.seri.doltrooms:doltrooms-dolt-write")).using(project(":dolt-write"))
     }
 }

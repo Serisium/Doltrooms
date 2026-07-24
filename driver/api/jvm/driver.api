@@ -1,0 +1,39 @@
+public final class dev/seri/doltrooms/driver/DoltLiteConnection : androidx/sqlite/SQLiteConnection {
+	public fun close ()V
+	public fun inTransaction ()Z
+	public fun prepare (Ljava/lang/String;)Landroidx/sqlite/SQLiteStatement;
+}
+
+public final class dev/seri/doltrooms/driver/DoltLiteDriver : androidx/sqlite/SQLiteDriver {
+	public fun <init> ()V
+	public fun hasConnectionPool ()Z
+	public fun open (Ljava/lang/String;)Landroidx/sqlite/SQLiteConnection;
+}
+
+public final class dev/seri/doltrooms/driver/DoltLiteStatement : androidx/sqlite/SQLiteStatement {
+	public fun bindBlob (I[B)V
+	public fun bindBoolean (IZ)V
+	public fun bindDouble (ID)V
+	public fun bindFloat (IF)V
+	public fun bindInt (II)V
+	public fun bindLong (IJ)V
+	public fun bindNull (I)V
+	public fun bindText (ILjava/lang/String;)V
+	public fun clearBindings ()V
+	public fun close ()V
+	public fun getBlob (I)[B
+	public fun getBoolean (I)Z
+	public fun getColumnCount ()I
+	public fun getColumnName (I)Ljava/lang/String;
+	public fun getColumnNames ()Ljava/util/List;
+	public fun getColumnType (I)I
+	public fun getDouble (I)D
+	public fun getFloat (I)F
+	public fun getInt (I)I
+	public fun getLong (I)J
+	public fun getText (I)Ljava/lang/String;
+	public fun isNull (I)Z
+	public fun reset ()V
+	public fun step ()Z
+}
+

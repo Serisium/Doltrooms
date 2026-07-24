@@ -1,0 +1,7 @@
+# Overlay on detekt's default config (buildUponDefaultConfig = true in
+# processor/build.gradle.kts) — only deliberate deviations live here.
+
+libraries:
+  LibraryEntitiesShouldNotBePublic:
+    # Redundant with Explicit API mode (ARCHITECTURE.md D11).
+    active: false

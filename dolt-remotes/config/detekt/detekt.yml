@@ -1,0 +1,8 @@
+# Overlay on detekt's default config (buildUponDefaultConfig = true in
+# dolt-remotes/build.gradle.kts) — only deliberate deviations live here.
+# Rule rationale follows the kotlin-audit-baseline skill.
+
+libraries:
+  LibraryEntitiesShouldNotBePublic:
+    # Redundant with Explicit API mode (ARCHITECTURE.md D11).
+    active: false
