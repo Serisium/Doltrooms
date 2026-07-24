@@ -4,26 +4,32 @@ on:
     types: [released, prereleased]
 jobs:
   # A mistyped release must not ship a mismatched version to Maven
-  # Central: the tag (vX.Y.Z) must equal the version in
-  # library/build.gradle.kts before anything builds or signs.
+  # Central: the tag (vX.Y.Z) must equal the version in EVERY published
+  # module's build.gradle.kts before anything builds or signs (the D5
+  # module set declares version per module — the gate also catches
+  # cross-module drift).
   verify-tag:
-    name: Verify tag matches library version
+    name: Verify tag matches all module versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Compare release tag to library version
+      - name: Compare release tag to every module version
         run: |
           tag="${{ github.event.release.tag_name }}"
-          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' library/build.gradle.kts)"
-          echo "tag=$tag library-version=$version"
-          if [ -z "$version" ]; then
-            echo "::error::Could not extract version from library/build.gradle.kts"
-            exit 1
-          fi
-          if [ "$tag" != "v$version" ]; then
-            echo "::error::Release tag '$tag' does not match library version 'v$version'"
-            exit 1
-          fi
+          modules="driver dolt-core dolt-read dolt-write dolt-remotes verifier processor"
+          fail=0
+          for m in $modules; do
+            version="$(sed -n 's/^version = "\(.*\)"$/\1/p' "$m/build.gradle.kts")"
+            echo "tag=$tag module=$m version=$version"
+            if [ -z "$version" ]; then
+              echo "::error::Could not extract version from $m/build.gradle.kts"
+              fail=1
+            elif [ "$tag" != "v$version" ]; then
+              echo "::error::Release tag '$tag' does not match $m version 'v$version'"
+              fail=1
+            fi
+          done
+          exit "$fail"
   publish:
     name: Release build and publish
     needs: verify-tag

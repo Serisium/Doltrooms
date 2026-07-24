@@ -28,13 +28,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       # setup-gradle caches ~/.gradle but neither the project build dir nor
       # ~/.konan. The download tasks accept a pre-seeded zip whose SHA-256
-      # matches the pin (library/build.gradle.kts), so caching just the zips
+      # matches the pin (driver/build.gradle.kts), so caching just the zips
       # skips both GitHub-release round-trips; keys hash the version catalog
       # because every relevant pin (doltlite, kotlin) lives there.
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v6
         with:
-          path: library/build/doltlite/*.zip
+          path: driver/build/doltlite/*.zip
           key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Cache Konan (Kotlin/Native compiler + linuxX64 sysroot)
         uses: actions/cache@v6
@@ -53,7 +53,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-reports
-          path: library/build/reports/tests/
+          path: |
+            driver/build/reports/tests/
+            dolt-write/build/reports/tests/
 
   # The x86_64 ABI leg of the on-device suite: GitHub's Linux runners expose
   # /dev/kvm, which no available dev host does (arm64 phone covers the other
@@ -82,7 +84,7 @@ jobs:
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v6
         with:
-          path: library/build/doltlite/*.zip
+          path: driver/build/doltlite/*.zip
           key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Run device suites on an x86_64 emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -102,7 +104,8 @@ jobs:
         with:
           name: emulator-test-reports
           path: |
-            library/build/reports/androidTests/
+            driver/build/reports/androidTests/
+            dolt-write/build/reports/androidTests/
             samples/codelab/androidApp/build/reports/androidTests/
 
   # samples/codelab Android app: APK packaging (exercises the NDK-built
@@ -123,11 +126,11 @@ jobs:
         run: sdkmanager "ndk;28.2.13676358"
       - uses: gradle/actions/setup-gradle@v6
       # Same pre-seeded-zip cache as `build`: the sample includes the root
-      # build, so the library's download tasks still write library/build/.
+      # build, so the driver's download tasks still write driver/build/.
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v6
         with:
-          path: library/build/doltlite/*.zip
+          path: driver/build/doltlite/*.zip
           key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Assemble sample APK + run unit tests
         run: cd samples/codelab && ../../gradlew :androidApp:assembleDebug :androidApp:testDebugUnitTest
@@ -162,7 +165,7 @@ jobs:
       - name: Cache DoltLite release downloads (amalgamation + tools zips)
         uses: actions/cache@v6
         with:
-          path: library/build/doltlite/*.zip
+          path: driver/build/doltlite/*.zip
           key: doltlite-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Cache Konan (Kotlin/Native compiler + Apple sysroots)
         uses: actions/cache@v6
@@ -188,4 +191,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ios-test-reports
-          path: library/build/reports/tests/
+          path: |
+            driver/build/reports/tests/
+            dolt-write/build/reports/tests/
