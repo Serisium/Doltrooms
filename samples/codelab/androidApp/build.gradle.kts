@@ -100,7 +100,10 @@ dependencies {
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     // The DAO/versioning instrumented tests build their own database over
-    // DoltLiteDriver/DoltDatabase, so they need doltrooms directly (it is
-    // an implementation dependency of :shared, not exported).
-    androidTestImplementation(libs.doltrooms)
+    // DoltLiteDriver (:driver) and DoltDatabase (:dolt-write), so they need
+    // both directly (they are implementation dependencies of :shared, not
+    // exported). Since the module split (docs/design/module-architecture.md)
+    // these are two coordinates; :dolt-write api-exposes room3-runtime.
+    androidTestImplementation(libs.doltrooms.driver)
+    androidTestImplementation(libs.doltrooms.dolt.write)
 }

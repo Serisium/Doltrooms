@@ -42,7 +42,10 @@ core = "1.7.0"
 doltrooms = "0.1.0-SNAPSHOT"
 
 [libraries]
-doltrooms = { module = "dev.seri.doltrooms:doltrooms", version.ref = "doltrooms" }
+# The doltrooms multi-module split (docs/design/module-architecture.md): the
+# sample consumes the engine (:driver) and the git-verb facade (:dolt-write).
+doltrooms-driver = { module = "dev.seri.doltrooms:doltrooms-driver", version.ref = "doltrooms" }
+doltrooms-dolt-write = { module = "dev.seri.doltrooms:doltrooms-dolt-write", version.ref = "doltrooms" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
