@@ -1,0 +1,39 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, linuxX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <dev.seri.doltrooms:driver>
+final class dev.seri.doltrooms.driver/DoltLiteConnection : androidx.sqlite/SQLiteConnection { // dev.seri.doltrooms.driver/DoltLiteConnection|null[0]
+    final fun close() // dev.seri.doltrooms.driver/DoltLiteConnection.close|close(){}[0]
+    final fun inTransaction(): kotlin/Boolean // dev.seri.doltrooms.driver/DoltLiteConnection.inTransaction|inTransaction(){}[0]
+    final fun prepare(kotlin/String): androidx.sqlite/SQLiteStatement // dev.seri.doltrooms.driver/DoltLiteConnection.prepare|prepare(kotlin.String){}[0]
+}
+
+final class dev.seri.doltrooms.driver/DoltLiteDriver : androidx.sqlite/SQLiteDriver { // dev.seri.doltrooms.driver/DoltLiteDriver|null[0]
+    constructor <init>() // dev.seri.doltrooms.driver/DoltLiteDriver.<init>|<init>(){}[0]
+
+    final fun open(kotlin/String): androidx.sqlite/SQLiteConnection // dev.seri.doltrooms.driver/DoltLiteDriver.open|open(kotlin.String){}[0]
+}
+
+final class dev.seri.doltrooms.driver/DoltLiteStatement : androidx.sqlite/SQLiteStatement { // dev.seri.doltrooms.driver/DoltLiteStatement|null[0]
+    final fun bindBlob(kotlin/Int, kotlin/ByteArray) // dev.seri.doltrooms.driver/DoltLiteStatement.bindBlob|bindBlob(kotlin.Int;kotlin.ByteArray){}[0]
+    final fun bindDouble(kotlin/Int, kotlin/Double) // dev.seri.doltrooms.driver/DoltLiteStatement.bindDouble|bindDouble(kotlin.Int;kotlin.Double){}[0]
+    final fun bindLong(kotlin/Int, kotlin/Long) // dev.seri.doltrooms.driver/DoltLiteStatement.bindLong|bindLong(kotlin.Int;kotlin.Long){}[0]
+    final fun bindNull(kotlin/Int) // dev.seri.doltrooms.driver/DoltLiteStatement.bindNull|bindNull(kotlin.Int){}[0]
+    final fun bindText(kotlin/Int, kotlin/String) // dev.seri.doltrooms.driver/DoltLiteStatement.bindText|bindText(kotlin.Int;kotlin.String){}[0]
+    final fun clearBindings() // dev.seri.doltrooms.driver/DoltLiteStatement.clearBindings|clearBindings(){}[0]
+    final fun close() // dev.seri.doltrooms.driver/DoltLiteStatement.close|close(){}[0]
+    final fun getBlob(kotlin/Int): kotlin/ByteArray // dev.seri.doltrooms.driver/DoltLiteStatement.getBlob|getBlob(kotlin.Int){}[0]
+    final fun getColumnCount(): kotlin/Int // dev.seri.doltrooms.driver/DoltLiteStatement.getColumnCount|getColumnCount(){}[0]
+    final fun getColumnName(kotlin/Int): kotlin/String // dev.seri.doltrooms.driver/DoltLiteStatement.getColumnName|getColumnName(kotlin.Int){}[0]
+    final fun getColumnType(kotlin/Int): kotlin/Int // dev.seri.doltrooms.driver/DoltLiteStatement.getColumnType|getColumnType(kotlin.Int){}[0]
+    final fun getDouble(kotlin/Int): kotlin/Double // dev.seri.doltrooms.driver/DoltLiteStatement.getDouble|getDouble(kotlin.Int){}[0]
+    final fun getLong(kotlin/Int): kotlin/Long // dev.seri.doltrooms.driver/DoltLiteStatement.getLong|getLong(kotlin.Int){}[0]
+    final fun getText(kotlin/Int): kotlin/String // dev.seri.doltrooms.driver/DoltLiteStatement.getText|getText(kotlin.Int){}[0]
+    final fun isNull(kotlin/Int): kotlin/Boolean // dev.seri.doltrooms.driver/DoltLiteStatement.isNull|isNull(kotlin.Int){}[0]
+    final fun reset() // dev.seri.doltrooms.driver/DoltLiteStatement.reset|reset(){}[0]
+    final fun step(): kotlin/Boolean // dev.seri.doltrooms.driver/DoltLiteStatement.step|step(){}[0]
+}

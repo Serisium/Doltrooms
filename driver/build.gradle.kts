@@ -642,14 +642,10 @@ kotlin {
         commonMain.dependencies {
             // The driver contract we implement (ARCHITECTURE.md D1); api because
             // DoltLiteDriver's public surface exposes the androidx.sqlite types.
+            // :driver depends on androidx.sqlite ONLY — no Room
+            // (docs/design/module-architecture.md DAG). The typed dolt_* helper
+            // that used to pull Room into commonMain moved to :dolt-write.
             api(libs.androidx.sqlite)
-            // Step 7's typed dolt_* helpers (DoltDatabase) take a RoomDatabase
-            // and run over useWriterConnection — Room types are in the public
-            // surface, so the runtime is an api dependency (the revisit the
-            // Step 4 test-only decision anticipated; ARCHITECTURE.md D10).
-            // The Room compiler still serves tests only: no annotations, no
-            // generated Room code in the shipped artifact.
-            api(libs.room3.runtime)
         }
 
         commonTest.dependencies {
@@ -657,6 +653,11 @@ kotlin {
             // runTest + Dispatchers.Default for the not-thread-affine
             // conformance case (room3 skill, testing reference).
             implementation(libs.kotlinx.coroutines.test)
+            // Room is a TEST-ONLY consumer of :driver: the Room conformance
+            // suite (this module's acceptance gate) exercises DoltLiteDriver
+            // through a real Room 3 database. Nothing Room ships in the driver
+            // artifact (D1 — Room is consumed unmodified, never forked).
+            implementation(libs.room3.runtime)
         }
 
         jvmTest.dependencies {
@@ -940,77 +941,12 @@ if (hostIsMac) {
     }
 }
 
-// --- doltlite-remotesrv test fixture (Step 8) -----------------------------
-// The jvm RemoteServerSyncTest spawns a real doltlite-remotesrv (from the
-// pinned release's doltlite-tools zip) to prove http(s) sync. Wired only on
-// linux-x64 hosts — the only platform whose zip checksum is verified here;
-// elsewhere the test skips (docs/deferred-verification.md).
-val hostIsLinuxX64 =
-    System.getProperty("os.name").lowercase().contains("linux") &&
-        System.getProperty("os.arch") in setOf("amd64", "x86_64")
-
-val doltliteToolsUrl =
-    "https://github.com/dolthub/doltlite/releases/download/v$doltliteVersion/doltlite-tools-linux-x64-$doltliteVersion.zip"
-// SHA-256 of doltlite-tools-linux-x64-0.11.33.zip, recorded 2026-07-18.
-val doltliteToolsSha256 = "6d9b2353f051ce79d3637d57facae293cacb320cfb5b3eebe896c18af1338932"
-
-val downloadDoltliteTools by tasks.registering {
-    // Local copy: an onlyIf referencing the script-level val would capture
-    // the script object, which the configuration cache cannot serialize.
-    val linuxX64Host = hostIsLinuxX64
-    onlyIf { linuxX64Host }
-    val url = doltliteToolsUrl
-    val sha256 = doltliteToolsSha256
-    val zipFile = layout.buildDirectory.file("doltlite/doltlite-tools-linux-x64-$doltliteVersion.zip")
-    inputs.property("url", url)
-    inputs.property("sha256", sha256)
-    outputs.file(zipFile)
-    doLast {
-        val target = zipFile.get().asFile
-        fun fileSha256() = MessageDigest.getInstance("SHA-256")
-            .digest(target.readBytes())
-            .joinToString("") { "%02x".format(it) }
-        // Same pre-seeded-zip acceptance as downloadDoltliteAmalgamation
-        // (kept inline: a shared script-level helper would capture the script
-        // object in the task action, breaking the configuration cache).
-        if (target.exists() && fileSha256() == sha256) return@doLast
-        target.parentFile.mkdirs()
-        URI(url).toURL().openStream().use { input ->
-            target.outputStream().use { input.copyTo(it) }
-        }
-        val actual = fileSha256()
-        if (actual != sha256) {
-            target.delete()
-            error("SHA-256 mismatch for $url: expected $sha256, got $actual")
-        }
-    }
-}
-
-val unpackDoltliteTools by tasks.registering(Copy::class) {
-    val linuxX64Host = hostIsLinuxX64
-    onlyIf { linuxX64Host }
-    from(zipTree(downloadDoltliteTools.map { it.outputs.files.singleFile })) {
-        // Flatten doltlite-tools-linux-x64-<v>/doltlite-remotesrv -> doltlite-remotesrv
-        eachFile { path = name }
-        includeEmptyDirs = false
-    }
-    into(layout.buildDirectory.dir("doltlite/tools"))
-    doLast {
-        destinationDir.listFiles()?.forEach { it.setExecutable(true) }
-    }
-}
-
+// The doltlite-remotesrv test fixture (Step 8) moved with RemoteServerSyncTest
+// to :dolt-write (the sync test is a dolt-facade test). :driver's own jvmTest
+// needs only the host-dylib wiring below.
 tasks.withType<Test>()
     .matching { it.name == "jvmTest" }
     .configureEach {
-        if (hostIsLinuxX64) {
-            dependsOn(unpackDoltliteTools)
-            systemProperty(
-                "dev.seri.doltrooms.remotesrv",
-                layout.buildDirectory.file("doltlite/tools/doltlite-remotesrv")
-                    .get().asFile.absolutePath,
-            )
-        }
         // On macOS the classpath resource is a Linux ELF .so the local JVM
         // cannot load; point the loader's explicit-path override at the
         // host-test twin's dylib instead.
@@ -1063,7 +999,7 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates(group.toString(), "doltrooms", version.toString())
+    coordinates(group.toString(), "doltrooms-driver", version.toString())
 
     // The -javadoc jar Maven Central requires, generated by Dokka. The
     // AGP KMP library plugin needs no androidVariantsToPublish parameter
@@ -1076,8 +1012,8 @@ mavenPublishing {
     )
 
     pom {
-        name = "doltrooms"
-        description = "A Room 3 (androidx.room3) SQLiteDriver backed by DoltLite, giving KMP apps a local, version-controlled database."
+        name = "doltrooms-driver"
+        description = "A Room 3 (androidx.room3) SQLiteDriver backed by DoltLite: SQLite/Room parity plus the packaged multi-platform DoltLite engine (natives, cinterop). The engine half of doltrooms."
         inceptionYear = "2026"
         url = "https://github.com/Serisium/Doltrooms/"
         licenses {
