@@ -175,17 +175,17 @@ if (hostIsMac) {
 // mirroring :driver's own host-agnostic wiring (host dylib on macOS; the
 // compiled linux-x64 .so on Linux — the packaged-resource extraction that
 // rescues jvmTest does not apply to loadLibrary).
-val hostJniTaskPath =
-    if (hostIsMac) ":driver:compileDoltliteJniHost" else ":driver:compileDoltliteJni"
-// Plain String, resolved at configuration time: the doFirst closure must not
-// capture another project's model objects (config-cache serialization).
-val hostJniNativesPath: String = driverBuildDir.get().dir(
-    if (hostIsMac) "nativeLibs/jvmHost/natives/$hostJniClassifier"
-    else "nativeLibs/jvm/natives/linux-x64",
-).asFile.absolutePath
 tasks.withType<Test>()
     .matching { it.name == "testAndroidHostTest" }
     .configureEach {
+        // Locals, not script-level vals: the doFirst closure must not capture
+        // the script instance (config-cache: "script object references").
+        val hostJniTaskPath =
+            if (hostIsMac) ":driver:compileDoltliteJniHost" else ":driver:compileDoltliteJni"
+        val hostJniNativesPath: String = driverBuildDir.get().dir(
+            if (hostIsMac) "nativeLibs/jvmHost/natives/$hostJniClassifier"
+            else "nativeLibs/jvm/natives/linux-x64",
+        ).asFile.absolutePath
         dependsOn(hostJniTaskPath)
         doFirst {
             val existing = systemProperties["java.library.path"]?.toString()
