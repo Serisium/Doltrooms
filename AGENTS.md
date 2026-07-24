@@ -79,9 +79,12 @@ decision as a new iteration.
   change lands via a PR with all CI checks green. Keep commits small
   and single-topic; never commit `build/`, `.gradle/`, `.kotlin/`,
   or `.idea/` content. Do not commit or push without being asked.
-- Build/test loop: `./gradlew build`, tests
-  via `./gradlew :library:allTests` (JVM/native) — Android host tests
-  run under `:library:testAndroidHostTest`.
+- Build/test loop: `./gradlew build`, tests via `./gradlew allTests`
+  (JVM/native, across modules) — Android host tests run under each
+  module's `testAndroidHostTest`. Since the multi-module split
+  (`docs/design/module-architecture.md`) the engine + conformance suite
+  live in `:driver` and the git-verb facade + its suites in
+  `:dolt-write`; scope with `:driver:...` / `:dolt-write:...`.
 
 ## Skills
 

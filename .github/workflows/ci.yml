@@ -47,7 +47,7 @@ jobs:
       - name: Build and run JVM + Android host + linuxX64 tests
         # linuxX64 test binaries link libcrypt.so.1 via Konan's sysroot;
         # ubuntu ships it (Fedora needs libxcrypt-compat).
-        run: ./gradlew build :library:jvmTest :library:testAndroidHostTest :library:linuxX64Test
+        run: ./gradlew build :driver:jvmTest :driver:testAndroidHostTest :driver:linuxX64Test :dolt-write:jvmTest :dolt-write:testAndroidHostTest :dolt-write:linuxX64Test
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v7
@@ -94,7 +94,7 @@ jobs:
           target: google_apis
           disable-animations: true
           script: |
-            ./gradlew :library:connectedAndroidDeviceTest
+            ./gradlew :driver:connectedAndroidDeviceTest :dolt-write:connectedAndroidDeviceTest
             cd samples/codelab && ../../gradlew :androidApp:connectedDebugAndroidTest
       - name: Upload test reports on failure
         if: failure()
@@ -170,7 +170,7 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Run library suite on the iOS simulator
-        run: ./gradlew :library:iosSimulatorArm64Test
+        run: ./gradlew :driver:iosSimulatorArm64Test :dolt-write:iosSimulatorArm64Test
       - name: Link the sample sharedKit framework
         run: cd samples/codelab && ../../gradlew :shared:linkDebugFrameworkIosSimulatorArm64
       - name: Build the Fruitties iOS app

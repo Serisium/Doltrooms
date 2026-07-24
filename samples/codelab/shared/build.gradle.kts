@@ -72,10 +72,13 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
-                // The DoltLite-backed SQLiteDriver. It api-exposes
-                // androidx.room3:room3-runtime and androidx.sqlite:sqlite,
-                // so neither needs declaring here.
-                implementation(libs.doltrooms)
+                // The DoltLite-backed SQLiteDriver (:driver). It api-exposes
+                // androidx.sqlite:sqlite, so that needs no declaring; since
+                // the module split (docs/design/module-architecture.md) the
+                // engine no longer re-exports Room, so room3-runtime is
+                // declared explicitly for the AppDatabase this module builds.
+                implementation(libs.doltrooms.driver)
+                implementation(libs.androidx.room3.runtime)
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
