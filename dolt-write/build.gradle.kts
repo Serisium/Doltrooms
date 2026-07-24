@@ -168,22 +168,34 @@ if (hostIsMac) {
             dependsOn(":driver:compileDoltliteJniHost")
             doFirst { systemProperty("dev.seri.doltrooms.lib.path", hostDylib.get().absolutePath) }
         }
-    // Android host tests: androidMain's System.loadLibrary searches
-    // java.library.path — point it at :driver's host-dylib directory.
-    tasks.withType<Test>()
-        .matching { it.name == "testAndroidHostTest" }
-        .configureEach {
-            dependsOn(":driver:compileDoltliteJniHost")
-            doFirst {
-                val dir = hostDylib.get().parentFile.absolutePath
-                val existing = systemProperties["java.library.path"]?.toString()
-                systemProperty(
-                    "java.library.path",
-                    listOfNotNull(dir, existing).joinToString(File.pathSeparator),
-                )
-            }
-        }
 }
+
+// Android host tests: androidMain's System.loadLibrary searches
+// java.library.path — point it at :driver's host natives on EVERY host,
+// mirroring :driver's own host-agnostic wiring (host dylib on macOS; the
+// compiled linux-x64 .so on Linux — the packaged-resource extraction that
+// rescues jvmTest does not apply to loadLibrary).
+val hostJniTaskPath =
+    if (hostIsMac) ":driver:compileDoltliteJniHost" else ":driver:compileDoltliteJni"
+// Plain String, resolved at configuration time: the doFirst closure must not
+// capture another project's model objects (config-cache serialization).
+val hostJniNativesPath: String = driverBuildDir.get().dir(
+    if (hostIsMac) "nativeLibs/jvmHost/natives/$hostJniClassifier"
+    else "nativeLibs/jvm/natives/linux-x64",
+).asFile.absolutePath
+tasks.withType<Test>()
+    .matching { it.name == "testAndroidHostTest" }
+    .configureEach {
+        dependsOn(hostJniTaskPath)
+        doFirst {
+            val existing = systemProperties["java.library.path"]?.toString()
+            systemProperty(
+                "java.library.path",
+                listOfNotNull(hostJniNativesPath, existing)
+                    .joinToString(File.pathSeparator),
+            )
+        }
+    }
 
 // --- doltlite-remotesrv test fixture (Step 8) -----------------------------
 // RemoteServerSyncTest spawns a real doltlite-remotesrv (from the pinned

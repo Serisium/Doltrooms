@@ -18,8 +18,10 @@ version = "0.1.0-SNAPSHOT"
 // database to DoltLite at compile time.
 
 kotlin {
+    // No jvmToolchain pin: build with the Gradle JVM, like the KMP modules —
+    // a pinned toolchain is a hidden host dependency (KSP-classpath tools run
+    // in the build JVM anyway).
     explicitApi()
-    jvmToolchain(11)
 }
 
 dependencies {

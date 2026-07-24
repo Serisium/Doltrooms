@@ -19,8 +19,10 @@ version = "0.1.0-SNAPSHOT"
 // with its pinned feature ceiling (contract §12 D-d + §13 blessed shape).
 
 kotlin {
+    // No jvmToolchain pin: build with the Gradle JVM, like the KMP modules —
+    // a pinned toolchain is a hidden host dependency (KSP-classpath tools run
+    // in the build JVM anyway).
     explicitApi()
-    jvmToolchain(11)
 }
 
 dependencies {
