@@ -1,0 +1,17 @@
+product:
+  type: kmp/lib
+  platforms: [ jvm, android, iosArm64, iosSimulatorArm64, linuxX64 ]
+
+description: |
+  The shared kernel of the doltrooms version-control surface: refs, the DoltEvents anchor entities, shipped row types, and the blessed key supertype. (SCAFFOLD — populated when the rev-4 contract implementation lands.)
+
+dependencies:
+  # The shipped row/anchor types are Room entities; Room runtime only, so
+  # :dolt-read and :dolt-write stay siblings (no write->read edge).
+  - androidx.room3:room3-runtime:3.0.0: exported
+
+settings:
+  android:
+    namespace: dev.seri.doltrooms.dolt.core
+    compileSdk: 36
+    minSdk: 24

@@ -1,0 +1,13 @@
+product: jvm/lib
+
+description: |
+  The doltrooms KSP processor (host JVM, KSP classpath only): @DoltQuery codegen, the anchor lint, and the DDL emitter. Never ships in an app. (SCAFFOLD.)
+
+# The Gradle layout (src/main/kotlin, src/test/kotlin) maps directly onto
+# the toolchain's maven-like layout for jvm-only modules — no source moves.
+layout: maven-like
+
+dependencies:
+  # Knows :dolt-read's annotations by qualified name (no compile dependency
+  # required); depends on :driver's jvm artifact for the host engine.
+  - ../driver

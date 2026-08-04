@@ -1,0 +1,54 @@
+# Task wiring for the doltlite build plugin (actions in src/tasks.kt).
+# Dependencies between tasks are inferred from matching @Input/@Output
+# paths; the generated: block feeds the outputs back into the build, so
+# `./kotlin build` runs everything in order with no manual prep step.
+tasks:
+  prepareAmalgamation:
+    action: !dev.seri.doltrooms.build.prepareAmalgamation
+      outputDir: ${taskOutputDir}
+
+  compileHostJni:
+    action: !dev.seri.doltrooms.build.compileHostJni
+      amalgamationDir: ${tasks.prepareAmalgamation.action.outputDir}
+      jniSource: ${module.rootDir}/native/jni/doltrooms_jni.cpp
+      resourcesDir: ${taskOutputDir}/resources
+      workDir: ${taskOutputDir}/work
+
+  compileStaticArchives:
+    action: !dev.seri.doltrooms.build.compileStaticArchives
+      amalgamationDir: ${tasks.prepareAmalgamation.action.outputDir}
+      outputDir: ${taskOutputDir}
+
+  generateDef:
+    action: !dev.seri.doltrooms.build.generateDef
+      templateFile: ${module.rootDir}/cinterop/doltlite.def.in
+      amalgamationDir: ${tasks.prepareAmalgamation.action.outputDir}
+      archivesDir: ${tasks.compileStaticArchives.action.outputDir}
+      outputFile: ${taskOutputDir}/doltlite.def
+
+  fetchRemotesrv:
+    action: !dev.seri.doltrooms.build.fetchRemotesrv
+      outputDir: ${module.rootDir}/native/build/tools
+
+generated:
+  # The host JNI library lands on the jvm classpath as natives/<classifier>/,
+  # where NativeLibraryLoader expects it (the Gradle build's resource layout).
+  resources:
+    - directory: ${tasks.compileHostJni.action.resourcesDir}
+      # Modifiers here carry the "@" verbatim: toolchain 0.11.1 compares
+      # this string against Fragment.modifier (stored WITH the @), so the
+      # documented bare "jvm" form crashes model building with an internal
+      # NoSuchElementException (selectFragmentByDescriptor's own FIXME).
+      fragment:
+        modifier: "@jvm"
+  # One commonized cinterop over doltlite.h for all native targets, with the
+  # host-buildable static engine archives embedded.
+  cinteropDefinitions:
+    - defFile: ${tasks.generateDef.action.outputFile}
+      fragment:
+        modifier: "@native"
+
+commands:
+  # Manual by design (linux-x64 only; see the KDoc on fetchRemotesrv):
+  #   ./kotlin do fetchRemotesrv
+  - fetchRemotesrv

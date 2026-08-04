@@ -1,0 +1,51 @@
+product:
+  type: kmp/lib
+  platforms: [ jvm, android, iosArm64, iosSimulatorArm64, linuxX64 ]
+
+description: |
+  The doltrooms version-control WRITE surface: the git verbs — the DoltDatabase facade plus its sealed result types.
+
+dependencies:
+  # The shared vcs kernel (Room runtime + the shipped row/anchor types).
+  # :dolt-write -> :dolt-core, per the DAG.
+  - ../dolt-core: exported
+  # DoltDatabase.clone(driver: SQLiteDriver, ...) exposes androidx.sqlite
+  # types on its public surface.
+  - androidx.sqlite:sqlite:2.7.0: exported
+
+test-dependencies:
+  - org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0
+  # The verb suites drive DoltDatabase over a real Room database on the
+  # concrete DoltLiteDriver engine — test-only coupling to :driver (the
+  # module-architecture doc's future :testing module resolves this).
+  - ../driver
+  - androidx.room3:room3-runtime:3.0.0
+
+test-dependencies@jvm:
+  # BundledDoltDatabaseTest asserts the facade throws cleanly on a non-Dolt
+  # engine (stock SQLite); the differential-oracle twin of the driver
+  # conformance suite.
+  - androidx.sqlite:sqlite-bundled:2.7.0
+
+test-dependencies@android:
+  - androidx.test:runner:1.7.0
+
+settings:
+  kotlin:
+    # RoomConformanceDbConstructor (the duplicated test fixture) is an
+    # expect object whose actual KSP generates per target.
+    freeCompilerArgs: [ -Xexpect-actual-classes ]
+  android:
+    namespace: dev.seri.doltrooms.dolt.write
+    compileSdk: 36
+    minSdk: 24
+
+test-settings:
+  kotlin:
+    ksp:
+      # The Room compiler serves only the RoomConformanceDb fixture the verb
+      # suites run against.
+      processors:
+        - androidx.room3:room3-compiler:3.0.0
+      processorOptions:
+        room.schemaLocation: ./schemas

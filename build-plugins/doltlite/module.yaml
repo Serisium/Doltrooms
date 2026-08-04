@@ -1,0 +1,5 @@
+# Build plugin providing the DoltLite native pieces to :library as real
+# build-graph tasks (amalgamation download, host JNI lib, static engine
+# archives, cinterop .def generation). Replaces the interim
+# prepare-doltlite.sh operator step.
+product: jvm/amper-plugin
