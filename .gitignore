@@ -11,3 +11,5 @@ xcuserdata
 .kotlin
 #So we don't accidentally commit our private keys
 *.gpg
+#JVM fatal-error crash logs
+hs_err_pid*.log
