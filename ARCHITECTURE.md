@@ -1,11 +1,12 @@
 # doltlite-room-bridge — Architecture
 
-**Status:** Target architecture as of 2026-07-22. Maintenance phase
+**Status:** Target architecture as of 2026-08-04. Maintenance phase
 (§4); the implementation iteration completed at Step 11, and
-human-opened iterations have since landed samples (Step 12) and
-API-governance tooling (Step 13+). The step-by-step plan file that
-sequenced the original iterations has been retired and deleted
-(2026-07-21), along with its frozen snapshot.
+human-opened iterations have since landed samples (Step 12),
+API-governance tooling (Step 13+), and the Kotlin Toolchain build
+migration (D12). The step-by-step plan file that sequenced the
+original iterations has been retired and deleted (2026-07-21), along
+with its frozen snapshot.
 
 This document specifies the project's intended end state — the
 architecture every iteration builds toward, not a snapshot of what is
@@ -218,21 +219,41 @@ checkout.
 ### D11 — The public API surface is mechanically enforced
 
 The library is a published artifact, so its `public` surface is a
-contract, not a default. Two mechanisms in each module's
-`build.gradle.kts` (originally `library/`, now per D5-amended module)
-enforce it. Kotlin's Explicit API mode (`explicitApi()`) makes the
-compiler reject implicit visibility and inferred types on public
-declarations — the two library rules of the official coding
-conventions the code had until now upheld only by hand. KGP's
-built-in ABI validation (experimental) compares the public binary API
-against a committed golden dump (per-module `<module>/api/`, task
-`checkLegacyAbi`); the dump regenerates only deliberately
-(`updateLegacyAbi`), so accidental breaking changes fail the build.
-The dumps are committed under each module's `api/` and reproduce
-byte-identically on macOS and Linux dev hosts (host details and the
-iOS-inference caveat: the comment on the `abiValidation` block in
-`driver/build.gradle.kts`). Rationale, citations, and the wider
-audit baseline live in the `kotlin-audit-baseline` skill.
+contract, not a default. Two mechanisms enforced it under Gradle:
+Kotlin's Explicit API mode (`explicitApi()`) — the compiler rejecting
+implicit visibility and inferred types on public declarations — and
+KGP's built-in ABI validation comparing the public binary API against
+a committed golden dump (per-module `<module>/api/`), regenerated only
+deliberately so accidental breaking changes fail the build. The rules
+of this decision are unchanged; the *mechanisms* are suspended by the
+D12 migration until the toolchain supports them (the `api/` dumps and
+detekt configs stay committed; enforcement is by review meanwhile).
+Rationale, citations, and the wider audit baseline live in the
+`kotlin-audit-baseline` skill.
+
+### D12 — The build system is the Kotlin Toolchain (human-opened, 2026-08-04)
+
+The Gradle build is replaced by JetBrains' Kotlin Toolchain (the
+`./kotlin` wrapper pins the distribution): a root `project.yaml`, one
+`module.yaml` per module, and the `build-plugins/doltlite` build
+plugin, which owns every custom native step (pinned amalgamation
+download, host JNI library as generated jvm resources, static engine
+archives — including the macOS→linux-x64 Konan cross-compile — and the
+generated cinterop `.def`). `processor`/`verifier` keep their Maven
+layout via `layout: maven-like`; the KMP modules use the toolchain
+layout (`src`, `src@<platform>`, `test`). The `kotlin-toolchain` skill
+is the operating reference, including the known toolchain gaps and the
+workarounds in force.
+
+Consequences, settled with the migration: D11's *mechanisms* are
+suspended (no `explicitApi()`, ABI-gate, or detekt integration yet —
+the golden dumps and detekt configs stay committed, and D11's rules
+still bind by review) until the toolchain supports them; D8's AAR
+jniLibs packaging, android test runs, the device-test runners, and
+`samples/codelab` (which consumed the library via Gradle
+`includeBuild`) are parked, tracked in `docs/deferred-verification.md`;
+publishing stays on the D5 coordinates and single-macOS-host rule,
+parked until the toolchain ships kmp/lib publishing.
 
 ## 3. Codemap
 
@@ -241,7 +262,7 @@ audit baseline live in the `kotlin-audit-baseline` skill.
 | Path | What lives there |
 |---|---|
 | `README.md` | Human-curated statement of the project. Never agent-edited. |
-| `ARCHITECTURE.md` | This file — settled decisions D1–D11. |
+| `ARCHITECTURE.md` | This file — settled decisions D1–D12. |
 | `AGENTS.md` | Governing docs, working rules, contributing guidelines, skills index. |
 | `docs/FEASIBILITY.md` | Founding research: why DoltLite-as-driver, why not Dolt server. |
 | `docs/USAGE.md` | Consumer guide: dependency + `setDriver` setup, per-platform engine delivery, the dolt_* helper tour, remotes/sync, the divergence table. |
@@ -249,49 +270,36 @@ audit baseline live in the `kotlin-audit-baseline` skill.
 | `.agents/skills/` | Reference skills (level 1/2/3 progressive disclosure). |
 | `driver/`, `dolt-core/`, `dolt-read/`, `dolt-write/`, `dolt-remotes/`, `verifier/`, `processor/` | The module set (D5, amended 2026-07-24) — one concern each, described under D5; design in `docs/design/module-architecture.md`. |
 | `samples/codelab/` | Fruitties sample: Google's kmp-migrate-room codelab in its post-migration state, ported to Room 3 + `DoltLiteDriver` for Android and iOS. A standalone composite build over the root (D5 amendment); its own README documents lineage and every delta from upstream. |
-| `settings.gradle.kts`, `build.gradle.kts`, `gradle/`, `gradle.properties` | Build wiring from the template (§3.2). |
+| `kotlin`, `kotlin.bat`, `project.yaml`, `<module>/module.yaml`, `build-plugins/doltlite/` | Build wiring — the Kotlin Toolchain (D12, §3.2). |
 
-### 3.2 Gradle wiring
+### 3.2 Build wiring (Kotlin Toolchain, D12)
 
-The repo keeps the `multiplatform-library-template` build shape:
-
-- `settings.gradle.kts` — repositories (`google()`, `mavenCentral()`,
-  `gradlePluginPortal()`) for both plugin and dependency resolution;
-  `rootProject.name = "doltrooms"`; one `include(...)` per module of
-  the D5 (amended) set.
-- `gradle/libs.versions.toml` — the version catalog, the only place
-  versions live: Kotlin `2.3.10`, AGP `9.0.1`, Android minSdk `24` /
-  compileSdk `36`, vanniktech maven-publish `0.36.0`, and the pinned
-  implementation versions: DoltLite `0.11.33` (one version across all
-  platform artifacts), Room 3 `3.0.0` (`androidx.room3`),
-  androidx.sqlite `2.7.0`, KSP `2.3.10`, Android NDK
-  `28.2.13676358` (cross-compiles the D8 device ABIs). Catalog
-  aliases exist ahead
-  of use; build scripts wire them in only when the owning iteration
-  opens.
-- Root `build.gradle.kts` — declares the build's plugins `apply false`
-  (Kotlin Multiplatform, `com.android.kotlin.multiplatform.library`,
-  vanniktech maven-publish, KSP, `androidx.room3`);
-  each module's `build.gradle.kts` applies them. The shipped artifact
-  depends on androidx.sqlite and, since the dolt_* helper layer
-  (D10), on `room3-runtime` as a `commonMain` `api` dependency; the
+- `kotlin` / `kotlin.bat` — the vendored wrapper; pins the toolchain
+  distribution version and its SHA-256 (the only place the build-tool
+  version lives).
+- `project.yaml` — the module list (the D5-amended set plus
+  `build-plugins/doltlite`) and the plugin registration.
+  `samples/codelab` is not a module (parked, D12).
+- `<module>/module.yaml` — product type/platforms, dependencies
+  (module deps mirror the D5 DAG; `exported` is Gradle's `api`),
+  settings, and per-fragment test config. Versions live here (Room 3
+  `3.0.0` under `androidx.room3`, androidx.sqlite `2.7.0`, coroutines,
+  Android minSdk `24` / compileSdk `36`) — except the DoltLite pin.
+- `build-plugins/doltlite/` — the build plugin owning every custom
+  native step (D8/D9): pinned amalgamation download (the DoltLite
+  version + SHA-256 pins live at the top of its `src/tasks.kt`), host
+  JNI library contributed as generated jvm resources, per-target
+  static engine archives (incl. the macOS→linux-x64 Konan
+  cross-compile), the generated cinterop `.def` from
+  `driver/cinterop/doltlite.def.in`, and the `fetchRemotesrv` custom
+  command (linux-x64 test fixture).
+- The shipped artifacts depend on androidx.sqlite and, per module DAG,
+  `room3-runtime` (D10 — an `exported` dependency of `dolt-core`); the
   Room *compiler*/KSP serves the test suites only — no Room-generated
   code ships (D1: Room is consumed unmodified, never forked).
-- `gradle.properties` — configuration cache and build cache on;
-  `kotlin.mpp.enableCInteropCommonization=true` commonizes the shared
-  `doltlite` cinterop bindings across the native targets, so the one
-  `nativeMain` driver implementation compiles against them (D9).
-- Publishing: the vanniktech plugin targets Maven Central with
-  signing. Coordinates are decided: group `dev.seri.doltrooms`,
-  artifact `doltrooms` (Android namespace `dev.seri.doltrooms`).
-  The POM is real (Apache-2.0, developer `Serisium`, GitHub scm);
-  Dokka (pinned in the catalog) generates the `-javadoc` jars via the
-  plugin's `KotlinMultiplatform` configure; credentials and the GPG
-  key arrive via `ORG_GRADLE_PROJECT_*` environment variables, and
-  signing tasks skip when no key is present, so
-  `publishToMavenLocal` works unsigned in dev environments. The
-  actual Central release runs from a single macOS host — the iOS
-  klibs carry cinterops (`docs/deferred-verification.md`).
+- Publishing: parked pending toolchain kmp/lib publishing (D12);
+  coordinates and the single-macOS-host rule are unchanged from D5,
+  and `publish.yml` fails loudly until restored.
 
 ### 3.3 Targets and source sets (per KMP module; written for `:library`, now chiefly `:driver`)
 
@@ -303,32 +311,26 @@ dependencies"; a source set is "a set of source files with its own
 targets, dependencies, and compiler options … the main way to share
 code in multiplatform projects".
 
-Targets declared in `driver/build.gradle.kts` (and mirrored by the
-other KMP modules): `jvm()`,
-`androidLibrary {}` (the AGP KMP library plugin — configured inside
-`kotlin {}`, single-variant, host/device tests opted in via
-`withHostTestBuilder {}` / `withDeviceTestBuilder {}`, plus
-`withJava()`; see
-<https://developer.android.com/kotlin/multiplatform/plugin>),
-`iosArm64()`, `iosSimulatorArm64()`, and `linuxX64()`. This matrix
-already covers the first three rungs of the D4 ladder; it grows (e.g.
-macOS) only when an iteration needs it.
+Targets are declared in each KMP module's `module.yaml`
+(`product.platforms`, D12): `jvm`, `android`, `iosArm64`,
+`iosSimulatorArm64`, and `linuxX64`. This matrix already covers the
+first three rungs of the D4 ladder; it grows (e.g. macOS) only when an
+iteration needs it.
 
-`driver/src/` holds the driver (relocated from `library/src/` by the
-D5 amendment; `dolt-write/src/` holds the D10 helper package),
-populated step by step by the implementation iteration:
-`commonMain` declares the public `DoltLiteDriver`/`DoltLiteConnection`/
-`DoltLiteStatement` expect classes (D1's three interfaces) plus the
-`dev.seri.doltrooms.dolt` helper package (`DoltDatabase`, D10);
-`jvmAndroidMain` carries the shared JNI binding (`DoltLiteNative` plus
-the C++ glue) with `jvmMain`/`androidMain` library loaders beneath it;
-`nativeMain` carries the Kotlin/Native actuals over the cinterop
-bindings defined by `driver/src/nativeInterop/cinterop/doltlite.def`
-(headers-only bindings, engine archives per D9). The tree
-keeps the template's source-set shape: `commonMain` with per-platform
-`*Main` sets below it, `commonTest` running on every target with
-per-platform `*Test` sets (`jvmTest`, `iosTest`, `linuxX64Test`,
-`androidHostTest`).
+`driver/` holds the driver (relocated from `library/` by the D5
+amendment; `dolt-write/` holds the D10 helper package) in the
+toolchain layout (D12): `src/` declares the public
+`DoltLiteDriver`/`DoltLiteConnection`/`DoltLiteStatement` expect
+classes (D1's three interfaces; `dolt-write/src/` the `DoltDatabase`
+helper, D10); `src@jvmAndroid/` (a declared alias) carries the shared
+JNI binding (`DoltLiteNative` plus the C++ glue under `native/jni/`)
+with `src@jvm`/`src@android` library loaders beneath it; `src@native/`
+carries the Kotlin/Native actuals over the cinterop bindings defined
+by the `driver/cinterop/doltlite.def.in` template (headers-only
+bindings, engine archives per D9, rendered by the doltlite plugin).
+The fragment shape mirrors the old source sets: common `test/` runs on
+every target with per-platform `test@jvm`, `test@ios`,
+`test@linuxX64` beneath it (android test runs parked, D12).
 
 That shape carries the three mechanics the driver relies on:
 

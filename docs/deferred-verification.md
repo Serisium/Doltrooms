@@ -7,6 +7,39 @@ work (an open dependent, a reusable procedure, a live caveat);
 fully-verified entries with no future bearing are deleted — git
 history is the record (audit policy set 2026-07-22).
 
+> **Kotlin Toolchain migration note (2026-08-04):** the build moved
+> from Gradle to the Kotlin Toolchain (`./kotlin`; the
+> `kotlin-toolchain` skill is the reference). `./gradlew` commands in
+> the entries below record HOW something was verified at the time and
+> deliberately stay as written; where a procedure is re-runnable, the
+> toolchain equivalent is noted inline.
+
+## Parked by the Kotlin Toolchain migration — live until the upstream gaps close
+
+Everything here was GREEN under Gradle and is parked, not broken, by
+toolchain 0.11.1 gaps (details + workarounds: the migration PR
+description and the `kotlin-toolchain` skill):
+
+- **Android host tests** (both modules): no `java.library.path` hook
+  for the loader, and driver's android test fragment additionally hits
+  the AAR-test-dependency KSP-classpath bug (root-caused; repro:
+  `kotlin-toolchain-android-testdeps-repro`). Android is build-only.
+- **Android device tests + AAR jniLibs**: no NDK/jniLibs packaging —
+  the AAR ships no natives; suites live in each module's
+  `unmigrated/androidDeviceTest`.
+- **iosArm64DeviceTest**: the devicectl runner was a Gradle task; the
+  procedure in the iOS entry below still documents it.
+- **samples/codelab**: consumed the library via Gradle
+  `includeBuild("../..")` substitution — impossible against the
+  toolchain build; returns when toolchain publishing lands and the
+  sample can consume published artifacts.
+- The wrapper pins a **0.12.0-dev toolchain** (not a stable release):
+  0.11.1 broke native test KSP (no Kotlin/Native stdlib on the KSP
+  classpath) AND omitted cinterop klibs from native test links — both
+  fixed by KTC-4398 in the dev line, verified 2026-08-04 (52/52 iOS
+  simulator tests, the Gradle-era count). Re-pin to the first stable
+  ≥ 0.12 release when it ships.
+
 ## iOS (needs a macOS host with Xcode) — VERIFIED 2026-07-21 incl. physical hardware; kept: the open entries below and the device-test procedure lean on it
 
 Kotlin disables Apple-target compilation on non-Mac hosts as soon as
@@ -94,11 +127,12 @@ The jvm `RemoteServerSyncTest` drives real http sync against a spawned
 `doltlite-remotesrv`. The binary comes from the release's
 `doltlite-tools-linux-x64-<version>.zip`, downloaded and
 checksum-verified by Gradle **on linux-x64 hosts only** — on any other
-host the tests print a SKIP and pass vacuously. When the suite first
-runs on a Mac (e.g. during the iOS verification above), extend
-`downloadDoltliteTools` in `library/build.gradle.kts` with the
-`osx-arm64` asset + its recorded SHA-256 to unskip them. The sync
-logic itself is platform-independent and fully covered by the
+host the tests print a SKIP and pass vacuously. Toolchain equivalent
+of the linux-x64 wiring: `./kotlin do fetchRemotesrv`, then the
+`JAVA_TOOL_OPTIONS` line it prints (verified 2026-08-04). To unskip on
+a Mac, record the `osx-arm64` tools-zip SHA-256 next to `TOOLS_SHA256`
+in `build-plugins/doltlite/src/tasks.kt` and extend `fetchRemotesrv`.
+The sync logic itself is platform-independent and fully covered by the
 commonTest `file://` remote tests on every target.
 
 ## XCFramework packaging (needs a macOS host) — deferred by Step 10
@@ -133,3 +167,10 @@ first release: review the dormant, release-triggered `publish.yml`
 workflow's secrets and env names against the finalized signing setup
 (it survives from the initial template; noted when PR #2's first CI
 run exposed it, 2026-07-18).
+
+**Toolchain status (2026-08-04):** kmp/lib publishing is not supported
+by the toolchain yet (announced for later this month); `publish.yml`
+is a fail-loud guard until then, and the whole Gradle pipeline above
+is preserved in git history to model the toolchain replacement on.
+The single-macOS-host rule and the Central duplicate-publication
+prohibition carry over unchanged.

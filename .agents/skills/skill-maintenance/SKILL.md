@@ -68,7 +68,7 @@ Per-library starting points for `WebFetch`:
 | DoltLite | `https://github.com/dolthub/doltlite` (README is primary), `https://www.dolthub.com/blog/` |
 | Dolt | `https://docs.dolthub.com/`, `https://github.com/dolthub/dolt` |
 
-When the public docs are thin (androidx KDoc often lags the source), drop down to the **version-pinned source** on GitHub or cs.android.com: `https://github.com/<org>/<repo>/blob/<tag>/<path>`. Pin to the version this repo uses (the version catalog in `gradle/libs.versions.toml`).
+When the public docs are thin (androidx KDoc often lags the source), drop down to the **version-pinned source** on GitHub or cs.android.com: `https://github.com/<org>/<repo>/blob/<tag>/<path>`. Pin to the version this repo uses (module.yaml dependency pins; DoltLite pins live in build-plugins/doltlite/src/tasks.kt — the `kotlin-toolchain` skill routes).
 
 Phrase the WebFetch prompt as a request for **quoted text and signatures**, not a paraphrase: "Quote the exact Kotlin declaration of X" / "Quote the README's exact wording about Y". Paraphrased fetches reintroduce the same drift you are trying to remove.
 

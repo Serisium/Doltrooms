@@ -11,7 +11,7 @@ real in-memory stock SQLite** over JDBC:
 - `DatabaseVerifier.kt`: `private const val CONNECTION_URL =
   "jdbc:sqlite::memory:"`, using `org.xerial:sqlite-jdbc` (3.50.3.0
   on the current branch — the exact version tracks androidx's
-  `libs.versions.toml`; the durable fact is "recent stock SQLite via
+  the module.yaml pins; the durable fact is "recent stock SQLite via
   xerial JDBC"). KDoc: "Builds an in-memory version of the database
   and verifies the queries against it."
 - `analyze(sql)` calls `connection.prepareStatement(...)`; any
