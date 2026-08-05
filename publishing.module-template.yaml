@@ -1,0 +1,34 @@
+# Shared Maven publishing configuration, applied by every published
+# module (apply: [ //publishing.module-template.yaml ]); each module
+# sets only its artifactId and description. Coordinates and POM carry
+# over from the Gradle-era vanniktech config unchanged (ARCHITECTURE.md
+# D5/D12): group dev.seri.doltrooms, artifacts doltrooms-<module>.
+# Publishing runs via `./kotlin publish mavenCentral` with the
+# KOTLIN_TOOLCHAIN_MAVEN_CENTRAL_* / KOTLIN_TOOLCHAIN_SIGNING_*
+# environment (see .github/workflows/publish.yml), from a single macOS
+# host (docs/deferred-verification.md).
+# Local verification target: `./kotlin publish mavenLocal` writes the
+# full publication set into ~/.m2/repository for inspection — the
+# toolchain analogue of Gradle's publishToMavenLocal (the "mavenLocal"
+# url string is the schema's special-cased local-repo value).
+repositories:
+  - id: mavenLocal
+    url: mavenLocal
+    publish: true
+
+settings:
+  publishing:
+    enabled: true
+    group: dev.seri.doltrooms
+    version: 0.1.0-SNAPSHOT
+    mavenCentral: enabled
+    signArtifacts: true
+    publishSources: true
+    pom:
+      url: https://github.com/Serisium/Doltrooms/
+      scm: https://github.com/Serisium/Doltrooms.git
+      developers:
+        - name: Seri Greenwood
+      licenses:
+        - name: The Apache License, Version 2.0
+          url: https://www.apache.org/licenses/LICENSE-2.0.txt

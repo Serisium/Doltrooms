@@ -5,6 +5,10 @@ product:
 description: |
   The doltrooms version-control WRITE surface: the git verbs — the DoltDatabase facade plus its sealed result types.
 
+apply:
+  - //publishing.module-template.yaml
+
+
 dependencies:
   # The shared vcs kernel (Room runtime + the shipped row/anchor types).
   # :dolt-write -> :dolt-core, per the DAG.
@@ -31,6 +35,8 @@ test-dependencies@android:
   - androidx.test:runner:1.7.0
 
 settings:
+  publishing:
+    artifactId: doltrooms-dolt-write
   kotlin:
     # RoomConformanceDbConstructor (the duplicated test fixture) is an
     # expect object whose actual KSP generates per target.

@@ -15,6 +15,14 @@ All facts verified in this repo, 2026-08-04, toolchain 0.11.1 and
   the linked test.kexe (iOS: on a simulator the toolchain boots).
 - `./kotlin do <command>` — run a plugin custom command
   (`./kotlin show commands` lists them). Ours: `fetchRemotesrv`.
+- `./kotlin publish <repositoryId> [-m <module>]...` — publish modules
+  whose `settings.publishing.enabled` is true to a repository with
+  `publish: true` (or the built-in `mavenCentral`). Local verify:
+  `./kotlin publish mavenLocal` (target declared in
+  `//publishing.module-template.yaml`) with a throwaway key in
+  `KOTLIN_TOOLCHAIN_SIGNING_KEY` (signing is required whenever
+  `signArtifacts: true` — see the ledger's friction list). Publishing
+  is blocked for driver-adjacent modules by ledger bugs 7-8.
 - `./kotlin show modules|tasks|commands`, `./kotlin init`.
 
 The wrapper self-provisions: the distribution (pinned in the wrapper),

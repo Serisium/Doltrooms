@@ -31,6 +31,11 @@ type).
 - KMP source layout: `src/`, `src@<platform-or-alias>/`, `test/`,
   `test@<...>/` — aliases declared per module (`jvmAndroid`,
   driver's `nonAndroid`).
+- `publishing.module-template.yaml` — shared Maven publishing config
+  (group/version/POM/mavenCentral/mavenLocal target), applied by every
+  published module; per-module `settings.publishing.artifactId` only.
+  Publishing is PREVIEW: see the ledger's publishing section before
+  touching it.
 
 ## Daily commands
 

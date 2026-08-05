@@ -168,9 +168,16 @@ workflow's secrets and env names against the finalized signing setup
 (it survives from the initial template; noted when PR #2's first CI
 run exposed it, 2026-07-18).
 
-**Toolchain status (2026-08-04):** kmp/lib publishing is not supported
-by the toolchain yet (announced for later this month); `publish.yml`
-is a fail-loud guard until then, and the whole Gradle pipeline above
-is preserved in git history to model the toolchain replacement on.
-The single-macOS-host rule and the Central duplicate-publication
+**Toolchain status (2026-08-05):** KMP publishing is in PREVIEW
+(KTC-719) and is wired: `//publishing.module-template.yaml` +
+per-module artifactIds, `./kotlin publish mavenLocal` verified for
+`dolt-core`/`dolt-read` (full umbrella + per-platform sets, correct
+Gradle `.module` metadata, signatures, sources). A real release is
+BLOCKED by two preview bugs — publish-time metadata compilation
+resolves wrong dependency variants (blocks `driver` and its
+dependents) and per-platform POMs pin one platform's dependency
+variant (would ship broken Maven metadata) — see the
+`kotlin-toolchain` skill's ledger. `publish.yml` is the intended
+final pipeline and fails loudly at those points. The
+single-macOS-host rule and the Central duplicate-publication
 prohibition carry over unchanged.

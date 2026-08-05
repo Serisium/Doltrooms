@@ -5,6 +5,10 @@ product:
 description: |
   A Room 3 (androidx.room3) SQLiteDriver backed by DoltLite: the SQLite/Room parity engine module (natives, cinterop).
 
+apply:
+  - //publishing.module-template.yaml
+
+
 # Mirrors the Gradle build's custom jvmAndroidMain source set (the shared
 # JNI declarations, androidx sqlite-bundled's pattern): src@jvmAndroid.
 aliases:
@@ -54,6 +58,8 @@ test-dependencies@jvm:
 # android test fragment — the fixture lives in test@nonAndroid instead.
 
 settings:
+  publishing:
+    artifactId: doltrooms-driver
   kotlin:
     # The driver classes are expect/actual (the bundled-driver template).
     # NOTE: Gradle's explicitApi() has no toolchain equivalent yet;

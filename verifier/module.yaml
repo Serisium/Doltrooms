@@ -3,6 +3,13 @@ product: jvm/lib
 description: |
   The doltrooms Room verification-database shim (host JVM, KSP classpath only): swaps Room's compile-time verification database to DoltLite. Never ships in an app. (SCAFFOLD.)
 
+apply:
+  - //publishing.module-template.yaml
+
+settings:
+  publishing:
+    artifactId: doltrooms-verifier
+
 # The Gradle layout (src/main/kotlin, src/test/kotlin) maps directly onto
 # the toolchain's maven-like layout for jvm-only modules — no source moves.
 layout: maven-like

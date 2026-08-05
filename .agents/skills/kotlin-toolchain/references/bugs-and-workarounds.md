@@ -1,11 +1,11 @@
 # Toolchain bug ledger
 
 Every toolchain bug this repo has hit, with status, the in-repo
-workaround, and its removal condition. Repro repos carry ready-to-post
-YouTrack drafts (ISSUE-DRAFT.md; none posted yet — human decision).
-All findings 2026-08-04, versions 0.11.1 and 0.12.0-dev-4213.
+workaround, and its removal condition. Filed upstream 2026-08-05 by the
+human where noted; repro repos carry the reports' reproduction projects.
+Findings 2026-08-04/05, versions 0.11.1, 0.12.0-dev-4213, 0.12.0-dev-4215.
 
-## 1. `generated.*.fragment.modifier` crashes in its documented form
+## 1. `generated.*.fragment.modifier` crashes in its documented form — FILED: [KTC-5646](https://youtrack.jetbrains.com/issue/KTC-5646)
 
 - **Symptom:** `Internal error: NoSuchElementException` from
   `selectFragmentByDescriptor` during model reading.
@@ -19,7 +19,7 @@ All findings 2026-08-04, versions 0.11.1 and 0.12.0-dev-4213.
   `build-plugins/doltlite/plugin.yaml`. Remove the quotes-and-@ only
   after a toolchain release makes the documented bare form parse.
 
-## 2. CLI hangs after a KSP processor crash
+## 2. CLI hangs after a KSP processor crash — FILED: [KTC-5645](https://youtrack.jetbrains.com/issue/KTC-5645)
 
 - **Symptom:** [ksp] ERROR prints, then the CLI never exits (needs a
   kill). NOT native-specific: any crashing processor reproduces it on
@@ -36,7 +36,7 @@ All findings 2026-08-04, versions 0.11.1 and 0.12.0-dev-4213.
   when debugging KSP failures, expect to kill the process and read
   `build/logs/`.
 
-## 3. AAR-packaged maven TEST-dependencies never reach android KSP
+## 3. AAR-packaged maven TEST-dependencies never reach android KSP — FILED: [KTC-5649](https://youtrack.jetbrains.com/issue/KTC-5649)
 
 - **Symptom:** `kspAndroidTest` fails (Room `MissingType`) although
   the dependency is declared in `test-dependencies` (or
@@ -83,10 +83,63 @@ All findings 2026-08-04, versions 0.11.1 and 0.12.0-dev-4213.
 - **Status:** fixed in 0.12.0-dev-4213 (verified: 52/52 simulator
   tests). Covered by the same dev-pin; re-verify at the stable re-pin.
 
+## Publishing bugs (KMP publishing preview, 0.12.0-dev-4215; KTC-719 is the feature ticket)
+
+Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
+(repro chips spawned 2026-08-05; drafts not posted):
+
+## 6. Publish crashes on a source-less KMP module
+
+- Internal `NoSuchElementException` in
+  `PrepareMavenPublishablesTask.generateGradleMetadataForLeafPlatforms`
+  instead of a diagnostic. Hit by our scaffold modules.
+- **Workaround:** every published module carries at least one real
+  source file — the `internal object ModuleScaffold` markers (their
+  header comments say to delete them when real content lands AND this
+  is fixed). Sibling: non-.kt files under `src/` (old `.gitkeep`s) are
+  fed to `compileMetadataCommon` as source entries and fail it.
+
+## 7. Publish-time metadata compilation resolves wrong dependency variants — THE publishing blocker
+
+- `compileMetadataCommon` resolves dependencies' plain common variants,
+  ignoring the module's platform set: driver's synchronous
+  `SQLiteDriver.open` override hits androidx.sqlite's suspend/web API
+  → "'open' overrides nothing" — publish fails though every build/test
+  is green (KGP picks the nonWeb variant here). Blocks publishing
+  `driver`, `dolt-write`, `dolt-remotes` (dep chain), and even
+  `processor`/`verifier` (publishing a module prepares its module
+  DEPENDENCIES' publications too).
+- **No workaround.** `dolt-core` and `dolt-read` publish clean
+  (verified to mavenLocal: full umbrella + per-platform set, correct
+  `.module` metadata, signatures, sources).
+
+## 8. Every per-platform POM pins ONE platform's dependency variant
+
+- All of dolt-core's platform POMs (jvm/android/linuxx64/iosarm64)
+  declare `room3-runtime-iossimulatorarm64`. The `.module` files are
+  correct, so Gradle consumers resolve fine — Maven consumers get
+  wrong-platform klib deps silently. Do NOT release to Central until
+  fixed.
+
+## Publishing friction (feedback, not necessarily bugs)
+
+- `signArtifacts: true` demands `KOTLIN_TOOLCHAIN_SIGNING_KEY` even
+  for a mavenLocal publish — no keyless local verification (vanniktech
+  skipped signing without a key). Local verify needs a throwaway key.
+- A mavenLocal publish target must be declared manually
+  (`repositories: [{id: mavenLocal, url: mavenLocal, publish: true}]`,
+  in `//publishing.module-template.yaml`) — no built-in analogue of
+  `publishToMavenLocal`.
+- The publishing docs page still says KMP publication is unsupported —
+  docs lag the implementation.
+- Empty javadoc jar by default (acknowledged in the docs).
+
 ## Not bugs, but toolchain gaps (no issue to file)
 
-- **kmp/lib publishing:** unsupported; announced for later this month.
-  `publish.yml` fails loudly meanwhile.
+- **kmp/lib publishing:** PREVIEW (KTC-719); wired via
+  `//publishing.module-template.yaml`, blocked for release by bugs
+  7-8 above. `publish.yml` is the intended final shape and fails
+  loudly meanwhile.
 - **explicitApi / ABI validation / detekt:** no toolchain equivalents;
   D11's mechanisms suspended (see ARCHITECTURE.md D12).
 - **AAR jniLibs packaging:** no hook — android artifacts ship no

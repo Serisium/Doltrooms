@@ -4,20 +4,62 @@ on:
   release:
     types: [released, prereleased]
 
-# PARKED for the Kotlin Toolchain migration: kmp/lib publishing is not
-# supported by the toolchain yet (announced for later this month). The
-# pre-migration Gradle pipeline (tag/version gate -> vanniktech
-# publishToMavenCentral from a macOS host, secrets in the 'release'
-# environment) is preserved in git history — restore its shape against
-# the toolchain's publishing once it ships. Until then a release must
-# NOT silently no-op: this job fails loudly so a tagged release is never
-# presumed published.
+# Kotlin Toolchain publishing (PREVIEW; KTC-719). Wired to the intended
+# final shape, but a release CANNOT succeed yet: publish-time metadata
+# compilation resolves wrong dependency variants (blocks :driver and
+# everything depending on it — kotlin-toolchain skill, bug ledger) and
+# the per-platform POM dependency bug would ship broken Maven metadata.
+# The run fails LOUDLY at those points, so a tagged release is never
+# presumed published. Secrets live in the 'release' environment, whose
+# deployment policy only admits v* tags.
 jobs:
-  blocked:
-    name: Publishing is blocked pending toolchain support
+  # The tag (vX.Y.Z) must equal the shared publishing version before
+  # anything builds or signs — the version lives in ONE place now:
+  # publishing.module-template.yaml.
+  verify-tag:
+    name: Verify tag matches the shared publishing version
     runs-on: ubuntu-latest
     steps:
-      - name: Fail with explanation
+      - uses: actions/checkout@v7
+      - name: Compare release tag to publishing.module-template.yaml
         run: |
-          echo "::error::Publishing is parked: the Kotlin Toolchain does not support kmp/lib publishing yet (expected later this month). Nothing was published for this release. See the migration PR and git history of this file for the Gradle-era pipeline to restore."
-          exit 1
+          tag="${{ github.event.release.tag_name }}"
+          version="$(sed -n 's/^ *version: \(.*\)$/\1/p' publishing.module-template.yaml | head -1)"
+          echo "tag=$tag version=$version"
+          if [ -z "$version" ]; then
+            echo "::error::Could not extract version from publishing.module-template.yaml"; exit 1
+          fi
+          if [ "$tag" != "v$version" ]; then
+            echo "::error::Release tag '$tag' does not match publishing version 'v$version'"; exit 1
+          fi
+
+  publish:
+    name: Release build and publish to Maven Central
+    needs: verify-tag
+    # Single-host rule: the iOS klibs carry cinterops, and Central
+    # forbids duplicate publications — everything publishes from one
+    # macOS host (docs/deferred-verification.md).
+    runs-on: macos-15
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: 21
+      - uses: android-actions/setup-android@v4
+      - name: Publish to Maven Central (manual release mode)
+        # Preview default is `manual` mode: the bundle uploads and waits
+        # for validation; the human releases it in the Central Portal UI.
+        run: ./kotlin publish mavenCentral
+        env:
+          KOTLIN_TOOLCHAIN_MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          KOTLIN_TOOLCHAIN_MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          KOTLIN_TOOLCHAIN_SIGNING_KEY: ${{ secrets.GPG_KEY_CONTENTS }}
+          KOTLIN_TOOLCHAIN_SIGNING_KEY_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-logs
+          path: build/logs/

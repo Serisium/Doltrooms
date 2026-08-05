@@ -5,10 +5,16 @@ product:
 description: |
   The doltrooms version-control READ machinery: the @DoltQuery reactive read support (annotations, generated-impl runtime, dynamic-table query builders). (SCAFFOLD — populated when the rev-4 contract implementation lands.)
 
+apply:
+  - //publishing.module-template.yaml
+
+
 dependencies:
   - ../dolt-core: exported
 
 settings:
+  publishing:
+    artifactId: doltrooms-dolt-read
   android:
     namespace: dev.seri.doltrooms.dolt.read
     compileSdk: 36

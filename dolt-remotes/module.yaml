@@ -5,10 +5,16 @@ product:
 description: |
   The doltrooms sync surface (fetch/push/pull/clone). pull = fetch + merge; reuses MergeResult/ConflictPolicy from the write surface. (SCAFFOLD — populated when the rev-4 contract implementation lands.)
 
+apply:
+  - //publishing.module-template.yaml
+
+
 dependencies:
   - ../dolt-write: exported
 
 settings:
+  publishing:
+    artifactId: doltrooms-dolt-remotes
   android:
     namespace: dev.seri.doltrooms.dolt.remotes
     compileSdk: 36
