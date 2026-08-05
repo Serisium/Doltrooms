@@ -75,8 +75,13 @@ jobs:
           path: build/logs/
 
   # The Apple leg: macOS runners are arm64 with simulators preinstalled.
-  # Builds every platform a Mac can (including the linuxX64 archive via
-  # Konan's cross toolchain) and runs the simulator suites.
+  # Scoped to the platforms this job exists to verify — the linux leg
+  # builds AND tests natively in the `build` job above, and the mac
+  # linuxX64 cross archive needs Konan's linux sysroot packages, which a
+  # fresh runner only provisions DURING a linuxX64 build (a first-build
+  # bootstrap the plugin resolves on the NEXT build; observed as
+  # undefined sqlite3_* at the linux test link on a cold runner). The
+  # cross-compile stays a dev/publishing-host capability.
   ios:
     runs-on: macos-15
     timeout-minutes: 60
@@ -103,8 +108,8 @@ jobs:
         with:
           path: build/tasks/_driver_prepareAmalgamation@doltlite/*.zip
           key: doltlite-${{ hashFiles('build-plugins/doltlite/src/tasks.kt') }}
-      - name: Build all platforms
-        run: ./kotlin build
+      - name: Build the mac-verified platforms (jvm, android, iOS)
+        run: ./kotlin build -p jvm -p android -p iosArm64 -p iosSimulatorArm64
       # Separate invocations per module: a simulator spawn flake at
       # module handoff ("device is not booted", exit 149) was observed
       # when both suites run in one invocation.

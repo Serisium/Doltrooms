@@ -20,6 +20,7 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import org.jetbrains.amper.plugins.ExecutionAvoidance
 import org.jetbrains.amper.plugins.Input
 import org.jetbrains.amper.plugins.Output
 import org.jetbrains.amper.plugins.TaskAction
@@ -243,6 +244,15 @@ public fun compileHostJni(
     println("Built ${out / libName}")
 }
 
+
+/** True when the target's archive exists and is newer than the amalgamation source. */
+private fun archiveIsFresh(outputDir: Path, target: String, src: Path): Boolean {
+    val archive = outputDir / target / "libdoltlite.a"
+    val source = src / "doltlite.c"
+    return archive.isRegularFile() &&
+        archive.toFile().lastModified() > source.toFile().lastModified()
+}
+
 /**
  * Static libdoltlite.a engine archives for the cinterop'd native targets
  * this HOST can produce: linuxX64 on a linux-x64 host (gcc against host
@@ -250,8 +260,16 @@ public fun compileHostJni(
  * Gradle build's git history), the iOS slices on a macOS host (SDK clang +
  * libtool). Other-host targets are simply absent; generateDef only embeds
  * archives that exist.
+ *
+ * Execution avoidance is DISABLED with a manual freshness check instead
+ * ([archiveIsFresh]): the macOS→linux cross-compile depends on Konan's
+ * dependency packages, which the SAME build provisions only later (during
+ * cinterop) — with automatic avoidance, the recorded skip would be
+ * replayed forever and the next build could never pick the archive up
+ * (observed on a fresh CI runner: undefined sqlite3_* at the linuxX64
+ * test link). This way a rebuild after provisioning genuinely retries.
  */
-@TaskAction
+@TaskAction(executionAvoidance = ExecutionAvoidance.Disabled)
 public fun compileStaticArchives(
     @Input amalgamationDir: Path,
     @Output outputDir: Path,
@@ -259,6 +277,9 @@ public fun compileStaticArchives(
     val src = amalgamationDir / "src"
     when (host) {
         Host.LINUX_X64 -> {
+            if (archiveIsFresh(outputDir, "linuxX64", src)) {
+                println("linuxX64 engine archive is up to date"); return
+            }
             val dir = (outputDir / "linuxX64").apply { createDirectories() }
             val obj = outputDir / "doltlite-linuxX64.o"
             val hint = { _: Int ->
@@ -294,6 +315,9 @@ public fun compileStaticArchives(
                 Triple("iphoneos", "arm64-apple-ios12.0", "iosArm64"),
                 Triple("iphonesimulator", "arm64-apple-ios14.0-simulator", "iosSimulatorArm64"),
             )) {
+                if (archiveIsFresh(outputDir, target, src)) {
+                    println("$target engine archive is up to date"); continue
+                }
                 val dir = (outputDir / target).apply { createDirectories() }
                 val obj = outputDir / "doltlite-$target.o"
                 exec(
@@ -334,6 +358,9 @@ public fun compileStaticArchives(
  * rebuild after the first `./kotlin build -p linuxX64` to pick it up.
  */
 private fun compileLinuxX64CrossArchive(src: Path, outputDir: Path) {
+    if (archiveIsFresh(outputDir, "linuxX64", src)) {
+        println("linuxX64 (cross) engine archive is up to date"); return
+    }
     val deps = Path.of(
         System.getenv("KONAN_DATA_DIR") ?: "${System.getProperty("user.home")}/.konan"
     ) / "dependencies"
