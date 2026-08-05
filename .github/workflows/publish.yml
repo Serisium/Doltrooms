@@ -1,56 +1,23 @@
 name: Publish
+
 on:
   release:
     types: [released, prereleased]
+
+# PARKED for the Kotlin Toolchain migration: kmp/lib publishing is not
+# supported by the toolchain yet (announced for later this month). The
+# pre-migration Gradle pipeline (tag/version gate -> vanniktech
+# publishToMavenCentral from a macOS host, secrets in the 'release'
+# environment) is preserved in git history — restore its shape against
+# the toolchain's publishing once it ships. Until then a release must
+# NOT silently no-op: this job fails loudly so a tagged release is never
+# presumed published.
 jobs:
-  # A mistyped release must not ship a mismatched version to Maven
-  # Central: the tag (vX.Y.Z) must equal the version in EVERY published
-  # module's build.gradle.kts before anything builds or signs (the D5
-  # module set declares version per module — the gate also catches
-  # cross-module drift).
-  verify-tag:
-    name: Verify tag matches all module versions
+  blocked:
+    name: Publishing is blocked pending toolchain support
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - name: Compare release tag to every module version
+      - name: Fail with explanation
         run: |
-          tag="${{ github.event.release.tag_name }}"
-          modules="driver dolt-core dolt-read dolt-write dolt-remotes verifier processor"
-          fail=0
-          for m in $modules; do
-            version="$(sed -n 's/^version = "\(.*\)"$/\1/p' "$m/build.gradle.kts")"
-            echo "tag=$tag module=$m version=$version"
-            if [ -z "$version" ]; then
-              echo "::error::Could not extract version from $m/build.gradle.kts"
-              fail=1
-            elif [ "$tag" != "v$version" ]; then
-              echo "::error::Release tag '$tag' does not match $m version 'v$version'"
-              fail=1
-            fi
-          done
-          exit "$fail"
-  publish:
-    name: Release build and publish
-    needs: verify-tag
-    runs-on: macOS-latest
-    # Publishing secrets live in the 'release' environment, whose
-    # deployment policy only admits v* tags — no other ref can reach
-    # the signing key.
-    environment: release
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v7
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version: 21
-      - name: Publish to MavenCentral
-        run: ./gradlew publishToMavenCentral --no-configuration-cache
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
+          echo "::error::Publishing is parked: the Kotlin Toolchain does not support kmp/lib publishing yet (expected later this month). Nothing was published for this release. See the migration PR and git history of this file for the Gradle-era pipeline to restore."
+          exit 1
