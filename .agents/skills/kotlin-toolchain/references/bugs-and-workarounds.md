@@ -92,12 +92,25 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
 
 - Internal `NoSuchElementException` in
   `PrepareMavenPublishablesTask.generateGradleMetadataForLeafPlatforms`
-  instead of a diagnostic. Hit by our scaffold modules.
+  instead of a diagnostic. Hit by our scaffold modules. Primarily a
+  diagnostics bug — the basics docs explicitly allow source-less
+  modules ("All sources and resources are optional"), and BOM-style
+  deps-only modules are a real pattern, so full support may be the
+  intended fix.
 - **Workaround:** every published module carries at least one real
   source file — the `internal object ModuleScaffold` markers (their
   header comments say to delete them when real content lands AND this
-  is fixed). Sibling: non-.kt files under `src/` (old `.gitkeep`s) are
-  fed to `compileMetadataCommon` as source entries and fail it.
+  is fixed).
+
+## 6b. Non-Kotlin files under `src/` fail publish (build tolerates them)
+
+- Any non-`.kt` file in a source tree (our old `.gitkeep`s; a stray
+  macOS `.DS_Store` is the real-world case) is passed verbatim to the
+  publish-only `compileMetadataCommon` as a source entry → "error:
+  source entry is not a Kotlin file" — while `./kotlin build`/`test`
+  are green, so it detonates only at publish time.
+- **Workaround:** keep source trees free of non-Kotlin files (the
+  `.gitkeep`s were deleted when the ModuleScaffold markers landed).
 
 ## 7. Publish-time metadata compilation resolves wrong dependency variants — THE publishing blocker
 
