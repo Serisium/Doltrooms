@@ -40,11 +40,14 @@ settings:
     compileSdk: 36
     minSdk: 24
 
+# The Room compiler serves only the RoomConformanceDb fixture the verb
+# suites run against (all test fragments; the android one works because
+# Room's AAR arrives via the exported MAIN dolt-core dependency — see the
+# AAR-test-dep bug note in driver/module.yaml). Requires toolchain >=
+# 0.12.0-dev-4213 (KTC-4398) for the native test fragments.
 test-settings:
   kotlin:
     ksp:
-      # The Room compiler serves only the RoomConformanceDb fixture the verb
-      # suites run against.
       processors:
         - androidx.room3:room3-compiler:3.0.0
       processorOptions:

@@ -10,10 +10,8 @@ description: |
 aliases:
   - jvmAndroid: [ jvm, android ]
   # test@nonAndroid holds the Room conformance fixture + suite: the android
-  # test fragment must carry NO Room inputs, because its maven
-  # test-dependencies never reach the test/KSP classpath here (see the
-  # note at test-dependencies@android below) and Room's processor would
-  # die with MissingType on the fixture.
+  # test fragment must carry NO Room inputs (AAR test-deps never reach the
+  # android KSP classpath — see the note at test-dependencies@android).
   - nonAndroid: [ jvm, iosArm64, iosSimulatorArm64, linuxX64 ]
 
 plugins:
@@ -45,14 +43,15 @@ test-dependencies@jvm:
   - androidx.sqlite:sqlite-bundled:2.7.0
 
 # No test-dependencies@android: this module's android HOST tests are parked
-# in unmigrated/androidHostTest (with the device tests) because in toolchain
-# 0.11.1 the android test fragment's maven test-dependencies never reach the
-# test (KSP) classpath here — neither from the common test-dependencies nor
-# from an @android-qualified block — so Room's processor dies with
-# MissingType on the fixture. :dolt-write's android tests survive only
-# because its Room runtime arrives via a MAIN dependency (dolt-core,
-# exported); the difference points at this module's jvmAndroid alias.
-# Candidate toolchain bug; see the migration PR description.
+# in unmigrated/androidHostTest (with the device tests) because AAR-packaged
+# maven TEST-dependencies never reach the android KSP classpath (toolchain
+# bug, root-caused: kspAndroidTest is wired to the MAIN AAR-transform task,
+# so test-scope AARs like room3-runtime stay raw and get filtered out; JAR
+# test-deps and main-scope AARs are fine — which is why :dolt-write's
+# exported MAIN Room dep works). Repro + draft report:
+# github.com/Serisium/kotlin-toolchain-android-testdeps-repro. So Room's
+# processor would die with MissingType on any Room fixture in this module's
+# android test fragment — the fixture lives in test@nonAndroid instead.
 
 settings:
   kotlin:
@@ -68,13 +67,13 @@ settings:
     compileSdk: 36
     minSdk: 24
 
+# Room's compiler serves tests only (the conformance fixture); on the
+# android test fragment it is a no-op because the fixture lives in
+# test@nonAndroid (see the alias note above). Requires toolchain >=
+# 0.12.0-dev-4213 (KTC-4398) for the native test fragments.
 test-settings:
   kotlin:
     ksp:
-      # Room 3 serves tests only: the compiler generates the conformance
-      # fixture database (RoomConformanceDb) for every target's test
-      # compilation; main compilations get no processor, so no generated
-      # Room code ships in the artifact.
       processors:
         - androidx.room3:room3-compiler:3.0.0
       processorOptions:

@@ -309,6 +309,7 @@ public fun compileStaticArchives(
                     hint = hint,
                 )
             }
+            compileLinuxX64CrossArchive(src, outputDir)
         }
         Host.OTHER_LINUX -> println(
             "No static engine archives are produced on this host (only " +
@@ -316,6 +317,60 @@ public fun compileStaticArchives(
                 "cinterop headers-only."
         )
     }
+}
+
+/**
+ * macOS -> linux-x64 cross-compile of the engine archive, so a Mac builds
+ * the full platform set (the Gradle build's single-host property). Uses the
+ * SAME split Konan itself uses: clang/llvm-ar from the provisioned llvm-*
+ * dependency, retargeted at the x86_64-unknown-linux-gnu-gcc-* package,
+ * which serves only as the SYSROOT. -DSQLITE_DISABLE_LFS matches the
+ * linux-x64 host build; the glibc-2.19 sysroot predates the C23 strto*
+ * redirects, so no objcopy remap is needed here.
+ *
+ * The packages exist only after Konan has provisioned them (any linuxX64
+ * cinterop/compile does this); until then the archive is skipped with a
+ * warning and the generated .def simply carries no linux_x64 entries —
+ * rebuild after the first `./kotlin build -p linuxX64` to pick it up.
+ */
+private fun compileLinuxX64CrossArchive(src: Path, outputDir: Path) {
+    val deps = Path.of(
+        System.getenv("KONAN_DATA_DIR") ?: "${System.getProperty("user.home")}/.konan"
+    ) / "dependencies"
+    fun konanDep(prefix: String): Path? = deps.toFile()
+        .listFiles { f -> f.isDirectory && f.name.startsWith(prefix) }
+        ?.sortedBy { it.name }?.lastOrNull()?.toPath()
+    val llvmBin = konanDep("llvm-")?.let { it / "bin" }
+    val gcc = konanDep("x86_64-unknown-linux-gnu-gcc-")
+    if (llvmBin == null || gcc == null) {
+        println(
+            "Skipping the linuxX64 engine archive: Konan's Linux cross " +
+                "packages are not provisioned yet under $deps (llvm-*, " +
+                "x86_64-unknown-linux-gnu-gcc-*). Run a linuxX64 build once " +
+                "(e.g. ./kotlin build -p linuxX64) and rebuild to include it."
+        )
+        return
+    }
+    val hint = { _: Int ->
+        "Konan cross toolchain failed; re-provision by deleting $deps and " +
+            "running a linuxX64 build, or build this archive on a linux-x64 host."
+    }
+    val retarget = arrayOf(
+        "--target=x86_64-unknown-linux-gnu",
+        "--sysroot=$gcc/x86_64-unknown-linux-gnu/sysroot",
+        "--gcc-toolchain=$gcc",
+    )
+    val dir = (outputDir / "linuxX64").apply { createDirectories() }
+    val obj = outputDir / "doltlite-linuxX64.o"
+    exec(
+        "$llvmBin/clang", *retarget, "-c", "-fPIC", "-O3", "-DSQLITE_DISABLE_LFS",
+        *COMPILE_FLAGS.toTypedArray(), "-I$src",
+        "-o", "$obj", "$src/doltlite.c",
+        hint = hint,
+    )
+    (dir / "libdoltlite.a").deleteIfExists()
+    exec("$llvmBin/llvm-ar", "rcs", "${dir / "libdoltlite.a"}", "$obj", hint = hint)
+    println("Built ${dir / "libdoltlite.a"} (Konan cross toolchain)")
 }
 
 /**
