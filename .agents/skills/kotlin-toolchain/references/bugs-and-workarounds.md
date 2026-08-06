@@ -109,7 +109,7 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
 - No repo change needed (the `.gitkeep`s are gone regardless); keep
   source trees tidy as a matter of hygiene.
 
-## 7. Publish-time metadata compilation fails on platform-set-refined dependency APIs — THE remaining publishing blocker (unfiled; draft pending in the repro task)
+## 7. Publish-time metadata compilation fails on platform-set-refined dependency APIs — FILED: [KTC-5665](https://youtrack.jetbrains.com/issue/KTC-5665); THE remaining publishing blocker
 
 - driver's synchronous `SQLiteDriver.open` override fails
   `compileMetadataCommon` with "'open' overrides nothing" — publish
@@ -122,7 +122,11 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   (publishing a module prepares its module DEPENDENCIES' publications).
 - **Still broken on 0.12.0-dev-4225; no workaround.** `dolt-core` and
   `dolt-read` publish clean (umbrella + per-platform sets, correct
-  `.module` metadata and — since KTC-5650 — correct POMs).
+  `.module` metadata and — since KTC-5650 — correct POMs). Repro:
+  `github.com/Serisium/kotlin-toolchain-publish-metadata-variant-repro`.
+  When a fix ships: re-pin, `./kotlin publish mavenLocal` should clear
+  all seven modules — that is the last publishing gate before a
+  release.
 
 ## 8. Every per-platform POM pins ONE platform's dependency variant — [KTC-5650](https://youtrack.jetbrains.com/issue/KTC-5650), FIXED in 0.12.0-dev-4225
 
