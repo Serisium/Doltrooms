@@ -13,10 +13,6 @@ apply:
 # JNI declarations, androidx sqlite-bundled's pattern): src@jvmAndroid.
 aliases:
   - jvmAndroid: [ jvm, android ]
-  # test@nonAndroid holds the Room conformance fixture + suite: the android
-  # test fragment must carry NO Room inputs (AAR test-deps never reach the
-  # android KSP classpath — see the note at test-dependencies@android).
-  - nonAndroid: [ jvm, iosArm64, iosSimulatorArm64, linuxX64 ]
 
 plugins:
   # Builds the DoltLite native pieces as part of the build graph: pinned
@@ -46,16 +42,12 @@ test-dependencies@jvm:
   # and their unprefixed sqlite3_* symbols collide.
   - androidx.sqlite:sqlite-bundled:2.7.0
 
-# No test-dependencies@android: this module's android HOST tests are parked
-# in unmigrated/androidHostTest (with the device tests) because AAR-packaged
-# maven TEST-dependencies never reach the android KSP classpath (toolchain
-# bug, root-caused: kspAndroidTest is wired to the MAIN AAR-transform task,
-# so test-scope AARs like room3-runtime stay raw and get filtered out; JAR
-# test-deps and main-scope AARs are fine — which is why :dolt-write's
-# exported MAIN Room dep works). Repro + draft report:
-# github.com/Serisium/kotlin-toolchain-android-testdeps-repro. So Room's
-# processor would die with MissingType on any Room fixture in this module's
-# android test fragment — the fixture lives in test@nonAndroid instead.
+# Android HOST tests remain parked in unmigrated/androidHostTest: the
+# AAR-test-dep KSP bug is FIXED upstream (KTC-5649, verified on
+# 0.12.0-dev-4225 — the Room fixture is back in common test/), but the
+# loader gap stands (androidMain's System.loadLibrary needs a
+# java.library.path hook the toolchain doesn't expose), so the suites
+# compile-only until then.
 
 settings:
   publishing:

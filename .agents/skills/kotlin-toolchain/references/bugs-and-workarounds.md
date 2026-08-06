@@ -36,7 +36,7 @@ Findings 2026-08-04/05, versions 0.11.1, 0.12.0-dev-4213, 0.12.0-dev-4215.
   when debugging KSP failures, expect to kill the process and read
   `build/logs/`.
 
-## 3. AAR-packaged maven TEST-dependencies never reach android KSP — FILED: [KTC-5649](https://youtrack.jetbrains.com/issue/KTC-5649)
+## 3. AAR-packaged maven TEST-dependencies never reach android KSP — [KTC-5649](https://youtrack.jetbrains.com/issue/KTC-5649), FIXED in 0.12.0-dev-4225
 
 - **Symptom:** `kspAndroidTest` fails (Room `MissingType`) although
   the dependency is declared in `test-dependencies` (or
@@ -50,11 +50,10 @@ Findings 2026-08-04/05, versions 0.11.1, 0.12.0-dev-4213, 0.12.0-dev-4215.
 - **Status:** reproduces on 0.12.0-dev-4213. KTC-5602 is the
   main-scope cousin; no exact issue. Repro:
   `github.com/Serisium/kotlin-toolchain-android-testdeps-repro`.
-- **Workaround:** driver's Room fixture lives in `test@nonAndroid/`
-  (alias) so the android test fragment has no Room inputs; driver's
-  android host tests are parked in `unmigrated/androidHostTest`.
-  Revisit when a fix ships AND the loader problem (below, "not bugs")
-  is solved.
+- **Workaround retired 2026-08-06** (verified on 0.12.0-dev-4225): the
+  Room fixture is back in driver's common `test/` and the `nonAndroid`
+  alias is gone. Android host tests stay parked in
+  `unmigrated/androidHostTest` for the loader gap only (below).
 
 ## 4. Native-target KSP misses the Kotlin/Native stdlib — FIXED in dev
 
@@ -88,7 +87,7 @@ Findings 2026-08-04/05, versions 0.11.1, 0.12.0-dev-4213, 0.12.0-dev-4215.
 Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
 (repro chips spawned 2026-08-05; drafts not posted):
 
-## 6. Publish crashes on a source-less KMP module
+## 6. Publish crashes on a source-less KMP module — [KTC-5652](https://youtrack.jetbrains.com/issue/KTC-5652), FIXED in 0.12.0-dev-4225
 
 - Internal `NoSuchElementException` in
   `PrepareMavenPublishablesTask.generateGradleMetadataForLeafPlatforms`
@@ -97,48 +96,53 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   modules ("All sources and resources are optional"), and BOM-style
   deps-only modules are a real pattern, so full support may be the
   intended fix.
-- **Workaround:** every published module carries at least one real
-  source file — the `internal object ModuleScaffold` markers (their
-  header comments say to delete them when real content lands AND this
-  is fixed).
+- **Workaround retired 2026-08-06**: the `ModuleScaffold` markers are
+  deleted; source-less `dolt-core` published clean on dev-4225.
 
-## 6b. Non-Kotlin files under `src/` fail publish (build tolerates them)
+## 6b. Non-Kotlin files under `src/` fail publish — [KTC-5654](https://youtrack.jetbrains.com/issue/KTC-5654), FIXED upstream
 
 - Any non-`.kt` file in a source tree (our old `.gitkeep`s; a stray
   macOS `.DS_Store` is the real-world case) is passed verbatim to the
   publish-only `compileMetadataCommon` as a source entry → "error:
   source entry is not a Kotlin file" — while `./kotlin build`/`test`
   are green, so it detonates only at publish time.
-- **Workaround:** keep source trees free of non-Kotlin files (the
-  `.gitkeep`s were deleted when the ModuleScaffold markers landed).
+- No repo change needed (the `.gitkeep`s are gone regardless); keep
+  source trees tidy as a matter of hygiene.
 
-## 7. Publish-time metadata compilation resolves wrong dependency variants — THE publishing blocker
+## 7. Publish-time metadata compilation fails on platform-set-refined dependency APIs — THE remaining publishing blocker (unfiled; draft pending in the repro task)
 
-- `compileMetadataCommon` resolves dependencies' plain common variants,
-  ignoring the module's platform set: driver's synchronous
-  `SQLiteDriver.open` override hits androidx.sqlite's suspend/web API
-  → "'open' overrides nothing" — publish fails though every build/test
-  is green (KGP picks the nonWeb variant here). Blocks publishing
-  `driver`, `dolt-write`, `dolt-remotes` (dep chain), and even
-  `processor`/`verifier` (publishing a module prepares its module
-  DEPENDENCIES' publications too).
-- **No workaround.** `dolt-core` and `dolt-read` publish clean
-  (verified to mavenLocal: full umbrella + per-platform set, correct
-  `.module` metadata, signatures, sources).
+- driver's synchronous `SQLiteDriver.open` override fails
+  `compileMetadataCommon` with "'open' overrides nothing" — publish
+  fails though every build/test is green. Root cause refined by the
+  repro session: dependency resolution picks the RIGHT source-set
+  klibs, but they're emitted general-first and the metadata compiler
+  shadows duplicate classifiers first-on-classpath (swapping the two
+  classpath entries fixes the compile). Blocks publishing `driver`,
+  `dolt-write`, `dolt-remotes` (dep chain), and `processor`/`verifier`
+  (publishing a module prepares its module DEPENDENCIES' publications).
+- **Still broken on 0.12.0-dev-4225; no workaround.** `dolt-core` and
+  `dolt-read` publish clean (umbrella + per-platform sets, correct
+  `.module` metadata and — since KTC-5650 — correct POMs).
 
-## 8. Every per-platform POM pins ONE platform's dependency variant
+## 8. Every per-platform POM pins ONE platform's dependency variant — [KTC-5650](https://youtrack.jetbrains.com/issue/KTC-5650), FIXED in 0.12.0-dev-4225
 
-- All of dolt-core's platform POMs (jvm/android/linuxx64/iosarm64)
-  declare `room3-runtime-iossimulatorarm64`. The `.module` files are
-  correct, so Gradle consumers resolve fine — Maven consumers get
-  wrong-platform klib deps silently. Do NOT release to Central until
-  fixed.
+- Was: all of dolt-core's platform POMs declared
+  `room3-runtime-iossimulatorarm64`. Verified fixed on dev-4225: each
+  platform POM now names its own variant (jvm → room3-runtime-jvm,
+  android → -android, ...).
 
 ## Publishing friction (feedback, not necessarily bugs)
 
 - `signArtifacts: true` demands `KOTLIN_TOOLCHAIN_SIGNING_KEY` even
   for a mavenLocal publish — no keyless local verification (vanniktech
-  skipped signing without a key). Local verify needs a throwaway key.
+  skipped signing without a key). Local verify needs a throwaway key
+  (RSA-4096 verified; give it more than a day's validity — an EXPIRED
+  key fails with the misleading "does not contain any usable component
+  keys capable of signing").
+- Native test output changed in the 0.12.0-dev line: per-test
+  Started/Passed lines instead of the gtest-style [==========] summary
+  — greps against the old format silently match nothing (exit codes
+  are unaffected).
 - A mavenLocal publish target must be declared manually
   (`repositories: [{id: mavenLocal, url: mavenLocal, publish: true}]`,
   in `//publishing.module-template.yaml`) — no built-in analogue of
