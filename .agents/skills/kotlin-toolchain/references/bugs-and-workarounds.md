@@ -124,11 +124,11 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   `./kotlin publish mavenLocal` clears ALL SEVEN modules (32 maven
   coordinates; driver's jvm jar carries the natives; POMs reference
   right-platform dependency variants). Publishing is functionally
-  UNBLOCKED. Remaining pre-release decisions, not bugs: the jvm jar
-  ships the BUILD HOST's native library (Gradle always shipped
-  linux-x64 — settle the publishing-host convention before Central),
-  and mavenCentral runs in `manual` mode (portal-UI release) by
-  default. Repro (for the record):
+  UNBLOCKED. The jvm jar ships BOTH native classifiers since
+  2026-08-07 (host + Konan-cross linux-x64, xerial pattern — verified:
+  the cross .so ctypes-loads on a linux host; supersedes Gradle's
+  linux-only jar). Remaining pre-release note: mavenCentral runs in
+  `manual` mode (portal-UI release) by default. Repro (for the record):
   `github.com/Serisium/kotlin-toolchain-publish-metadata-variant-repro`.
 
 ## 8. Every per-platform POM pins ONE platform's dependency variant — [KTC-5650](https://youtrack.jetbrains.com/issue/KTC-5650), FIXED in 0.12.0-dev-4225

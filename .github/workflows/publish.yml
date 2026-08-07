@@ -6,11 +6,11 @@ on:
 
 # Kotlin Toolchain publishing (PREVIEW; KTC-719). All seven modules
 # publish since the dev-4230 pin (kotlin-toolchain skill, bug ledger —
-# every publishing bug fixed upstream). Before the FIRST real release:
-# settle the jvm-jar native-library convention (the toolchain packages
-# the BUILD HOST's library; the Gradle pipeline always shipped
-# linux-x64) and note mavenCentral defaults to `manual` mode — the
-# bundle uploads, then a human releases it in the Central Portal UI.
+# every publishing bug fixed upstream). The jvm jar ships BOTH native
+# classifiers (osx-arm64 host build + Konan-cross linux-x64 .so, the
+# xerial pattern; the priming passes below also guarantee the cross
+# packages). mavenCentral defaults to `manual` mode — the bundle
+# uploads, then a human releases it in the Central Portal UI.
 # Secrets live in the 'release' environment, whose deployment policy
 # only admits v* tags.
 jobs:

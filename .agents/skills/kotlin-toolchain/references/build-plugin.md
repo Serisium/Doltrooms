@@ -37,7 +37,7 @@ Enabled in `driver` only. Tasks (wiring: `plugin.yaml`; actions:
 | Task | Does | Feeds |
 |---|---|---|
 | `prepareAmalgamation` | download + SHA-verify + unzip the pinned DoltLite amalgamation | every compile below |
-| `compileHostJni` | amalgamation + `driver/native/jni/doltrooms_jni.cpp` → `libdoltroomsjni` for the HOST | `generated.resources` fragment `@jvm`, as `natives/<classifier>/` — exactly where `NativeLibraryLoader` looks; consumers (dolt-write tests) get it via the driver dependency's classpath |
+| `compileHostJni` | amalgamation + `driver/native/jni/doltrooms_jni.cpp` → `libdoltroomsjni` for the HOST, plus (on macOS) the Konan-cross linux-x64 `.so` — the jar ships both classifiers, xerial-style | `generated.resources` fragment `@jvm`, as `natives/<classifier>/` — exactly where `NativeLibraryLoader` looks; consumers (dolt-write tests) get it via the driver dependency's classpath |
 | `compileStaticArchives` | per-target `libdoltlite.a`: linux-x64 host → linuxX64 (gcc + objcopy C23-symbol remaps); macOS → iOS slices (xcrun) AND linuxX64 via Konan's cross toolchain (`~/.konan/dependencies` llvm + gcc sysroot; skipped with a warning until Konan provisions them — rebuild after the first linuxX64 build) | `generateDef` |
 | `generateDef` | renders `driver/cinterop/doltlite.def.in` with the absolute include path + `staticLibraries`/`libraryPaths` for exactly the archives that exist | `generated.cinteropDefinitions` fragment `@native` |
 | `fetchRemotesrv` | `./kotlin do fetchRemotesrv` (manual, linux-x64 only): the remotesrv test fixture; prints the `JAVA_TOOL_OPTIONS` run prefix | jvm RemoteServerSyncTest |

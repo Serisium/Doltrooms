@@ -190,16 +190,21 @@ public fun prepareAmalgamation(@Output outputDir: Path) {
 }
 
 /**
- * Compiles the amalgamation + JNI glue into libdoltroomsjni for the build
- * host, under natives/<classifier>/ where NativeLibraryLoader finds it on
- * the classpath (the directory is contributed as jvm resources).
+ * Compiles the amalgamation + JNI glue into libdoltroomsjni, under
+ * natives/<classifier>/ where NativeLibraryLoader finds it on the
+ * classpath (the directory is contributed as jvm resources).
  *
- * NOTE (parity): the Gradle build shipped ONLY a cross-compiled linux-x64
- * .so in the jvm jar regardless of host; here the jar gets the HOST's
- * library. Fine for dev/test; revisit for publishing (which kmp/lib does
- * not support yet anyway) — see the migration PR description.
+ * The HOST's library always; on macOS ALSO the cross-compiled linux-x64
+ * .so via Konan's llvm + linux sysroot (the xerial multi-classifier-jar
+ * pattern the loader selects from at runtime — supersedes the Gradle
+ * build's linux-only jar). JNI headers for the cross build: OpenJDK
+ * ships ONE POSIX jni_md.h installed as both include/darwin and
+ * include/linux, so the host JDK's darwin copy serves the linux compile
+ * (proven by the Gradle build, 2026-07). Same execution-avoidance
+ * treatment as the archives: Disabled + freshness checks, so the cross
+ * .so is retried once Konan's packages exist.
  */
-@TaskAction
+@TaskAction(executionAvoidance = ExecutionAvoidance.Disabled)
 public fun compileHostJni(
     @Input amalgamationDir: Path,
     @Input jniSource: Path,
@@ -221,6 +226,12 @@ public fun compileHostJni(
     val jniMd = if (host == Host.MAC) "darwin" else "linux"
     val libName = if (host == Host.MAC) "libdoltroomsjni.dylib" else "libdoltroomsjni.so"
     val out = resourcesDir / "natives" / hostClassifier
+    val hostLib = out / libName
+    if (libIsFresh(hostLib, src) && (host != Host.MAC ||
+            libIsFresh(resourcesDir / "natives" / "linux-x64" / "libdoltroomsjni.so", src))
+    ) {
+        println("JNI natives are up to date"); return
+    }
     out.createDirectories()
     workDir.createDirectories()
     val engineObj = workDir / "doltlite.o"
@@ -242,7 +253,72 @@ public fun compileHostJni(
         hint = toolHint,
     )
     println("Built ${out / libName}")
+    if (host == Host.MAC) crossCompileLinuxJni(src, jniSource, jdk, resourcesDir, workDir)
 }
+
+/**
+ * macOS -> linux-x64 JNI cross-compile so the published jvm jar serves
+ * Linux consumers too. Same Konan llvm + sysroot split as the engine
+ * archive; -fuse-ld=lld for the link. Skipped (with the same rebuild
+ * hint) until Konan provisions the packages — the publish workflow's
+ * priming passes guarantee them there.
+ */
+private fun crossCompileLinuxJni(src: Path, jniSource: Path, jdk: Path, resourcesDir: Path, workDir: Path) {
+    val deps = Path.of(
+        System.getenv("KONAN_DATA_DIR") ?: "${System.getProperty("user.home")}/.konan"
+    ) / "dependencies"
+    fun konanDep(prefix: String): Path? = deps.toFile()
+        .listFiles { f -> f.isDirectory && f.name.startsWith(prefix) }
+        ?.sortedBy { it.name }?.lastOrNull()?.toPath()
+    val llvmBin = konanDep("llvm-")?.let { it / "bin" }
+    val gcc = konanDep("x86_64-unknown-linux-gnu-gcc-")
+    if (llvmBin == null || gcc == null) {
+        println(
+            "Skipping the linux-x64 JNI library: Konan's Linux cross packages " +
+                "are not provisioned yet under $deps. Run a linuxX64 build once " +
+                "and rebuild to include it (the jvm jar then carries both the " +
+                "osx and linux-x64 natives)."
+        )
+        return
+    }
+    val hint = { _: Int ->
+        "Konan cross toolchain failed; re-provision by deleting $deps and " +
+            "running a linuxX64 build, or build the linux .so on a linux-x64 host."
+    }
+    val retarget = arrayOf(
+        "--target=x86_64-unknown-linux-gnu",
+        "--sysroot=$gcc/x86_64-unknown-linux-gnu/sysroot",
+        "--gcc-toolchain=$gcc",
+    )
+    val out = (resourcesDir / "natives" / "linux-x64").apply { createDirectories() }
+    val engineObj = workDir / "doltlite-linux.o"
+    val glueObj = workDir / "doltrooms_jni-linux.o"
+    exec(
+        "$llvmBin/clang", *retarget, "-c", "-fPIC", "-O3",
+        *COMPILE_FLAGS.toTypedArray(), "-I$src",
+        "-o", "$engineObj", "$src/doltlite.c",
+        hint = hint,
+    )
+    exec(
+        "$llvmBin/clang++", *retarget, "-c", "-fPIC", "-O3", "-fvisibility=hidden",
+        *COMPILE_FLAGS.toTypedArray(), "-I$src",
+        "-I$jdk/include", "-I$jdk/include/darwin",
+        "-o", "$glueObj", "$jniSource",
+        hint = hint,
+    )
+    exec(
+        "$llvmBin/clang++", *retarget, "-fuse-ld=lld", "-shared",
+        "-o", "${out / "libdoltroomsjni.so"}", "$engineObj", "$glueObj",
+        "-lpthread", "-ldl", "-lm",
+        hint = hint,
+    )
+    println("Built ${out / "libdoltroomsjni.so"} (Konan cross toolchain)")
+}
+
+/** True when the library exists and is newer than the amalgamation source. */
+private fun libIsFresh(lib: Path, src: Path): Boolean =
+    lib.isRegularFile() &&
+        lib.toFile().lastModified() > (src / "doltlite.c").toFile().lastModified()
 
 
 /** True when the target's archive exists and is newer than the amalgamation source. */
