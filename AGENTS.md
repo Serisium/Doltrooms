@@ -79,12 +79,18 @@ decision as a new iteration.
   change lands via a PR with all CI checks green. Keep commits small
   and single-topic; never commit `build/`, `.gradle/`, `.kotlin/`,
   or `.idea/` content. Do not commit or push without being asked.
-- Build/test loop: `./gradlew build`, tests via `./gradlew allTests`
-  (JVM/native, across modules) — Android host tests run under each
-  module's `testAndroidHostTest`. Since the multi-module split
-  (`docs/design/module-architecture.md`) the engine + conformance suite
-  live in `:driver` and the git-verb facade + its suites in
-  `:dolt-write`; scope with `:driver:...` / `:dolt-write:...`.
+- Build/test loop (Kotlin Toolchain — the `kotlin-toolchain` skill is
+  the reference): `./kotlin build` (all platforms this host can build),
+  tests via `./kotlin test -p jvm` / `-p linuxX64` /
+  `-p iosSimulatorArm64`; scope to one module with `-m driver` /
+  `-m dolt-write`. On linux-x64 hosts run `./kotlin do fetchRemotesrv`
+  once and pass the `JAVA_TOOL_OPTIONS` line it prints to jvm test runs
+  (RemoteServerSyncTest). Android is BUILD-only for now; android
+  host/device test runs and `samples/codelab` are parked by the
+  migration (kotlin-toolchain skill, gaps reference). Since the
+  multi-module split (`docs/design/module-architecture.md`) the engine +
+  conformance suite live in `driver` and the git-verb facade + its
+  suites in `dolt-write`.
 
 ## Skills
 
@@ -99,6 +105,11 @@ break on every edit (see the `skill-maintenance` skill).
 
 Active for this iteration:
 
+- [`kotlin-toolchain`](.agents/skills/kotlin-toolchain/SKILL.md) — the
+  build system (D12): the `./kotlin` wrapper and CLI, module.yaml
+  semantics, the `build-plugins/doltlite` native-build plugin, and the
+  live toolchain bug ledger with in-repo workarounds and their removal
+  conditions. Load for ANY build/test/CI task or module.yaml edit.
 - [`room3`](.agents/skills/room3/SKILL.md) — Room 3
   (`androidx.room3`) KMP: Gradle/KSP wiring, `setDriver`, connection
   pooling, `useWriterConnection`/`@RawQuery` for `dolt_*` SQL,

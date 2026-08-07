@@ -13,3 +13,6 @@ xcuserdata
 *.gpg
 #JVM fatal-error crash logs
 hs_err_pid*.log
+# The doltlite build plugin's fetchRemotesrv command output (all other
+# plugin outputs live under the already-ignored build/ directory)
+driver/native/build

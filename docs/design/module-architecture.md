@@ -176,6 +176,14 @@ lint (contract §8), the DDL emitter with its pinned feature ceiling
 Version alignment across all published modules plus an all-in-one
 coordinate for consumers who want everything.
 
+Implemented (2026-08-07) as a source-less `doltrooms/module.yaml` with
+exported dependencies on the four runtime modules (`:driver`,
+`:dolt-read`, `:dolt-write`, `:dolt-remotes`; `:dolt-core` arrives
+transitively). A true Maven BOM (`dependencyManagement` packaging) is
+not expressible in the toolchain's publishing schema; the exported
+umbrella covers the all-in-one role, and version alignment holds
+because every module publishes the shared template's single version.
+
 ## Connection points and their diagnosis
 
 | Connection | Mechanism | Failure mode | Probe |

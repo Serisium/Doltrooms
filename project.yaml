@@ -1,0 +1,15 @@
+# Kotlin Toolchain project file (https://kotlin-toolchain.org).
+# samples/codelab keeps its own standalone Gradle build and is not a module here.
+modules:
+  - ./build-plugins/doltlite
+  - ./dolt-core
+  - ./dolt-read
+  - ./dolt-remotes
+  - ./dolt-write
+  - ./doltrooms
+  - ./driver
+  - ./processor
+  - ./verifier
+
+plugins:
+  - ./build-plugins/doltlite

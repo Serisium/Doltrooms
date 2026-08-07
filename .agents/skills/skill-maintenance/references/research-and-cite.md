@@ -36,7 +36,7 @@ Public docs are sometimes thin or out of date. When the doc page does not descri
 https://github.com/<org>/<repo>/blob/<tag>/<path-in-repo>
 ```
 
-Pin to the version this repo uses (see `gradle/libs.versions.toml` once dependencies exist; until then, pin to the latest stable tag and say so). For androidx, `cs.android.com` and the `androidx/androidx` GitHub mirror are the sources of truth; for DoltLite, the repo README and headers are the only documentation there is.
+Pin to the version this repo uses (see the module.yaml files once dependencies exist; until then, pin to the latest stable tag and say so). For androidx, `cs.android.com` and the `androidx/androidx` GitHub mirror are the sources of truth; for DoltLite, the repo README and headers are the only documentation there is.
 
 Source-derived citations should still cite the URL inline. The pinned version in the URL is part of the citation — it freezes the claim against future edits.
 
