@@ -4,9 +4,10 @@ on:
   release:
     types: [released, prereleased]
 
-# Kotlin Toolchain publishing (PREVIEW; KTC-719). All seven modules
-# publish since the dev-4230 pin (kotlin-toolchain skill, bug ledger —
-# every publishing bug fixed upstream). The jvm jar ships BOTH native
+# Kotlin Toolchain publishing (PREVIEW; KTC-719). All seven original
+# modules publish since the dev-4230 pin (kotlin-toolchain skill, bug
+# ledger — every publishing bug fixed upstream); the doltrooms umbrella
+# (module-architecture.md) publishes as the eighth coordinate. The jvm jar ships BOTH native
 # classifiers (osx-arm64 host build + Konan-cross linux-x64 .so, the
 # xerial pattern; the priming passes below also guarantee the cross
 # packages). mavenCentral defaults to `manual` mode — the bundle

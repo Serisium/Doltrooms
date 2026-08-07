@@ -22,7 +22,9 @@ All facts verified in this repo, 2026-08-04, toolchain 0.11.1 and
   `//publishing.module-template.yaml`) with a throwaway key in
   `KOTLIN_TOOLCHAIN_SIGNING_KEY` (signing is required whenever
   `signArtifacts: true` — see the ledger's friction list). All seven
-  modules publish since the dev-4230 pin (ledger 7 fixed).
+  original modules publish since the dev-4230 pin (ledger 7 fixed);
+  the source-less `doltrooms` umbrella (2026-08-07) makes it eight —
+  re-run the mavenLocal verify to cover it before the first release.
 - `./kotlin show modules|tasks|commands`, `./kotlin init`.
 
 The wrapper self-provisions: the distribution (pinned in the wrapper),

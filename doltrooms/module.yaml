@@ -1,0 +1,33 @@
+product:
+  type: kmp/lib
+  platforms: [ jvm, android, iosArm64, iosSimulatorArm64, linuxX64 ]
+
+description: |
+  The all-in-one doltrooms coordinate (module-architecture.md's umbrella): exports every runtime module so consumers declare one dependency and Maven resolves the rest.
+
+apply:
+  - //publishing.module-template.yaml
+
+
+# Deliberately source-less (KTC-5652 is fixed: source-less modules
+# publish) — the umbrella IS its dependency list. The KSP-classpath
+# artifacts (:processor, :verifier) are excluded by mechanism: they go
+# on the consumer's ksp()/compiler classpath, never the runtime graph.
+# module-architecture.md also calls for BOM-style version alignment;
+# the toolchain's publishing schema has no packaging knob (no
+# dependencyManagement POM), so exported dependencies — which pin
+# exact versions, all modules sharing the shared template's — carry
+# that role for now.
+dependencies:
+  - ../driver: exported
+  - ../dolt-read: exported
+  - ../dolt-write: exported
+  - ../dolt-remotes: exported
+
+settings:
+  publishing:
+    artifactId: doltrooms
+  android:
+    namespace: dev.seri.doltrooms.umbrella
+    compileSdk: 36
+    minSdk: 24

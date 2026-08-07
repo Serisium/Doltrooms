@@ -6,6 +6,7 @@ modules:
   - ./dolt-read
   - ./dolt-remotes
   - ./dolt-write
+  - ./doltrooms
   - ./driver
   - ./processor
   - ./verifier
