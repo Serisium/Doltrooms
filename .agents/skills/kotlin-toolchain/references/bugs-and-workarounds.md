@@ -166,7 +166,9 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   loudly meanwhile.
 - **explicitApi / ABI validation / detekt:** no toolchain equivalents;
   D11's mechanisms suspended (see ARCHITECTURE.md D12).
-- **AAR jniLibs packaging:** no hook — CONFIRMED in depth 2026-08-07 on
+- **AAR jniLibs packaging:** no hook — FILED as a feature gap:
+  [KTC-5675](https://youtrack.jetbrains.com/issue/KTC-5675)
+  (2026-08-07, by the human). CONFIRMED in depth 2026-08-07 on
   0.12.0-dev-4230 (all three probes negative): `AndroidAarTask`
   assembles exactly stub-manifest + classes jar + Compose-resources
   assets; the model's own `<module>/jniLibs` convention
@@ -180,9 +182,11 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   device runtime parked. Prior art:
   [KTC-5227](https://youtrack.jetbrains.com/issue/KTC-5227) added the
   jniLibs convention for `android/app` ONLY (fixed 0.11.0-dev-3808);
-  the library/AAR side has no upstream ticket (searched 2026-08-07).
-  Repro + ready-to-file feature-gap draft (`ISSUE-DRAFT.md`):
-  `github.com/Serisium/kotlin-toolchain-aar-jnilibs-repro`.
+  KTC-5675 is the library-side follow-up. Repro:
+  `github.com/Serisium/kotlin-toolchain-aar-jnilibs-repro`. Re-test at
+  each toolchain re-pin; on a fix, port the Gradle NDK recipe
+  (`develop:driver/build.gradle.kts`) into the doltlite plugin and
+  unpark the android device runtime.
 - **Host-conditional test system properties:** `settings.jvm.test.
   systemProperties` is host-unconditional — the reason fetchRemotesrv
   is a manual command.
