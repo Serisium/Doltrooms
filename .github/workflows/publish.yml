@@ -49,6 +49,18 @@ jobs:
           distribution: 'zulu'
           java-version: 21
       - uses: android-actions/setup-android@v4
+      # Cross-archive bootstrap: Konan provisions its linux sysroot DURING
+      # the first linuxX64 build (after the plugin's archive task already
+      # ran), so on a cold runner the first pass skips the cross archive —
+      # and would publish a headers-only linuxX64 klib with no embedded
+      # engine. First pass is allowed to fail (its test link needs the
+      # archive); the second pass must be green: the plugin's freshness
+      # check retries the archive once the sysroot exists, the .def gains
+      # its linux_x64 entries, and cinterop reruns.
+      - name: Prime Konan's linux sysroot (first pass may fail)
+        run: ./kotlin build -p linuxX64 || true
+      - name: Build linuxX64 with the embedded engine archive
+        run: ./kotlin build -p linuxX64
       - name: Publish to Maven Central (manual release mode)
         # Preview default is `manual` mode: the bundle uploads and waits
         # for validation; the human releases it in the Central Portal UI.
