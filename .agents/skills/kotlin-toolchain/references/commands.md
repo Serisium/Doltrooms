@@ -21,8 +21,8 @@ All facts verified in this repo, 2026-08-04, toolchain 0.11.1 and
   `./kotlin publish mavenLocal` (target declared in
   `//publishing.module-template.yaml`) with a throwaway key in
   `KOTLIN_TOOLCHAIN_SIGNING_KEY` (signing is required whenever
-  `signArtifacts: true` — see the ledger's friction list). Publishing
-  is blocked for driver-adjacent modules by ledger bugs 7-8.
+  `signArtifacts: true` — see the ledger's friction list). All seven
+  modules publish since the dev-4230 pin (ledger 7 fixed).
 - `./kotlin show modules|tasks|commands`, `./kotlin init`.
 
 The wrapper self-provisions: the distribution (pinned in the wrapper),

@@ -4,13 +4,15 @@ on:
   release:
     types: [released, prereleased]
 
-# Kotlin Toolchain publishing (PREVIEW; KTC-719). Wired to the intended
-# final shape, but a release CANNOT succeed yet: ONE remaining preview
-# bug — publish-time metadata compilation fails on platform-set-refined
-# dependency APIs (blocks :driver and everything depending on it;
-# kotlin-toolchain skill, bug ledger entry 7). The run fails LOUDLY
-# there, so a tagged release is never presumed published. Secrets live in the 'release' environment, whose
-# deployment policy only admits v* tags.
+# Kotlin Toolchain publishing (PREVIEW; KTC-719). All seven modules
+# publish since the dev-4230 pin (kotlin-toolchain skill, bug ledger —
+# every publishing bug fixed upstream). Before the FIRST real release:
+# settle the jvm-jar native-library convention (the toolchain packages
+# the BUILD HOST's library; the Gradle pipeline always shipped
+# linux-x64) and note mavenCentral defaults to `manual` mode — the
+# bundle uploads, then a human releases it in the Central Portal UI.
+# Secrets live in the 'release' environment, whose deployment policy
+# only admits v* tags.
 jobs:
   # The tag (vX.Y.Z) must equal the shared publishing version before
   # anything builds or signs — the version lives in ONE place now:

@@ -109,7 +109,7 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
 - No repo change needed (the `.gitkeep`s are gone regardless); keep
   source trees tidy as a matter of hygiene.
 
-## 7. Publish-time metadata compilation fails on platform-set-refined dependency APIs — FILED: [KTC-5665](https://youtrack.jetbrains.com/issue/KTC-5665); THE remaining publishing blocker
+## 7. Publish-time metadata compilation fails on platform-set-refined dependency APIs — [KTC-5665](https://youtrack.jetbrains.com/issue/KTC-5665), FIXED in 0.12.0-dev-4230
 
 - driver's synchronous `SQLiteDriver.open` override fails
   `compileMetadataCommon` with "'open' overrides nothing" — publish
@@ -120,13 +120,16 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   classpath entries fixes the compile). Blocks publishing `driver`,
   `dolt-write`, `dolt-remotes` (dep chain), and `processor`/`verifier`
   (publishing a module prepares its module DEPENDENCIES' publications).
-- **Still broken on 0.12.0-dev-4225; no workaround.** `dolt-core` and
-  `dolt-read` publish clean (umbrella + per-platform sets, correct
-  `.module` metadata and — since KTC-5650 — correct POMs). Repro:
+- **FIXED — verified 2026-08-07 on 0.12.0-dev-4230**:
+  `./kotlin publish mavenLocal` clears ALL SEVEN modules (32 maven
+  coordinates; driver's jvm jar carries the natives; POMs reference
+  right-platform dependency variants). Publishing is functionally
+  UNBLOCKED. Remaining pre-release decisions, not bugs: the jvm jar
+  ships the BUILD HOST's native library (Gradle always shipped
+  linux-x64 — settle the publishing-host convention before Central),
+  and mavenCentral runs in `manual` mode (portal-UI release) by
+  default. Repro (for the record):
   `github.com/Serisium/kotlin-toolchain-publish-metadata-variant-repro`.
-  When a fix ships: re-pin, `./kotlin publish mavenLocal` should clear
-  all seven modules — that is the last publishing gate before a
-  release.
 
 ## 8. Every per-platform POM pins ONE platform's dependency variant — [KTC-5650](https://youtrack.jetbrains.com/issue/KTC-5650), FIXED in 0.12.0-dev-4225
 
