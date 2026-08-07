@@ -177,9 +177,12 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   classpath resource — extract-and-dlopen only, not viable); the
   android settings schema has no packaging knob beyond java-resources
   `resourcePackaging`. Android artifacts ship no natives; android
-  device runtime parked. Repro + ready-to-file feature-gap draft
-  (`ISSUE-DRAFT.md`, suggests a `generated.androidJniLibs` contribution
-  type): `github.com/Serisium/kotlin-toolchain-aar-jnilibs-repro`.
+  device runtime parked. Prior art:
+  [KTC-5227](https://youtrack.jetbrains.com/issue/KTC-5227) added the
+  jniLibs convention for `android/app` ONLY (fixed 0.11.0-dev-3808);
+  the library/AAR side has no upstream ticket (searched 2026-08-07).
+  Repro + ready-to-file feature-gap draft (`ISSUE-DRAFT.md`):
+  `github.com/Serisium/kotlin-toolchain-aar-jnilibs-repro`.
 - **Host-conditional test system properties:** `settings.jvm.test.
   systemProperties` is host-unconditional — the reason fetchRemotesrv
   is a manual command.
