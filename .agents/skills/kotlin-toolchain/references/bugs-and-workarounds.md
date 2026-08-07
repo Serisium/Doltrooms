@@ -166,8 +166,20 @@ Found wiring `settings.publishing` + `./kotlin publish mavenLocal`
   loudly meanwhile.
 - **explicitApi / ABI validation / detekt:** no toolchain equivalents;
   D11's mechanisms suspended (see ARCHITECTURE.md D12).
-- **AAR jniLibs packaging:** no hook — android artifacts ship no
-  natives; android device runtime parked.
+- **AAR jniLibs packaging:** no hook — CONFIRMED in depth 2026-08-07 on
+  0.12.0-dev-4230 (all three probes negative): `AndroidAarTask`
+  assembles exactly stub-manifest + classes jar + Compose-resources
+  assets; the model's own `<module>/jniLibs` convention
+  (`SourceAndroidConventionPaths.jniLibsPath`) is consumed only as an
+  input-files entry of the android/app delegated-Gradle (APK/AAB) path;
+  `resources@android/` and plugin `generated.resources` with
+  `modifier: "@android"` both land INSIDE `libs/<classes>.jar` (a
+  classpath resource — extract-and-dlopen only, not viable); the
+  android settings schema has no packaging knob beyond java-resources
+  `resourcePackaging`. Android artifacts ship no natives; android
+  device runtime parked. Repro + ready-to-file feature-gap draft
+  (`ISSUE-DRAFT.md`, suggests a `generated.androidJniLibs` contribution
+  type): `github.com/Serisium/kotlin-toolchain-aar-jnilibs-repro`.
 - **Host-conditional test system properties:** `settings.jvm.test.
   systemProperties` is host-unconditional — the reason fetchRemotesrv
   is a manual command.
