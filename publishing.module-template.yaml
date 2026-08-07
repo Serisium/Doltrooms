@@ -20,7 +20,7 @@ settings:
   publishing:
     enabled: true
     group: dev.seri.doltrooms
-    version: 0.1.0-SNAPSHOT
+    version: 0.1.1
     mavenCentral: enabled
     signArtifacts: true
     publishSources: true
